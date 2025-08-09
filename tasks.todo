@@ -1,0 +1,45 @@
+### **Phase 0 To-Do List: Foundation & Backend Integration**
+
+#### **1. Environment & Project Initialization**
+* [ ] **Task 1: Set up Git Repository**
+    * [ ] Create a new directory for your project.
+    * [ ] Initialize a Git repository inside it (`git init`).
+
+* [ ] **Task 2: Initialize NuxtJS Project**
+    * [ ] Run the command to create a new Nuxt 3 project within your repository.
+    * [ ] Navigate into the new Nuxt project directory.
+
+* [ ] **Task 3: Install Dependencies**
+    * [ ] Install the PocketBase JavaScript SDK as a dependency in your Nuxt project.
+
+#### **2. Backend Setup (PocketBase)**
+* [ ] **Task 4: Download and Run PocketBase**
+    * [ ] Download the appropriate PocketBase executable for your operating system.
+    * [ ] Unzip and place it in a convenient location (or within a `pb/` folder in your project root).
+
+* [ ] **Task 5: Start PocketBase & Create Admin**
+    * [ ] Run the PocketBase executable with the `serve` command.
+    * [ ] Navigate to the local URL provided in your terminal (usually `http://127.0.0.1:8090/_/`).
+    * [ ] Create your first administrator account.
+
+#### **3. Frontend-Backend Integration (Nuxt & PocketBase)**
+* [ ] **Task 6: Configure Environment Variables**
+    * [ ] Create a `.env` file in the root of your Nuxt project.
+    * [ ] Add an entry for your PocketBase server URL (e.g., `POCKETBASE_URL=http://127.0.0.1:8090`).
+
+* [ ] **Task 7: Create a Server Utility for PocketBase**
+    * [ ] Inside your Nuxt project, create a new file in the `server/utils/` directory (e.g., `server/utils/pocketbase.ts`).
+    * [ ] This file will be responsible for creating and exporting a single, reusable instance of the PocketBase SDK client. It should be configured to read the URL from the environment variable you just set.
+
+* [ ] **Task 8: Create a Test Server Route**
+    * [ ] Create a new server API route to verify the connection, for example: `server/api/health.get.ts`.
+
+* [ ] **Task 9: Implement the Test Logic**
+    * [ ] Inside your new `health.get.ts` route, import and use the PocketBase instance from your server utility.
+    * [ ] Implement logic to make a simple, unauthenticated call to the PocketBase server (e.g., checking the application's health status).
+    * [ ] Return a success or error message from the API route.
+
+* [ ] **Task 10: Verify the Connection**
+    * [ ] Run both the PocketBase server and the Nuxt development server.
+    * [ ] Navigate to your new API endpoint in the browser (e.g., `http://localhost:3000/api/health`).
+    * [ ] Confirm you receive the success message, proving that your Nuxt server route can successfully communicate with your PocketBase backend.
