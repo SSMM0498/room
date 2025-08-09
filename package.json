@@ -1,21 +1,28 @@
 {
-  "name": "nuxt-app",
+  "name": "room-app",
+  "description": "Nuxt3 project for room Platform",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host 0.0.0.0",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "lint": "eslint .",
+    "format": "eslint . --fix"
   },
   "dependencies": {
     "@nuxt/content": "3.6.3",
     "@nuxt/eslint": "1.8.0",
     "@nuxt/image": "1.11.0",
     "@nuxt/ui": "3.3.0",
+    "@nuxtjs/color-mode": "^3.5.2",
+    "@nuxtjs/i18n": "^10.0.4",
     "eslint": "^9.0.0",
     "nuxt": "^4.0.3",
+    "pocketbase": "^0.26.2",
     "typescript": "^5.6.3",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"

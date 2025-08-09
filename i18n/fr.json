@@ -1,0 +1,16 @@
+{
+  "welcome": "Bienvenue 👋!",
+  "welcome-quick-start": "Bienvenue 👋! Démarrage rapide",
+  "home": "Accueil",
+  "sign_up": "S'inscrire",
+  "sign_in": "Se connecter",
+  "logout": "Se déconnecter",
+  "go_home": "Aller à l'accueil",
+  "login": {
+    "dont_have_an_account_yet": "Vous n'avez pas encore de compte?"
+  },
+  "profile": "Profil",
+  "settings": "Paramètres",
+  "student_dashboard": "Dashboard étudiant",
+  "instructor_dashboard": "Dashboard instructeur"
+}

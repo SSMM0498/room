@@ -1,0 +1,16 @@
+{
+  "welcome": "Welcome 👋!",
+  "welcome-quick-start": "Welcome 👋! Quick start",
+  "home": "Home",
+  "sign_up": "Sign up",
+  "sign_in": "Sign in",
+  "logout": "Logout",
+  "go_home": "Go home",
+  "login": {
+    "dont_have_an_account_yet": "Don't have an account yet?"
+  },
+  "profile": "Profile",
+  "settings": "Settings",
+  "student_dashboard": "Student Dashboard",
+  "instructor_dashboard": "Instructor Dashboard"
+}
