@@ -26,9 +26,9 @@ export default defineNuxtConfig({
       name: 'Français',
       file: 'fr.json'
     }],
-    strategy: 'prefix_and_default',
-    langDir: './',
+    strategy: 'prefix_except_default',
     defaultLocale: 'en',
+    langDir: './',
     vueI18n: './i18n.options.ts',
   },
 
@@ -39,19 +39,19 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   content: {
-    defaultLocale: 'en',
-    locales: ['en', 'fr'],
-    highlight: {
-      theme: {
-        default: 'vitesse-light',
-        dark: 'vitesse-dark',
+    build: {
+      markdown: {
+        highlight: {
+          theme: {
+            default: 'vitesse-light',
+            dark: 'vitesse-dark',
+          },
+        },
+        remarkPlugins: {
+          'rehype-external-links': {}
+        }
       },
-    },
-    markdown: {
-      remarkPlugins: [
-        'remark-external-links',
-      ],
-    },
+    }
   },
 
   runtimeConfig: {
