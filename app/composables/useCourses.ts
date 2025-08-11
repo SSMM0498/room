@@ -41,7 +41,6 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
 export const useCourses = () => {
     const courses = ref<CourseCard[]>([]);
     const currentCourse = ref<RecordModel | null>(null);
-    //   const tags = ref<RecordModel[]>([]);
 
     const pending = ref(false);
     const error = ref<Error | null>(null);
@@ -120,6 +119,44 @@ export const useCourses = () => {
         return true;
     });
 
+    const toggleCourseType = async (courseId: string, currentType: 'single' | 'cursus') => _handleRequest(async () => {
+        const newType = currentType === 'single' ? 'cursus' : 'single';
+        return await updateCourse(courseId, { type: newType });
+    });
+
+    const addCourseToCursus = async (cursusId: string, courseIdToAdd: string) => _handleRequest(async () => {
+        const newItem = await $fetch<RecordModel>(`/api/cursus/${cursusId}/items`, {
+            method: 'POST',
+            body: { courseIdToAdd },
+        });
+
+        await fetchCourseById(cursusId);
+        return newItem;
+    });
+
+    const removeCourseFromCursus = async (itemId: string) => _handleRequest(async () => {
+        await $fetch(`/api/cursus/items/${itemId}`, { method: 'DELETE' });
+        if (currentCourse.value && currentCourse.value.items) {
+            currentCourse.value.items = currentCourse.value.items.filter((item: any) => item.id !== itemId);
+        }
+        return true;
+    });
+
+    const updateCursusOrder = async (cursusId: string, orderedItemIds: string[]) => _handleRequest(async () => {
+        if (currentCourse.value && currentCourse.value.items) {
+            const newOrderedItems = orderedItemIds.map(id =>
+                currentCourse.value!.items.find((item: any) => item.id === id)
+            ).filter(Boolean); // Filter out any undefined items
+            currentCourse.value.items = newOrderedItems;
+        }
+        console.warn("API for reordering not implemented. UI reordered only.");
+
+        return await $fetch(`/api/cursus/${cursusId}/order`, {
+          method: 'PATCH',
+          body: orderedItemIds,
+        });
+    });
+
     return {
         // State
         courses,
@@ -135,5 +172,9 @@ export const useCourses = () => {
         updateCourse,
         deleteCourse,
         generateSlug,
+        toggleCourseType,
+        addCourseToCursus,
+        removeCourseFromCursus,
+        updateCursusOrder,
     };
 };
