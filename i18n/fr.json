@@ -1,4 +1,21 @@
 {
+  "error": {
+    "title": {
+      "400": "Mauvaise requête",
+      "403": "Accès interdit",
+      "404": "Page introuvable",
+      "500": "Erreur interne du serveur",
+      "default": "Un problème est survenu"
+    },
+    "message": {
+      "400": "Le serveur n'a pas pu traiter votre demande.",
+      "403": "Vous n'avez pas la permission d'accéder à cette page.",
+      "404": "La page que vous recherchez a peut-être été déplacée ou supprimée.",
+      "500": "Une erreur inattendue est survenue sur notre serveur.",
+      "default": "Veuillez réessayer plus tard ou retourner à la page d’accueil."
+    },
+    "home": "Retour à l’accueil"
+  },
   "welcome": "Bienvenue 👋!",
   "welcome-quick-start": "Bienvenue 👋! Démarrage rapide",
   "home": "Accueil",
