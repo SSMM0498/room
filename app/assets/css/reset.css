@@ -1,0 +1,66 @@
+html {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+}
+
+::-moz-selection {
+    color: white;
+    background: #2563eb;
+}
+
+::selection {
+    color: white;
+    background: #2563eb;
+}
+
+*::-webkit-scrollbar {
+    position: fixed;
+    left: 0;
+    background: transparent;
+    border: none;
+    width: 7.5px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-track:hover {
+    background-color: transparent
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: #2563eb;
+}
+
+.scroll-col {
+    mask-image: linear-gradient(to top, transparent, black),
+        linear-gradient(to left, transparent 10px, black 10px);
+    mask-size: 100% 20000px;
+    mask-position: left bottom;
+    -webkit-mask-image: linear-gradient(to top, transparent, black),
+        linear-gradient(to left, transparent 10px, black 10px);
+    -webkit-mask-size: 99.9% 20000px;
+    -webkit-mask-position: left bottom;
+}
+
+.scroll-col:hover {
+    -webkit-mask-position: left top;
+    mask-position: left top;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    opacity: .9;
+}
+
+body::-webkit-scrollbar-track {
+    @apply bg-transparent;
+}
+
+body::-webkit-scrollbar {
+    @apply w-0 h-0 bg-transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+    @apply bg-transparent;
+}

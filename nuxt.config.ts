@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+  ssr: false,
   devtools: { enabled: true },
 
   modules: [
@@ -8,7 +9,7 @@ export default defineNuxtConfig({
     '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxt/eslint',
-    '@nuxt/image',
+    '@pinia/nuxt',
     '@nuxt/ui'
   ],
 
@@ -35,7 +36,10 @@ export default defineNuxtConfig({
     classSuffix: '',
   },
 
+  css: ['~/assets/css/main.css'],
+
   content: {
+    defaultLocale: 'en',
     locales: ['en', 'fr'],
     highlight: {
       theme: {
@@ -53,7 +57,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE || "http://127.0.0.1:3000/",
     POCKETBASE_URL: process.env.POCKETBASE_URL,
-    ENV: process.env.NODE_ENV || 'DEV',
+    POCKETBASE_ADMIN_EMAIL: process.env.POCKETBASE_ADMIN_EMAIL,
+    POCKETBASE_ADMIN_PASSWORD: process.env.POCKETBASE_ADMIN_PASSWORD,
+    ENV: process.env.ENV || 'DEV',
     app: {
       devtools: {
         iframeProps: {
@@ -64,7 +70,7 @@ export default defineNuxtConfig({
     },
   },
 
-  image: {
-    domains: ['127.0.0.1:8090']
-  },
+  // image: {
+  //   domains: [process.env.POCKETBASE_URL || '127.0.0.1:8090']
+  // },
 })

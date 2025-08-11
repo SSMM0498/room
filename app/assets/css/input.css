@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@tailwind directive;
+
+@layer base {
+  header > img.avatar {
+    @apply ml-10;
+  }
+
+  img.avatar {
+    @apply w-10 h-10 transition-all duration-[0.25s] ease-[ease-in-out] border-[color:var(--gray)] rounded-[100px] rounded-full border-solid hover:cursor-pointer hover:border-[color:var(--white)] hover:scale-110;
+  }
+
+  img.avatar.big {
+    @apply w-[70px] h-[70px];
+  }
+
+  img.avatar.med {
+    @apply w-[55px] h-[55px];
+  }
+}
