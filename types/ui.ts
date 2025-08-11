@@ -3,6 +3,7 @@ import type { RecordModel } from 'pocketbase';
 export interface CourseCard {
   id: string;
   title: string;
+  slug: string;
   description: string;
   type?: string;
   createdDate: string;

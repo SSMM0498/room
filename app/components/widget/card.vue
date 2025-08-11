@@ -7,7 +7,7 @@
       class="close-btn absolute -top-1 -left-4 z-50" icon="i-heroicons-x-mark-20-solid" @click="uiStore.closeArticle"
       variant="ghost">
     </UButton>
-    <a class="banner"
+    <a class="banner dark:bg-blue-800 bg-blue-50 dark:after:bg-blue-900 after:bg-blue-200 dark:before:bg-blue-950 before:bg-blue-300"
       :class="{ '!h-[550px]': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id }"
       @click.prevent="($event) => {
         uiStore.openArticle($event, 'django-chatgpt-clone-tutorial');
@@ -29,8 +29,8 @@
     <div class="tags">
       <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
     </div>
-    <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/${course.id}-${slugify(course.title)}`">
-      {{ course.id }} . {{ course.title }}
+    <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/courses/${course.slug}`">
+      {{ course.title }}
     </NuxtLink>
     <p>
       {{ course.description }}
@@ -52,8 +52,6 @@
 </template>
 <script setup lang="ts">
 import type { CourseCard } from '../../../types/ui';
-
-const slugify = (s: string) => s.toLowerCase().replace(/ /g, '-');
 
 defineProps<{
   course: CourseCard;
@@ -78,10 +76,6 @@ article.reduce-height {
 article .banner {
   @apply relative flex items-center justify-center w-full cursor-pointer shadow-blue-500/40 mb-6 rounded-[7.5px];
   height: clamp(275px, 275px, 20vw);
-}
-
-article .banner {
-  @apply dark:bg-blue-800 bg-blue-50
 }
 
 article:hover .banner:not(.live):not(.cursus) {
@@ -183,7 +177,6 @@ article.cursus .banner:before {
   box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
   border-radius: 7.5px;
   transition: .3s;
-  @apply dark:bg-blue-900 bg-blue-200;
 }
 
 article.list::after,
@@ -192,7 +185,6 @@ article.cursus .banner:after {
 }
 
 article.cursus .banner:before {
-  @apply dark:bg-blue-950 bg-blue-300;
   transform: translate(16px, 15px);
 }
 

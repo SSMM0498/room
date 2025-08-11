@@ -134,17 +134,15 @@
 </template>
 
 <script setup lang="ts">
-import { type RecordModel } from 'pocketbase';
-import type { Section } from '../../../types/ui';
-
 const localePath = useLocalePath();
 const user = useAuthUser();
 const { logout } = useAuth();
 
-const { data: tags, pending, error } = await useAsyncData<RecordModel[]>(
-  'header-tags',
-  () => $fetch('/api/tags')
-);
+const { tags, pending, error, fetchTags } = useTags();
+onMounted(async () => {
+  await fetchTags();
+});
+
 async function handleLogout() {
   try {
     await logout();

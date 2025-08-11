@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { CourseCard, Section } from '../../types/ui';
-import { type RecordModel } from 'pocketbase';
+import type { Section } from '~~/types/ui';
 
 const { t } = useI18n();
 
@@ -13,58 +12,22 @@ useHead({
   title: t('home'),
 })
 
-interface HomeFeedData {
-  tags: RecordModel[];
-  courses: RecordModel[];
-}
+const { courses, fetchCourses, pending: coursesPending, error: coursesError } = useCourses();
+const { tags, fetchTags, pending: tagsPending, error: tagsError } = useTags();
 
-/**
- * Parses a raw PocketBase course record into a clean CourseCard object
- * suitable for use in frontend components.
- *
- * @param record - The raw RecordModel object from a PocketBase fetch request.
- * @returns A formatted CourseCard object.
- */
-const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
-  const tags = record.expand?.tags || [];
+await useAsyncData('home-page-data', () => Promise.all([
+  fetchCourses(),
+  fetchTags()
+]));
 
-  const durationInMinutes = record.duration ? Math.round(record.duration / 60) : 0;
-  const durationFormatted = `${durationInMinutes} min`;
+const isPending = computed(() => coursesPending.value || tagsPending.value);
+const hasError = computed(() => coursesError.value || tagsError.value);
 
-  const createdDate = record.created 
-    ? new Date(record.created).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }) 
-    : '';
+const sections = computed<Section[]>(() => {
+  if (!courses.value || !tags.value) return [];
 
-  return {
-    id: record.id,
-    title: record.title,
-    description: record.description,
-    type: record.type,
-    createdDate,
-    section: '',
-    durationFormatted,
-    tags,
-    author: record.expand?.author, // Embed the expanded author record
-    price: record.price,
-  };
-};
-
-const { data, pending, error } = await useAsyncData<HomeFeedData>(
-  'home-feed',
-  () => $fetch('/api/home-feed')
-);
-
-const sections = computed(() => {
-  if (!data.value) return [];
-
-  const { tags, courses: rawCourses } = data.value;
-  const sectionsArray = [];
-
-  const parsedCourses = rawCourses.map(parseCourseRecordToCard);
+  const sectionsArray: Section[] = [];
+  const parsedCourses = courses.value;
 
   sectionsArray.push({
     title: 'Latest',
@@ -78,9 +41,9 @@ const sections = computed(() => {
     });
   }
 
-  for (const tag of tags) {
+  for (const tag of tags.value) {
     const coursesForTag = parsedCourses.filter(course => 
-      course.tags.some(t => t.id === tag.id)
+      course.tags.some((t: any) => t.id === tag.id)
     );
 
     if (coursesForTag.length > 0) {
@@ -99,7 +62,7 @@ const sections = computed(() => {
   <widget-pinned-section>
     <panel-quick-start />
   </widget-pinned-section>
-  <div v-if="pending" class="p-6">Loading sections...</div>
-  <div v-else-if="error" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
+  <div v-if="isPending" class="p-6">Loading sections...</div>
+  <div v-else-if="hasError" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
   <layout-section :section="section" v-for="section in sections" :key="section.title"></layout-section>
 </template>
