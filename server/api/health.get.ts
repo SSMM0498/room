@@ -1,13 +1,13 @@
 import { defineEventHandler, setResponseStatus } from 'h3';
-import pb from '../utils/pocketbase';
 
 export default defineEventHandler(async (event) => {
   try {
+    const pb = createPocketBaseInstance(event);
+
     const health = await pb.health.check();
 
     return {
-      status: 200,
-      health,
+      ...health,
     };
   } catch (error) {
     setResponseStatus(event, 500);
