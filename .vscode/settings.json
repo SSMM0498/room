@@ -15,5 +15,5 @@
         "**/.vscode": true,
         "**/.data": true
     },
-    "explorerExclude.backup": {}
+  "css.customData": [".vscode/tailwind.json"],
 }
