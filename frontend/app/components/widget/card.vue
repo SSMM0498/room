@@ -19,9 +19,10 @@
         <i class="ri-play-circle-line ri-2x"></i>
       </button>
       <div class="techs">
-        <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name"/>
+        <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name" />
       </div>
-      <UAvatar :src="useFileUrl(course.author, 'avatar', '100x100')"  :alt="course.author!.username" crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
+      <UAvatar :src="useFileUrl(course.author, 'avatar', '100x100')" :alt="course.author!.username"
+        crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
       <div class="date">{{ course.createdDate }}</div>
       <!-- HERE IS THE PRICE SECTION -->
       <!-- <div class="price-ribbon">{{ course.price }}</div> -->
@@ -29,7 +30,7 @@
     <div class="tags">
       <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
     </div>
-    <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/courses/${course.slug}`">
+    <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
       {{ course.title }}
     </NuxtLink>
     <p>
@@ -37,9 +38,9 @@
     </p>
     <div
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
-      flex flex-col w-full gap-2 mt-4>
-      <UDivider></UDivider>
-      <h3 text-xl mb-2 font-medium>Course content</h3>
+      class="flex flex-col w-full gap-2 mt-4">
+      <USeparator></USeparator>
+      <h3 class="text-xl mb-2 font-medium">Course content</h3>
       <div class="flex w-full justify-between items">
         <div class="flex items-center justify-start">
           <UBadge color="primary" variant="subtle">41 sections</UBadge>
@@ -66,7 +67,7 @@ article {
   --primary: #4767ff;
   @apply z-10 relative w-full;
   transition: max-height 0.15s ease-out;
-  max-height: 1500px;
+  /* max-height: 1500px; */
 }
 
 article.reduce-height {

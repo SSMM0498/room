@@ -1,5 +1,5 @@
 <template>
-  <article class="max-w-none prose" h-full of-auto p6>
+  <article class="max-w-none prose h-full of-auto p-6">
     <ContentRenderer
       v-if="page"
       :dir="localeProperties?.dir ?? 'ltr'"

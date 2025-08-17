@@ -1,10 +1,11 @@
 <template>
   <header class="fixed left-0 top-0 z-50 w-full flex items-center border-gray-300 border-b ui-base text-gray-900 px-2">
-    <NuxtLink :to="localePath('/')" class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2">
+    <NuxtLink :to="localePath('/')"
+      class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2">
       <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
     </NuxtLink>
-    <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{base: 'rounded-[50px] min-w-[250px]'}" size="sm" variant="subtle" color="neutral"
-      :trailing="false" placeholder="Search for a room" />
+    <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
+      variant="subtle" color="neutral" :trailing="false" placeholder="Search for a room" />
     <nav class="ml-4">
       <UPopover :popper="{ placement: 'bottom-start' }">
         <UBadge variant="subtle" class="tag rounded-full mr-2" color="neutral">
@@ -57,22 +58,14 @@
       <div>
         <div v-if="pending">Loading tags...</div>
         <div v-else-if="error">Error loading tags</div>
-        <template v-else >
-          <widget-tag 
-            link="latest"
-          >
+        <template v-else>
+          <widget-tag link="latest">
             Latest
           </widget-tag>
-          <widget-tag 
-            link="top"
-          >
+          <widget-tag link="top">
             Top
           </widget-tag>
-          <widget-tag
-            :link="tag.name.toLowerCase()" 
-            v-for="tag in tags" 
-            :key="tag.id"
-          >
+          <widget-tag :link="tag.name.toLowerCase()" v-for="tag in tags" :key="tag.id">
             {{ tag.name }}
           </widget-tag>
         </template>
@@ -82,7 +75,8 @@
 
     <template v-if="user">
       <UPopover :overlay="false" :popper="{ placement: 'bottom' }">
-        <UAvatar class="mr-3" :src="useFileUrl(user, 'avatar', '100x100')"  :alt="user.username" crossorigin="anonymous" />
+        <UAvatar class="mr-3" :src="useFileUrl(user, 'avatar', '100x100')" :alt="user.username"
+          crossorigin="anonymous" />
         <template #content>
           <div class="py-5 px-3 flex flex-col overflow-hidden gap-2">
             <div class="flex flex-col">
@@ -96,7 +90,7 @@
                 {{ user.email }}
               </p>
             </div>
-            <UDivider size="xs" class="py-1" />
+            <USeparator size="xs" class="py-1" />
             <UButton variant="link" :padded="false" :to="localePath('/dashboard')" size="sm"
               icon="i-heroicons:user-20-solid">
               {{ $t("profile") }}
@@ -113,7 +107,7 @@
               icon="i-heroicons:rectangle-stack-20-solid">
               {{ $t("instructor_dashboard") }}
             </UButton>
-            <UDivider size="xs" class="py-1" />
+            <USeparator size="xs" class="py-1" />
             <UButton type="submit" variant="outline" @click="handleLogout" color="primary" size="xs"
               icon="i-heroicons:arrow-right-on-rectangle-20-solid">
               {{ $t("logout") }}
@@ -123,10 +117,12 @@
       </UPopover>
     </template>
     <div class="flex w-[250px] items-center " v-else>
-      <UButton type="submit" variant="outline" :to="localePath('/login')" color="primary" size="xs" class="w-full items-center justify-center mr-2">
+      <UButton type="submit" variant="outline" :to="localePath('/login')" color="primary" size="xs"
+        class="w-full items-center justify-center mr-2">
         {{ $t("sign_in") }}
       </UButton>
-      <UButton type="submit" color="primary" :to="localePath('/register')" size="xs" class="w-full items-center justify-center">
+      <UButton type="submit" color="primary" :to="localePath('/register')" size="xs"
+        class="w-full items-center justify-center">
         {{ $t("sign_up") }}
       </UButton>
     </div>

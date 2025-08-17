@@ -59,6 +59,7 @@ export const useCourses = () => {
     };
 
     const fetchCourses = async () => _handleRequest(async () => {
+        console.trace("fetch courses");
         const rawCourses = await $fetch<RecordModel[]>('/api/courses');
         courses.value = rawCourses.map(parseCourseRecordToCard);
         return courses.value;

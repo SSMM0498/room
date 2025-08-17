@@ -7,7 +7,7 @@
       class="flex w-[110%] justify-between items-center sticky z-50 bg-white dark:bg-gray-900 py-3 -ml-3 px-3 -top-2">
       <h1 class="flex text-4xl">{{ section.title }}
       </h1>
-      <UButton variant="link" :to="`/courses/techs/${section.title.toLowerCase()}`">All</UButton>
+      <UButton variant="link" :to="`/catalog/techs/${section.title.toLowerCase()}`">All</UButton>
     </div>
     <widget-card v-for="course in section.courses" :key="course.id" :course="course" />
   </section>

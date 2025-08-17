@@ -1,8 +1,8 @@
 <template>
-  <h3>About</h3>
+  <h3>Slug</h3>
 </template>
 <script lang="ts" setup>
 definePageMeta({
-  alias: ["/about"],
+  alias: ["/learn\/:slug()"],
 })
 </script>

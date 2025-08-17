@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import type { CourseCard } from '~/types';
+import type { CourseCard } from '../../../types/ui';
 
 const localePath = useLocalePath();
 
 const activeCourse: CourseCard = {
-  id: 4,
+  id: "4",
   section: "Latest",
   title: "AI Basics",
-  price: "5.0",
-  date: "November 15, 2023",
-  techs: ["python", "machine learning"],
-  avatar: "/ai_basics.jpg",
+  slug: "ai-basics",
+  price: 5.0,
+  createdDate: "November 15, 2023",
+  tags: [{
+    id: "dasd", name: "python",
+    collectionId: '',
+    collectionName: ''
+  }],
+  author: {
+    id: "1",
+    name: "John Doe",
+    avatar: "/john_doe.jpg",
+    bio: "AI Enthusiast and Educator",
+    collectionId: '',
+    collectionName: ''
+  },
   description: "Learn the basics of AI and machine learning in this introductory course.",
-  sections: 10,
-  lectures: 100,
-  length: "4h 00m",
-  courseContent: [
-    {
-      defaultOpen: false,
-      label: "1. Getting Started",
-      subItems: [
-        "Setup",
-        "First App"
-      ]
-    }
-  ]
+  durationFormatted: "4h 00m",
 };
 
 const recommendations = [
@@ -81,12 +81,12 @@ const recommendations = [
       <section class="flex w-full gap-4">
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white border rounded-lg"
-          :to="localePath('/ide')">
+          :to="localePath('/learn/new')">
           <i class="i-heroicons-squares-2x2-20-solid mr-2"></i>Start a room_
         </nuxt-link>
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white border rounded-lg"
-          :to="localePath('/create/school')">
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white border rounded-lg">
+          <!-- :to="localePath('/create/school')"> -->
           <i class="i-heroicons-plus-circle-20-solid mr-2"></i>Create a school
         </nuxt-link>
       </section>
