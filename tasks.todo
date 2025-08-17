@@ -11,12 +11,12 @@
 
 * [ ] **Task 2: Create Page Files**
     * [ ] Create the following files and folders inside the `pages/` directory:
-        * [x] `index.vue` (The Landing Page)
+        * [ ] `index.vue` (The Landing Page)
         * [x] `login.vue` (The User Login Page)
         * [x] `register.vue` (The User Registration Page)
         * [ ] `profile.vue` (The User's Profile Page)
         * [ ] `courses/`
-            * [ ] `index.vue` (The Course Listing Page)
+            * [x] `index.vue` (The Course Listing Page)
             * [ ] `[id].vue` (The Course Detail Page)
         * [ ] `learn/`
             * [ ] `[id].vue` (The main Learning/Replayer Page)

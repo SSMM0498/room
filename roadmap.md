@@ -138,7 +138,7 @@ This roadmap is divided into sequential phases. Each phase builds upon the previ
     *   Create an auth middleware to protect authenticated routes.
 *   **Task 3: Profile & Course Listing**
     *   Build the **Profile Page** (`/profile`) for users to see their info.
-    *   Build the **Courses Listing Page** (`/courses`) to fetch and display all `published` courses.
+    *   Build the **Courses Listing Page** (`/catalog`) to fetch and display all `published` courses.
     *   Implement basic filtering by tags on the course listing page.
 *   **Task 4: Course Detail Page**
     *   Build the **Course Detail Page** (`/course/:id`) to show course metadata before a user starts learning.
