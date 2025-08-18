@@ -1,78 +1,14 @@
 <template>
   <header class="fixed left-0 top-0 z-50 w-full flex items-center border-gray-300 border-b ui-base text-gray-900 px-2">
     <NuxtLink :to="localePath('/')"
-      class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2">
+      class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2 pb-3">
       <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
     </NuxtLink>
-    <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
-      variant="subtle" color="neutral" :trailing="false" placeholder="Search for a room" />
-    <nav class="ml-4">
-      <UPopover :popper="{ placement: 'bottom-start' }">
-        <UBadge variant="subtle" class="tag rounded-full mr-2" color="neutral">
-          <b>Filters</b>
-          <UIcon name="i-hugeicons:filter-horizontal" class="mr-1" />
-        </UBadge>
-        <template #content>
-          <div class="p-4 w-full flex flex-col gap-4">
-            <div>
-              <p class="text-sm font-bold mb-2">Room Type</p>
-              <UButtonGroup size="xs">
-                <UButton color="primary" variant="solid" :active="true">All</UButton>
-                <UButton color="neutral" variant="soft">Cursus</UButton>
-                <UButton color="neutral" variant="soft">Live</UButton>
-                <UButton color="neutral" variant="soft">Single</UButton>
-                <UButton color="neutral" variant="soft">School</UButton>
-              </UButtonGroup>
-            </div>
-            <div>
-              <p class="text-sm font-bold mb-2">Pricing</p>
-              <UButtonGroup size="xs">
-                <UButton color="primary" variant="solid" :active="true">All</UButton>
-                <UButton color="neutral" variant="soft">Free</UButton>
-                <UButton color="neutral" variant="soft">&lt;5$</UButton>
-                <UButton color="neutral" variant="soft">&lt;10$</UButton>
-                <UButton color="neutral" variant="soft">&lt;20$</UButton>
-              </UButtonGroup>
-            </div>
-            <div>
-              <p class="text-sm font-bold mb-2">Duration</p>
-              <UButtonGroup size="xs">
-                <UButton color="primary" variant="solid" :active="true">All</UButton>
-                <UButton color="neutral" variant="soft">Short</UButton>
-                <UButton color="neutral" variant="soft">Medium</UButton>
-                <UButton color="neutral" variant="soft">Long</UButton>
-              </UButtonGroup>
-            </div>
-            <div>
-              <p class="text-sm font-bold mb-2">Sort by</p>
-              <UButtonGroup size="xs">
-                <UButton color="primary" variant="solid" :active="true">Relevance</UButton>
-                <UButton color="neutral" variant="soft">Upload date</UButton>
-                <UButton color="neutral" variant="soft">Participation</UButton>
-                <UButton color="neutral" variant="soft">Rating</UButton>
-              </UButtonGroup>
-            </div>
-          </div>
-        </template>
-      </UPopover>
-      <div>
-        <div v-if="pending">Loading tags...</div>
-        <div v-else-if="error">Error loading tags</div>
-        <template v-else>
-          <widget-tag link="latest">
-            Latest
-          </widget-tag>
-          <widget-tag link="top">
-            Top
-          </widget-tag>
-          <widget-tag :link="tag.name.toLowerCase()" v-for="tag in tags" :key="tag.id">
-            {{ tag.name }}
-          </widget-tag>
-        </template>
-      </div>
-    </nav>
-    <layout-color-switch class="mx-2" />
 
+    <layout-nav-home-nav v-if="($route.name as String).startsWith('home')" />
+    <layout-nav-default-nav v-else />
+
+    <layout-color-switch class="mx-2" />
     <template v-if="user">
       <UPopover :overlay="false" :popper="{ placement: 'bottom' }">
         <UAvatar class="mr-3" :src="useFileUrl(user, 'avatar', '100x100')" :alt="user.username"
@@ -134,15 +70,9 @@ const localePath = useLocalePath();
 const user = useAuthUser();
 const { logout } = useAuth();
 
-const { tags, pending, error, fetchTags } = useTags();
-onMounted(async () => {
-  await fetchTags();
-});
-
 async function handleLogout() {
   try {
     await logout();
-    // Redirect to the home page after successful logout
     await navigateTo(localePath('/'));
   } catch (error) {
     console.error('Logout failed:', error);
@@ -155,10 +85,6 @@ async function handleLogout() {
 
 header {
   @apply h-[60px];
-}
-
-header nav {
-  @apply flex items-center justify-start overflow-hidden;
 }
 
 header nav div::-webkit-scrollbar,
