@@ -8,7 +8,6 @@ const items = locales.value.map((item) => {
     return [{
       label: item.name!,
       onSelect(e: Event) {
-        e.preventDefault();
         setLocale(item.code);
       }
     }]

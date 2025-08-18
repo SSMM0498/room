@@ -1,29 +1,27 @@
 <template>
     <div class="code-editor-section">
         <div class="flex w-full select-none lg:px-14">
-            <div class="relative mx-auto aspect-[16/9] w-full max-w-2xl">
+            <div class="relative mx-auto aspect-[16/9] w-full max-w-3xl border-3 border-gray-0 rounded-md">
                 <!-- Main Editor Container -->
-                <div class="flex h-full w-full overflow-hidden rounded-md shadow-2xl"
-                    :class="darkMode ? 'dark:bg-gray-800 bg-white' : 'bg-white'">
+                <div class="flex h-full w-full overflow-hidden shadow-2xl rounded-md dark:bg-gray-800 bg-white">
                     <!-- Left Panel - Code Editor -->
-                    <div class="flex flex-[60%] flex-col" :class="darkMode ? 'dark:bg-gray-800' : ''">
+                    <div class="flex flex-[60%] flex-col">
                         <!-- Tab Bar -->
-                        <div class="flex border-b text-[min(1.6vw,10px)] lg:text-[min(0.8vw,11px)]"
-                            :class="darkMode ? 'dark:border-gray-700 dark:bg-gray-800 bg-white' : 'border-gray-200 bg-white'">
+                        <div class="flex border-b-5 bg-gray-800 text-[min(1.6vw,10px)] lg:text-[min(0.8vw,11px)]"
+                            :style="{ borderColor: editorBgColor }">
                             <!-- Window Controls -->
                             <div class="flex w-[20%] items-center justify-center gap-[15%] px-[4%] py-[2%]">
-                                <div class="aspect-square w-2.5 rounded-full bg-red-400"></div>
-                                <div class="aspect-square w-2.5 rounded-full bg-yellow-400"></div>
-                                <div class="aspect-square w-2.5 rounded-full bg-green-400"></div>
+                                <div class="aspect-square w-2.5 rounded-full bg-red-500"></div>
+                                <div class="aspect-square w-2.5 rounded-full bg-yellow-300"></div>
+                                <div class="aspect-square w-2.5 rounded-full bg-green-500"></div>
                             </div>
                             <!-- File Tabs -->
                             <div v-for="(file, index) in files" :key="index"
-                                class="w-fit translate-y-px border-x px-[4%] py-[2%] cursor-pointer" :class="[
-                                    currentFileIndex === index
-                                        ? (darkMode ? 'dark:bg-gray-800 dark:text-gray-50 bg-white text-gray-600' : 'bg-white text-gray-600')
-                                        : (darkMode ? 'dark:bg-gray-700 dark:text-gray-400 bg-gray-100 text-gray-500' : 'bg-gray-100 text-gray-500'),
-                                    darkMode ? 'dark:border-gray-700' : 'border-gray-200'
-                                ]" @click="switchFile(index)">
+                                class="w-fit translate-y-px border-none px-[4%] py-[2%] cursor-pointer rounded-t-lg text-black"
+                                :style="{
+                                    backgroundColor: currentFileIndex === index ? props.tabBgColor : '#e5e7eb',
+                                    fontWeight: currentFileIndex === index ? '600' : 'normal'
+                                }" @click="switchFile(index)">
                                 {{ file.name }}
                             </div>
                         </div>
@@ -38,17 +36,17 @@
                                 </span>
                             </div>
                             <!-- Code Display -->
-                            <code class="flex flex-col"
+                            <code class="flex flex-col p-3"
                                 :class="darkMode ? 'dark:text-gray-100 text-gray-600' : 'text-gray-600'"
                                 style="text-align:left;white-space:pre;word-spacing:normal;word-break:normal;tab-size:4;hyphens:none;overflow-wrap:normal">
-                <span v-for="(line, index) in displayedLines" :key="index"
-                      v-html="highlightSyntax(line, index)">
-                </span>
-              </code>
+                                <span v-for="(line, index) in displayedLines" :key="index"
+                                    v-html="highlightSyntax(line, index)">
+                                </span>
+                            </code>
                         </div>
                     </div>
                     <!-- Right Panel -->
-                    <div class="flex flex-[40%] flex-col border-l text-[min(2vw,14px)] lg:text-[min(1vw,14px)]"
+                    <div class="flex flex-[40%] flex-col text-[min(2vw,14px)] lg:text-[min(1vw,14px)]"
                         :class="darkMode ? 'dark:border-gray-700 border-gray-200' : 'border-gray-200'">
                         <!-- Right Panel Header -->
                         <div class="flex h-[10%] border-b items-center"
@@ -61,8 +59,7 @@
                             </svg>
                         </div>
                         <!-- Right Panel Content -->
-                        <div class="animate-fade-in relative flex flex-1 items-center justify-center opacity-100"
-                            :class="darkMode ? 'dark:bg-gray-800 bg-gray-50' : 'bg-gray-50'">
+                        <div class="animate-fade-in relative flex flex-1 items-center justify-center opacity-100">
                             <slot name="right-panel">
                                 <!-- Default Right Panel Content -->
                                 <span class="absolute inset-0 flex items-center justify-center">
@@ -82,21 +79,17 @@
                 <div v-if="$slots['floating-top-left']" class="absolute -left-5 -top-10 z-10">
                     <slot name="floating-top-left"></slot>
                 </div>
-                <!-- Floating Top Right Slot -->
                 <div v-if="$slots['floating-top-right']" class="absolute -right-10 -top-5 z-10">
                     <slot name="floating-top-right"></slot>
                 </div>
-                <!-- Floating Bottom Left Slot -->
-                <div v-if="$slots['floating-bottom-left']" class="absolute -bottom-5 -left-10 z-10">
+                <div v-if="$slots['floating-bottom-left']" class="absolute -bottom-25 -left-25 z-10">
                     <slot name="floating-bottom-left"></slot>
                 </div>
-                <!-- Floating Bottom Right Slot -->
                 <div v-if="$slots['floating-bottom-right']" class="absolute -bottom-10 -right-5 z-10">
                     <slot name="floating-bottom-right"></slot>
                 </div>
             </div>
         </div>
-        <!-- Floating Top Left Slot -->
     </div>
 </template>
 <script setup>
@@ -117,6 +110,18 @@ const props = defineProps({
                 language: 'javascript'
             }
         ]
+    },
+    editorBgColor: {
+        type: String,
+        default: "#ffffff"
+    },
+    tabBgColor: {
+        type: String,
+        default: "#f3f4f6"
+    },
+    lineNumberBgColor: {
+        type: String,
+        default: "#f9fafb"
     },
     startLineNumber: {
         type: Number,
@@ -283,6 +288,7 @@ watch(currentFileIndex, () => {
 }
 
 @keyframes blink {
+
     0%,
     50% {
         opacity: 1;

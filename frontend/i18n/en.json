@@ -31,5 +31,85 @@
   "profile": "Profile",
   "settings": "Settings",
   "student_dashboard": "Student Dashboard",
-  "instructor_dashboard": "Instructor Dashboard"
+  "instructor_dashboard": "Instructor Dashboard",
+  "nav": {
+    "features": "Features",
+    "learn": "Learning",
+    "community": "Community",
+    "help": "Help"
+  },
+  "hero": {
+    "title": "Learn by Doing,\n Not Just Watching.",
+    "subtitle": "Go beyond video tutorials. rOOm lets you record, replay, and run code from interactive lessons, just as if the instructor were right beside you.",
+    "start_learning": "Start for Free",
+    "watch_video": "Watch a Demo"
+  },
+  "features": {
+    "title": "A Better Way to Learn Code",
+    "subtitle": "Our platform is built from the ground up to provide a truly hands-on learning experience that traditional videos can't match.",
+    "interactive_replays": {
+      "title": "Interactive Replays",
+      "description": "Don't just watch a video. See every keystroke, command, and file change as it happened. Pause anytime to copy code or inspect the state."
+    },
+    "recording": {
+      "title": "Builtin Recorder",
+      "description": "Start recording your lessons with a single click. Capture every interaction, from code execution to terminal commands, and share them instantly."
+    },
+    "live_streaming": {
+      "title": "Live Streaming & Collab",
+      "description": "Join live classes where you can interact with the code in real-time. Teachers can even hand over control for a truly collaborative session."
+    },
+    "schools_and_community": {
+      "title": "Schools & Community",
+      "description": "Create or join schools, manage multiple instructors, and build a community around your content. Monetize your expertise with ease."
+    }
+  },
+  "learn": {
+    "title": "Master Any Technology",
+    "subtitle": "From frontend frameworks to backend systems, our growing library of interactive courses has you covered."
+  },
+  "community": {
+    "title": "Ready to Share Your Knowledge?",
+    "subtitle": "Become an instructor on rOOm and create the next generation of coding tutorials. Our all-in-one platform makes content creation fast and simple.",
+    "start_teaching": "Start Teaching Today",
+    "learn_title": "Start Your Learning Journey",
+    "learn_subtitle": "Join our community of learners and access interactive coding tutorials from expert instructors.",
+    "start_learning": "Start Learning Now",
+    "switch": {
+      "tutor": "Student mode",
+      "student": "Tutor mode"
+    }
+  },
+  "faq": {
+    "pre_header": "FREQUENTLY ASKED QUESTIONS",
+    "title": "Got Questions? We've Got Answers!",
+    "items": [
+      {
+        "question": "How is rOOm different from a regular video course?",
+        "answer": "rOOm goes beyond video. It records every action—keystrokes, commands, and file changes—allowing you to pause at any moment and interact with a fully functional code workspace, exactly as the instructor left it."
+      },
+      {
+        "question": "What types of courses are available?",
+        "answer": "You can find a wide range of courses covering technologies like VueJS, NuxtJS, Python, Go, Docker, and more. Our library is constantly expanding with content from individual creators and tech schools."
+      },
+      {
+        "question": "Do I need to install anything to take a course?",
+        "answer": "Absolutely not! Everything you need, including the IDE, terminal, and a secure Docker environment, runs directly in your browser. Just click play and start learning."
+      },
+      {
+        "question": "Can I interact with instructors and other learners?",
+        "answer": "Yes! You can leave time-stamped comments on lessons, participate in live-streamed classes with real-time code collaboration, and join school communities to discuss topics with peers."
+      },
+      {
+        "question": "How do I track my progress in a course?",
+        "answer": "Your progress is saved automatically. The platform remembers where you left off in any lesson, allowing you to easily resume your learning journey anytime, on any device."
+      },
+      {
+        "question": "Can I access courses on multiple devices?",
+        "answer": "Yes, rOOm is a web-based platform. You can access your account and all your courses from any modern web browser on your desktop, laptop, or tablet."
+      }
+    ],
+    "button_more": "See More FAQs",
+    "button_contact": "Contact Us"
+  }
 }

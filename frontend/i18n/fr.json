@@ -31,5 +31,85 @@
   "profile": "Profil",
   "settings": "Paramètres",
   "student_dashboard": "Dashboard étudiant",
-  "instructor_dashboard": "Dashboard instructeur"
+  "instructor_dashboard": "Dashboard instructeur",
+  "nav": {
+    "features": "Fonctionnalités",
+    "learn": "Apprentissage",
+    "community": "Communauté",
+    "help": "Aide"
+  },
+  "hero": {
+    "title": "Apprenez en Faisant,\n Pas Juste en Regardant.",
+    "subtitle": "Allez au-delà des tutoriels vidéo. rOOm vous permet d'enregistrer, de rejouer et d'exécuter le code de leçons interactives, comme si l'instructeur était à côté de vous.",
+    "start_learning": "Commencer Gratuitement",
+    "watch_video": "Voir une Démo"
+  },
+  "features": {
+    "title": "Une Meilleure Façon d'Apprendre à Coder",
+    "subtitle": "Notre plateforme est conçue pour offrir une expérience d'apprentissage pratique que les vidéos traditionnelles ne peuvent égaler.",
+    "interactive_replays": {
+      "title": "Replays Interactifs",
+      "description": "Ne regardez pas seulement une vidéo. Voyez chaque frappe, commande et modification de fichier telle qu'elle s'est produite. Mettez en pause à tout moment pour copier le code ou inspecter l'état."
+    },
+    "recording": {
+      "title": "Enregistreur intégré",
+      "description": "Enregistrez vos cours en un seul clic. Capturez chaque interaction, de l'exécution du code aux commandes du terminal, et partagez-les instantanément."
+    },
+    "live_streaming": {
+      "title": "Streaming & Collaboration",
+      "description": "Participez à des cours en direct où vous pouvez interagir avec le code en temps réel. Les enseignants peuvent même passer la main pour une session vraiment collaborative."
+    },
+    "schools_and_community": {
+      "title": "Écoles & Communauté",
+      "description": "Créez ou rejoignez des écoles, gérez plusieurs instructeurs et bâtissez une communauté autour de votre contenu. Monétisez facilement votre expertise."
+    }
+  },
+  "learn": {
+    "title": "Maîtrisez N'importe Quelle Technologie",
+    "subtitle": "Des frameworks frontend aux systèmes backend, notre bibliothèque grandissante de cours interactifs répond à tous vos besoins."
+  },
+  "community": {
+    "title": "Prêt à Partager Votre Savoir ?",
+    "subtitle": "Devenez instructeur sur rOOm et créez la nouvelle génération de tutoriels de code. Notre plateforme tout-en-un rend la création de contenu simple et rapide.",
+    "start_teaching": "Commencez à Enseigner Aujourd'hui",
+    "learn_title": "Commencez Votre Parcours d'Apprentissage",
+    "learn_subtitle": "Rejoignez notre communauté d'apprenants et accédez à des tutoriels de code interactifs créés par des experts.",
+    "start_learning": "Commencer à Apprendre",
+    "switch": {
+      "tutor": "Mode Étudiant",
+      "student": "Mode Tuteur"
+    }
+  },
+  "faq": {
+    "pre_header": "QUESTIONS FRÉQUEMMENT POSÉES",
+    "title": "Des Questions ? Nous Avons les Réponses !",
+    "items": [
+      {
+        "question": "En quoi rOOm est-il différent d'un cours vidéo classique ?",
+        "answer": "rOOm va au-delà de la vidéo. Il enregistre chaque action — frappes, commandes et modifications de fichiers — vous permettant de pauser à tout moment et d'interagir avec un espace de travail fonctionnel, exactement comme l'instructeur l'a laissé."
+      },
+      {
+        "question": "Quels types de cours sont disponibles ?",
+        "answer": "Vous trouverez une large gamme de cours couvrant des technologies comme VueJS, NuxtJS, Python, Go, Docker, et plus encore. Notre bibliothèque s'agrandit constamment avec du contenu de créateurs et d'écoles tech."
+      },
+      {
+        "question": "Dois-je installer quelque chose pour suivre un cours ?",
+        "answer": "Absolument pas ! Tout ce dont vous avez besoin, y compris l'IDE, le terminal et un environnement Docker sécurisé, fonctionne directement dans votre navigateur. Cliquez simplement sur play et commencez à apprendre."
+      },
+      {
+        "question": "Puis-je interagir avec les instructeurs et les autres apprenants ?",
+        "answer": "Oui ! Vous pouvez laisser des commentaires horodatés sur les leçons, participer à des cours en direct avec collaboration de code en temps réel, et rejoindre des communautés d'écoles pour discuter avec vos pairs."
+      },
+      {
+        "question": "Comment puis-je suivre ma progression dans un cours ?",
+        "answer": "Votre progression est sauvegardée automatiquement. La plateforme se souvient où vous vous êtes arrêté dans chaque leçon, vous permettant de reprendre facilement votre apprentissage à tout moment, sur n'importe quel appareil."
+      },
+      {
+        "question": "Puis-je accéder aux cours sur plusieurs appareils ?",
+        "answer": "Oui, rOOm est une plateforme web. Vous pouvez accéder à votre compte et à tous vos cours depuis n'importe quel navigateur web moderne sur votre ordinateur de bureau, portable ou tablette."
+      }
+    ],
+    "button_more": "Voir plus de FAQs",
+    "button_contact": "Nous Contacter"
+  }
 }
