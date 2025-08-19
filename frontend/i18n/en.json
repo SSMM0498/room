@@ -1,5 +1,6 @@
 {
   "error": {
+    "label": "Error",
     "title": {
       "400": "Bad Request",
       "403": "Forbidden",
@@ -29,7 +30,6 @@
     "dont_have_an_account_yet": "Don't have an account yet?"
   },
   "profile": "Profile",
-  "settings": "Settings",
   "student_dashboard": "Student Dashboard",
   "instructor_dashboard": "Instructor Dashboard",
   "nav": {
@@ -111,5 +111,72 @@
     ],
     "button_more": "See More FAQs",
     "button_contact": "Contact Us"
+  },
+  "settings": {
+    "title": "Settings",
+    "nav": {
+      "profile": "Profile",
+      "email": "Email",
+      "password": "Password",
+      "delete_account": "Delete Account"
+    },
+    "profile": {
+      "title": "Profile Information",
+      "avatar_label": "New Avatar",
+      "name_label": "Name",
+      "name_placeholder": "Your full name",
+      "username_label": "Username",
+      "validation": "Name must be at least 2 characters",
+      "button_save": "Save Profile",
+      "toast_success": "Profile updated successfully!",
+      "toast_error": "Error updating profile"
+    },
+    "email": {
+      "title": "Change Email",
+      "alert_title": "Current Email: {email}",
+      "label": "New Email Address",
+      "placeholder": "{'eg:you@example.com'}",
+      "button": "Request Email Change",
+      "validation": "Invalid email address",
+      "toast_success_title": "Request Sent",
+      "toast_success_desc": "A confirmation link has been sent to your new email.",
+      "toast_error": "Error changing email"
+    },
+    "password": {
+      "title": "Change Password",
+      "old_password_label": "Old Password",
+      "new_password_label": "New Password",
+      "confirm_password_label": "Confirm New Password",
+      "button": "Change Password",
+      "toast_success": "Password changed successfully!",
+      "toast_error": "Error changing password",
+      "validation": {
+        "required": "Current password is required",
+        "min_length": "New password must be at least 8 characters",
+        "mismatch": "New passwords don't match"
+      }
+    },
+    "delete": {
+      "title": "Delete Account",
+      "description": "Once you delete your account, there is no going back. All of your data, including created courses and learning progress, will be permanently removed. Please be certain.",
+      "button": "Delete My Account",
+      "modal": {
+        "title": "Are you absolutely sure?",
+        "description": "This action is irreversible. To confirm, please type your username {username} in the box below.",
+        "button_cancel": "Cancel",
+        "button_confirm": "I understand, delete my account"
+      },
+      "toast_success_title": "Account deleted",
+      "toast_success_desc": "We're sorry to see you go.",
+      "toast_error": "Could not delete account"
+    }
+  },
+  "upload": "Upload image",
+  "change": "Change image",
+  "remove": "Remove",
+  "errors": {
+    "imageTooLarge": "The image is too large. Please choose an image smaller than 2MB.",
+    "invalidImageType": "Please upload a valid image file (JPEG, PNG, or WebP).",
+    "invalidDimensions": "The image dimensions are invalid. Please upload an image between 200x200 and 4096x4096 pixels."
   }
 }

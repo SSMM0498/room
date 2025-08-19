@@ -1,8 +1,8 @@
 <template>
-  <h3>Dashboard</h3>
+  <h3>My profile</h3>
 </template>
 <script lang="ts" setup>
 definePageMeta({
-  alias: ["/dashboard"],
+  alias: ["/profile"],
 })
 </script>

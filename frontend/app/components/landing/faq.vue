@@ -30,7 +30,7 @@
 
             <div class="mt-10 flex items-center justify-center gap-4">
                 <UButton :label="$t('faq.button_more')" to="#" size="lg" variant="outline" color="neutral" />
-                <UButton :label="$t('faq.button_contact')" :to="localePath('/help')" size="lg" color="neutral"
+                <UButton :label="$t('faq.button_contact')" :to="localePath('/contact')" size="lg" color="neutral"
                     variant="solid" />
             </div>
         </div>

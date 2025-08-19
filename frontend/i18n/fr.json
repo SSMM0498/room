@@ -1,5 +1,6 @@
 {
   "error": {
+    "label": "Erreur",
     "title": {
       "400": "Mauvaise requête",
       "403": "Accès interdit",
@@ -29,7 +30,6 @@
     "dont_have_an_account_yet": "Vous n'avez pas encore de compte?"
   },
   "profile": "Profil",
-  "settings": "Paramètres",
   "student_dashboard": "Dashboard étudiant",
   "instructor_dashboard": "Dashboard instructeur",
   "nav": {
@@ -111,5 +111,72 @@
     ],
     "button_more": "Voir plus de FAQs",
     "button_contact": "Nous Contacter"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "nav": {
+      "profile": "Profil",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "delete_account": "Supprimer le compte"
+    },
+    "profile": {
+      "title": "Informations du Profil",
+      "avatar_label": "Nouvel Avatar",
+      "name_label": "Nom",
+      "name_placeholder": "Votre nom complet",
+      "username_label": "Nom d'utilisateur",
+      "validation": "Le nom doit comporter au moins 2 caractères",
+      "button_save": "Enregistrer le Profil",
+      "toast_success": "Profil mis à jour avec succès !",
+      "toast_error": "Erreur lors de la mise à jour du profil"
+    },
+    "email": {
+      "title": "Changer d'E-mail",
+      "alert_title": "E-mail actuel : {email}",
+      "label": "Nouvelle Adresse E-mail",
+      "placeholder": "{'ex:you@example.com'}",
+      "validation": "Adresse e-mail non valide",
+      "button": "Demander le Changement d'E-mail",
+      "toast_success_title": "Demande Envoyée",
+      "toast_success_desc": "Un lien de confirmation a été envoyé à votre nouvelle adresse e-mail.",
+      "toast_error": "Erreur lors du changement d'e-mail"
+    },
+    "password": {
+      "title": "Changer de Mot de Passe",
+      "old_password_label": "Ancien Mot de Passe",
+      "new_password_label": "Nouveau Mot de Passe",
+      "confirm_password_label": "Confirmer le Nouveau Mot de Passe",
+      "button": "Changer de Mot de Passe",
+      "toast_success": "Mot de passe changé avec succès !",
+      "toast_error": "Erreur lors du changement de mot de passe",
+      "validation": {
+        "required": "Le mot de passe actuel est requis",
+        "min_length": "Le nouveau mot de passe doit comporter au moins 8 caractères",
+        "mismatch": "Les nouveaux mots de passe ne correspondent pas"
+      }
+    },
+    "delete": {
+      "title": "Supprimer le Compte",
+      "description": "Une fois votre compte supprimé, il n'y a pas de retour en arrière. Toutes vos données, y compris les cours créés et la progression d'apprentissage, seront définitivement supprimées. Soyez certain.",
+      "button": "Supprimer Mon Compte",
+      "modal": {
+        "title": "Êtes-vous absolument certain(e) ?",
+        "description": "Cette action est irréversible. Pour confirmer, veuillez taper votre nom d'utilisateur {username} dans la case ci-dessous.",
+        "button_cancel": "Annuler",
+        "button_confirm": "Je comprends, supprimer mon compte"
+      },
+      "toast_success_title": "Compte supprimé",
+      "toast_success_desc": "Nous sommes désolés de vous voir partir.",
+      "toast_error": "Impossible de supprimer le compte"
+    }
+  },
+  "upload": "Télécharger l'image",
+  "change": " Changer l'image",
+  "remove": "Retirer",
+  "errors": {
+    "imageTooLarge": " L'image est trop grande.Veuillez choisir une image inférieure à 2 Mo.",
+    "invalidImageType": " Veuillez télécharger un fichier image valide (jpeg, png ou webp).",
+    "invalidDimensions": " Les dimensions de l'image ne sont pas valides.Veuillez télécharger une image entre 200x200 et 4096x4096 pixels."
   }
 }

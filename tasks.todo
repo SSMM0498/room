@@ -5,17 +5,17 @@
 * [x] **Task 1: Create Layout Files**
     * [x] Create the following files inside the `layouts/` directory:
         * [x] `auth.vue`: A minimal layout for login/signup pages, typically just a centered content area.
-        * [x] `default.vue`: For standard pages with a header and footer (e.g., Landing, Courses).
+        * [x] `default.vue`: For standard pages with a header and footer (e.g., Landing, Catalog).
         * [x] `ide.vue`: A full-screen, distraction-free layout for the main recorder/replayer interface.
         * [x] `content.vue`: A layout for static content pages (like "About Us," "Terms") if you plan to use Nuxt Content.
 
 * [ ] **Task 2: Create Page Files**
     * [ ] Create the following files and folders inside the `pages/` directory:
-        * [ ] `index.vue` (The Landing Page)
+        * [x] `index.vue` (The Landing Page)
         * [x] `login.vue` (The User Login Page)
         * [x] `register.vue` (The User Registration Page)
         * [ ] `profile.vue` (The User's Profile Page)
-        * [ ] `courses/`
+        * [ ] `catalog/`
             * [x] `index.vue` (The Course Listing Page)
             * [ ] `[id].vue` (The Course Detail Page)
         * [ ] `learn/`
@@ -34,17 +34,17 @@
     * [x] This plugin will run once when the app loads on the client.
     * [x] Its purpose is to check the request cookies for a valid PocketBase auth token and load the user into the `useAuth` composable state. This ensures a user remains logged in when they refresh the page.
 
-* [ ] **Task 5: Create Authentication Middleware**
+* [x] **Task 5: Create Authentication Middleware**
     * [x] In the `middleware/` directory, create a file (e.g., `auth.ts` `guest.ts`).
     * [x] This middleware will protect specific routes.
     * [x] It should check the user's authentication status from the `useAuth` composable.
-    * [ ] If the user is not logged in and tries to access a protected page (like `/profile`), it should redirect them to the `/login` page.
+    * [x] If the user is not logged in and tries to access a protected page (like `/profile`), it should redirect them to the `/login` page.
 
 #### **Part C: Build Pages and Integrate Logic**
 
-* [ ] **Task 6: Implement Layouts and Static Pages**
+* [x] **Task 6: Implement Layouts and Static Pages**
     * [x] Build the basic structure of the four layouts (`default`, `auth`, `ide`, `content`) with placeholder components for headers/footers and a `<slot />` for page content.
-    * [ ] Build the static **Landing Page** (`index.vue`), applying the `default` layout.
+    * [x] Build the static **Landing Page** (`index.vue`), applying the `default` layout.
 
 * [x] **Task 7: Implement Authentication Pages**
     * [x] Build the **Login Page** (`login.vue`).
@@ -58,18 +58,18 @@
         * [x] Connect the form submission to the `signup` function in your `useAuth` composable.
 
 * [ ] **Task 8: Implement Public Course Pages**
-    * [x] Build the **Courses Listing Page** (`courses/index.vue`).
+    * [x] Build the **Catalog Listing Page** (`catalog/index.vue`).
         * [x] Apply the `default` layout.
-        * [x] Use a server route to fetch all `published` records from your `courses` collection in PocketBase.
-        * [x] Display the list of courses.
-    * [ ] Build the **Course Detail Page** (`courses/[id].vue`).
+        * [x] Use a server route to fetch all `published` records from your `catalog` collection in PocketBase.
+        * [x] Display the list of catalog.
+    * [ ] Build the **Course Detail Page** (`catalog/[id].vue`).
         * [ ] Apply the `default` layout.
         * [ ] Use the route parameter (`id`) to fetch the specific course's data from PocketBase.
         * [ ] Display the course title, description, author, tags, etc.
 
-* [ ] **Task 9: Implement the Protected Profile Page**
-    * [ ] Build the **Profile Page** (`profile.vue`).
-        * [ ] Apply the `default` layout.
-        * [ ] Assign the `auth` middleware to this page to protect it.
-        * [ ] Display the logged-in user's information (name, email, avatar) by accessing the state from the `useAuth` composable.
-        * [ ] Include a "Logout" button that calls the `logout` function.
+* [x] **Task 9: Implement the Protected Profile Page**
+    * [x] Build the **Profile Page** (`profile.vue`).
+        * [x] Apply the `default` layout.
+        * [x] Assign the `auth` middleware to this page to protect it.
+        * [x] Display the logged-in user's information (name, email, avatar) by accessing the state from the `useAuth` composable.
+        * [x] Include a "Logout" button that calls the `logout` function.

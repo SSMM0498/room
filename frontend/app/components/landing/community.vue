@@ -3,11 +3,11 @@
     <div class="flex w-full items-center justify-center flex-col px-4 text-center">
       <div class="flex justify-center mb-10" @mouseenter="pauseAutoSwitch" @mouseleave="resumeAutoSwitch">
         <UButtonGroup size="xl">
-          <UButton :color="activeCard === 0 ? 'primary' : 'neutral'" :variant="activeCard === 0 ? 'solid' : 'subtle'" :active="activeCard === 0"
+          <UButton :color="activeCard === 0 ? 'neutral' : 'primary'" :variant="activeCard === 0 ? 'solid' : 'subtle'" :active="activeCard === 0"
             @click="setActiveCard(0)">
             {{ $t('community.switch.student') }}
           </UButton>
-          <UButton :color="activeCard === 1 ? 'primary' : 'neutral'" :variant="activeCard === 1 ? 'solid' : 'subtle'" :active="activeCard === 1"
+          <UButton :color="activeCard === 1 ? 'neutral' : 'primary'" :variant="activeCard === 1 ? 'solid' : 'subtle'" :active="activeCard === 1"
             @click="setActiveCard(1)">
             {{ $t('community.switch.tutor') }}
           </UButton>
