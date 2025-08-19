@@ -1,13 +1,13 @@
 <template>
   <section
-    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay': uiStore.articleOpened && uiStore.currentSection !== section.title }"
+    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0 !max-h-screen !min-h-screen': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay': uiStore.articleOpened && uiStore.currentSection !== section.title }"
     :id="section.title.toLowerCase()"
-    class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-6 pt-2 pb-8 border-gray-400 border-r overflow-x-hidden overflow-y-scroll">
+     class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-4 pt-2 pb-8 border-gray-300 border-r overflow-x-hidden overflow-y-scroll">
     <div :class="{ '!hidden': uiStore.articleOpened && uiStore.currentSection === section.title, }"
       class="flex w-[110%] justify-between items-center sticky z-50 bg-white dark:bg-gray-900 py-3 -ml-3 px-3 -top-2">
-      <h1 class="flex text-4xl">{{ section.title }}
+      <h1 class="flex font-semibold text-3xl">{{ section.title }}
       </h1>
-      <UButton variant="link" :to="`/catalog/techs/${section.title.toLowerCase()}`">All</UButton>
+      <UButton variant="link" :to="`/catalog/techs/${section.title.toLowerCase()}`">{{ $t('all') }}</UButton>
     </div>
     <widget-card v-for="course in section.courses" :key="course.id" :course="course" />
   </section>
@@ -72,8 +72,8 @@ section::after {
   bottom: 0;
   height: 300%;
   pointer-events: none;
-  @apply bg-black/85 opacity-0 z-50;
   transition: opacity 1s;
+  @apply bg-black/85 opacity-0 z-50;
 }
 
 section.overlay {
@@ -83,8 +83,8 @@ section.overlay {
 }
 
 section.overlay::after {
-  @apply opacity-100;
   transition: opacity .5s;
+  @apply opacity-100;
 }
 
 section.overlay:hover:after {
@@ -98,7 +98,6 @@ section.overlay:hover {
 section h1::before {
   display: block;
   content: "#";
-  font-size: 2.25rem;
   font-weight: bold;
   @apply text-blue-600;
 }

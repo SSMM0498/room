@@ -2,6 +2,7 @@
 import type { Section } from '~~/types/ui';
 
 const { t } = useI18n();
+const user = useAuthUser();
 
 definePageMeta({
   alias: ["/catalog"],
@@ -12,16 +13,10 @@ useHead({
   title: t('home'),
 })
 
-const { courses, fetchCourses, pending: coursesPending, error: coursesError } = useCourses();
-const { tags, fetchTags, pending: tagsPending, error: tagsError } = useTags();
+const { courses, fetchCourses, pending: isPending, error: hasError } = useCourses();
+const { tags } = useTags();
 
-await useAsyncData('home-page-data', () => Promise.all([
-  fetchCourses(),
-  fetchTags()
-]));
-
-const isPending = computed(() => coursesPending.value || tagsPending.value);
-const hasError = computed(() => coursesError.value || tagsError.value);
+await useAsyncData('home-page-data', async () => await fetchCourses());
 
 const sections = computed<Section[]>(() => {
   if (!courses.value || !tags.value) return [];
@@ -59,6 +54,9 @@ const sections = computed<Section[]>(() => {
 </script>
 
 <template>
+  <widget-pinned-section v-if="user">
+    <panel-quick-start />
+  </widget-pinned-section>
   <div v-if="isPending" class="p-6">Loading sections...</div>
   <div v-else-if="hasError" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
   <layout-section :section="section" v-for="section in sections" :key="section.title"></layout-section>

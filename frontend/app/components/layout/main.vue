@@ -11,7 +11,7 @@ main {
 }
 
 main.content-list {
-  width: calc(100% * 3.75);
+  width: calc(100% * 3.8);
   @apply justify-stretch;
 }
 </style>

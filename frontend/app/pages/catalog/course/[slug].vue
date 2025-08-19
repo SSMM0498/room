@@ -13,14 +13,11 @@
           <UIcon name="i-ri-play-circle-line" size="250" class="opacity-0 play-icon">
           </UIcon>
         </NuxtLink>
-        <UAvatar :src="useFileUrl(course?.author!.avatar, 'avatar', '100x100')" :alt="course?.author!.avatar.username"
-          crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
-        <div class="absolute right-[12px] bottom-[12px]">{{ course?.createdDate }}</div>
       </article>
       <UTabs :items="tabs" class="w-full" variant="link">
         <template #overview>
-          <div class="flex flex-col w-full items-start justify-start gap-2 p-4">
-            <div class="flex items-center gap-4 w-full pb-4 border-b mb-2">
+          <div class="flex flex-col w-full items-start justify-start">
+            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-300 mb-2">
               <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
               <div class="flex flex-col">
                 <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
@@ -33,19 +30,22 @@
                   target="_blank" />
               </div>
             </div>
-            <h2 text-2xl mb-2 font-medium>
-              {{ course?.title }}
-            </h2>
-            <div class="tags">
-              <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
+            <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
+              <h2 class="text-2xl font-medium">
+                {{ course?.title }}
+              </h2>
+              <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
+              <div class="tags">
+                <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
+              </div>
+              <p>
+                {{ course?.description }}
+              </p>
             </div>
-            <p>
-              {{ course?.description }}
-            </p>
           </div>
         </template>
         <template #content>
-          <div flex flex-col w-full gap-2 p-4>
+          <div class="flex flex-col w-full gap-2 p-4">
             <div class="flex w-full justify-between items">
               <div class="flex items-center justify-start">
                 <UBadge color="primary" variant="subtle">{{ course?.durationFormatted }}</UBadge>
@@ -71,8 +71,9 @@ definePageMeta({
   name: "course-details",
 })
 
-const localePath = useLocalePath()
-const route = useRoute()
+const { t } = useI18n();
+const localePath = useLocalePath();
+const route = useRoute();
 const { currentCourse: course, fetchCourseBySlug, pending: coursesPending, error: coursesError } = useCourses();
 
 onMounted(async () => {
@@ -81,13 +82,13 @@ onMounted(async () => {
 
 const tabs = [{
   slot: 'overview',
-  label: 'Overview'
+  label: t('overview')
 }, {
   slot: 'content',
-  label: 'Course Content'
+  label: t('course-content')
 }, {
   slot: 'feedback',
-  label: 'Feedback'
+  label: t('feedback')
 }]
 
 useHead({

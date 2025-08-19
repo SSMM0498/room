@@ -1,6 +1,6 @@
 <template>
   <article
-    :class="{ 'reduce-height overflow-hidden': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id, 'pt-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
+    :class="{ 'reduce-height overflow-hidden none': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id, 'pt-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
     :id="`${course.section.toLowerCase()}-${course.id}`">
     <UButton
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
@@ -27,28 +27,69 @@
       <!-- HERE IS THE PRICE SECTION -->
       <!-- <div class="price-ribbon">{{ course.price }}</div> -->
     </a>
-    <div class="tags">
-      <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
-    </div>
-    <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
-      {{ course.title }}
-    </NuxtLink>
-    <p>
-      {{ course.description }}
-    </p>
     <div
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
       class="flex flex-col w-full gap-2 mt-4">
-      <USeparator></USeparator>
-      <h3 class="text-xl mb-2 font-medium">Course content</h3>
-      <div class="flex w-full justify-between items">
-        <div class="flex items-center justify-start">
-          <UBadge color="primary" variant="subtle">41 sections</UBadge>
-          <span class="text-lg mx-1">·</span>
-          <UBadge color="primary" variant="subtle">{{ course.durationFormatted }}</UBadge>
-        </div>
-      </div>
+
+      <UTabs :items="tabs" class="w-full" variant="link">
+        <template #overview>
+          <div class="flex flex-col w-full items-start justify-start">
+            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-300 mb-2">
+              <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
+              <div class="flex flex-col">
+                <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
+                <p class="text-sm text-gray-600">Course Instructor</p>
+              </div>
+              <div class="flex gap-2 ml-auto">
+                <UButton icon="i-simple-icons-github" color="neutral" variant="ghost" to="https://github.com/SSMM0498"
+                  target="_blank" />
+                <UButton icon="i-simple-icons-twitter" color="neutral" variant="ghost" to="https://github.com/SSMM0498"
+                  target="_blank" />
+              </div>
+            </div>
+            <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
+              <h2 class="text-2xl font-medium">
+                {{ course?.title }}
+              </h2>
+              <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
+              <div class="tags">
+                <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
+              </div>
+              <p>
+                {{ course?.description }}
+              </p>
+            </div>
+          </div>
+        </template>
+        <template #content>
+          <div class="flex flex-col w-full gap-2 p-4">
+            <div class="flex w-full justify-between items">
+              <div class="flex items-center justify-start">
+                <UBadge color="primary" variant="subtle">{{ course?.durationFormatted }}</UBadge>
+                <span class="text-lg mx-1">·</span>
+                <UBadge color="primary" variant="subtle">41 sections</UBadge>
+                <span class="text-lg mx-1">·</span>
+                <UBadge color="primary" variant="subtle">120 Kb</UBadge>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template #feedback>
+          <widget-comment-panel />
+        </template>
+      </UTabs>
     </div>
+    <template v-else>
+      <div class="tags">
+        <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
+      </div>
+      <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
+        {{ course.title }}
+      </NuxtLink>
+      <p>
+        {{ course.description }}
+      </p>
+    </template>
   </article>
 </template>
 <script setup lang="ts">
@@ -58,7 +99,19 @@ defineProps<{
   course: CourseCard;
 }>();
 
+const { t } = useI18n();
 const uiStore = useSectionUIStore();
+
+const tabs = [{
+  slot: 'overview',
+  label: t('overview')
+}, {
+  slot: 'content',
+  label: t('course-content')
+}, {
+  slot: 'feedback',
+  label: t('feedback')
+}]
 </script>
 <style lang="css">
 @reference "tailwindcss";
@@ -76,7 +129,7 @@ article.reduce-height {
 
 article .banner {
   @apply relative flex items-center justify-center w-full cursor-pointer shadow-blue-500/40 mb-6 rounded-[7.5px];
-  height: clamp(275px, 275px, 20vw);
+  height: clamp(350px, 350px, 20vw);
 }
 
 article:hover .banner:not(.live):not(.cursus) {

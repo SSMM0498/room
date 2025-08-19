@@ -4,6 +4,7 @@ const { t } = useI18n();
 definePageMeta({
   alias: ["/"],
   name: "home",
+  middleware: "guest"
 });
 
 useHead({

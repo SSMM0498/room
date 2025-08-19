@@ -17,8 +17,12 @@
     },
     "home": "Go Back Home"
   },
+  "all": "See all",
+  "overview": "Overview",
+  "course-content": "Course Content",
+  "feedback": "Feedback",
   "welcome": "Welcome 👋!",
-  "welcome-quick-start": "Welcome 👋! Quick start",
+  "quick-start": "Quick start",
   "home": "Home",
   "sign_up": "Sign up",
   "sign_in": "Sign in",

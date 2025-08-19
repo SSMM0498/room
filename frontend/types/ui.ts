@@ -8,7 +8,7 @@ export interface CourseCard {
   type?: string;
   createdDate: string;
   durationFormatted: string;
-  items: RecordModel[];
+  items?: RecordModel[];
   price?: number;
   section: string;
   tags: RecordModel[];

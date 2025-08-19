@@ -3,14 +3,14 @@
     :class="{ 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
     :id="`${course.section.toLowerCase()}-${course.id}`"
     :style="{ '--random-right': `${randomRight}%`, '--random-top': `${randomTop}%` }"
-    class="p-2 border border rounded-lg">
+    class="p-2 border border-gray-300 rounded-lg">
     <NuxtLink class="cursor-pointer text-xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
       {{ course.id }} . {{ course.title }}
     </NuxtLink>
     <div class="tags">
       <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
     </div>
-    <p class="text-sm">
+    <p class="text-sm text-semibold">
       {{ course.description }}
     </p>
   </article>
@@ -33,6 +33,10 @@ const randomTop = computed(() => Math.floor(Math.random() * 50)); // Random numb
 article {
   position: relative;
   overflow: hidden;
+}
+
+article p {
+  z-index: 50;
 }
 
 article::after {
