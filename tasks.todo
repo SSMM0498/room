@@ -1,75 +1,52 @@
-### **Phase 2: Frontend Implementation (Core Pages & Auth)**
+### **Phase 3: The Core Experience (Recorder & Player) - Task List**
 
-#### **Part A: Define Project Structure (Files & Layouts)**
+#### **1. IDE UI & Foundational Components**
+* [ ] Task 1.1: Create the main Learning/Recording page layout (`/learn/[id]` or a dedicated `/record` page).
+* [ ] Task 1.2: Create a reusable Vue wrapper component for the Monaco Editor.
+* [ ] Task 1.3: Create a reusable Vue wrapper component for the Xterm.js terminal.
+* [ ] Task 1.4: Build a reactive File Tree Vue component.
+* [ ] Task 1.5: Build a Tab Management component for both editor and terminal instances.
+* [ ] Task 1.6: Build the Mini-Browser component (using an `<iframe>`).
+* [ ] Task 1.7: Assemble all UI components into the final IDE layout.
 
-* [x] **Task 1: Create Layout Files**
-    * [x] Create the following files inside the `layouts/` directory:
-        * [x] `auth.vue`: A minimal layout for login/signup pages, typically just a centered content area.
-        * [x] `default.vue`: For standard pages with a header and footer (e.g., Landing, Catalog).
-        * [x] `ide.vue`: A full-screen, distraction-free layout for the main recorder/replayer interface.
-        * [x] `content.vue`: A layout for static content pages (like "About Us," "Terms") if you plan to use Nuxt Content.
+#### **2. Bridge & Worker Enhancements (Backend Logic)**
+* [ ] Task 2.1 (Bridge) : Create WebSocket message handlers between the Nuxt server and the Worker for consuming the workspace.
+* [ ] Task 2.2 (Bridge): Create WebSocket message handlers for starting and stopping a recording session.
+* [ ] Task 2.3 (Bridge): Implement the `RecordingService` to listen for all commands/events and write them to a temporary NDJSON log.
+* [ ] Task 2.4 (Bridge): Implement logic to merge the all NDJSON logged separately in each component into a single NDJSON file.
+* [ ] Task 2.5 (Nuxt Server): Create the final server endpoint (`POST /api/course_contents`) to receive and save the packaged recording (NDJSON + audio) to storage.
+* [ ] Task 2.5 (Worker): Verify that all file, terminal, and state changes reliably emit events for the Bridge to capture.
+* [ ] Task 2.6 (Worker): Implement the `state:commit` event to capture workspace state changes and emit them to the Bridge.
 
-* [ ] **Task 2: Create Page Files**
-    * [ ] Create the following files and folders inside the `pages/` directory:
-        * [x] `index.vue` (The Landing Page)
-        * [x] `login.vue` (The User Login Page)
-        * [x] `register.vue` (The User Registration Page)
-        * [ ] `profile.vue` (The User's Profile Page)
-        * [ ] `catalog/`
-            * [x] `index.vue` (The Course Listing Page)
-            * [ ] `[id].vue` (The Course Detail Page)
-        * [ ] `learn/`
-            * [ ] `[id].vue` (The main Learning/Replayer Page)
+#### **3. The Recorder (Client-Side Capture Logic)**
+* [ ] Task 3.1: Create the `useRecorder` composable to manage recording state.
+* [ ] Task 3.2: Implement logic to connect to the Bridge's recording endpoints and manage the session lifecycle (start, stop, pause).
+* [ ] Task 3.3: Implement the `editor:type` event listener with a debounce strategy.
+* [ ] Task 3.4: Implement the `editor:paste` event listener for large content changes.
+* [ ] Task 3.5: Implement listeners for other editor events (`select`, `scroll`).
+* [ ] Task 3.6: Implement the `mouse:path` event listener with a throttle strategy.
+* [ ] Task 3.7: Implement the `mouse:click` event listener.
+* [ ] Task 3.8: Implement listeners for UI events from the File Tree (`files:create`, `delete`, `rename`).
+* [ ] Task 3.9: Implement listeners for IDE-level events (`ide:focus`, `tabs:switch`, `tabs:open`, `tabs:close`).
+* [ ] Task 3.10: Implement `MediaRecorder` API logic for high-quality audio capture.
+* [ ] Task 3.11: Implement the client-side function to package and upload the final recording data to the Nuxt server endpoint.
 
-#### **Part B: Implement Core Authentication Logic**
+#### **4. The Player (Client-Side Playback Logic)**
+* [ ] Task 4.1: Create the `usePlayer` composable to manage playback state with state-machine implementation (play,pause,resume,goto,loading,end,editing).
+* [ ] Task 4.2: Implement logic to fetch the NDJSON Action Log and audio file for a given course.
+* [ ] Task 4.3: Build the core playback loop (`requestAnimationFrame`) synchronized with the `<audio>` element's `currentTime`.
+* [ ] Task 4.4: Implement the event dispatcher to route actions from the log to the correct UI handlers.
+* [ ] Task 4.5: Implement handler functions to apply state changes to the IDE components (e.g., `updateEditorContent`, `createFileInTree`, `writeToTerminal`).
+* [ ] Task 4.6: Implement the local rendering of visual-only effects (e.g., the animated fake mouse cursor).
 
-* [ ] **Task 3: Create a Central Authentication Composable**
-    * [x] In the `composables/` directory, create a new file (e.g., `useAuth.ts`, `useAuthUser.ts`).
-    * [x] Define the state within this composable to hold the current user's data and a boolean for their logged-in status.
-    * [x] Define functions for `login`, `signup`, `logout`, and `fetchUser`, which will interact with the PocketBase SDK.
-    * [ ] Define a function to handle OAuth logins (Google, GitHub).
-
-* [x] **Task 4: Create a Global Authentication Plugin**
-    * [x] In the `plugins/` directory, create a file (e.g., `auth.server.ts`).
-    * [x] This plugin will run once when the app loads on the client.
-    * [x] Its purpose is to check the request cookies for a valid PocketBase auth token and load the user into the `useAuth` composable state. This ensures a user remains logged in when they refresh the page.
-
-* [x] **Task 5: Create Authentication Middleware**
-    * [x] In the `middleware/` directory, create a file (e.g., `auth.ts` `guest.ts`).
-    * [x] This middleware will protect specific routes.
-    * [x] It should check the user's authentication status from the `useAuth` composable.
-    * [x] If the user is not logged in and tries to access a protected page (like `/profile`), it should redirect them to the `/login` page.
-
-#### **Part C: Build Pages and Integrate Logic**
-
-* [x] **Task 6: Implement Layouts and Static Pages**
-    * [x] Build the basic structure of the four layouts (`default`, `auth`, `ide`, `content`) with placeholder components for headers/footers and a `<slot />` for page content.
-    * [x] Build the static **Landing Page** (`index.vue`), applying the `default` layout.
-
-* [x] **Task 7: Implement Authentication Pages**
-    * [x] Build the **Login Page** (`login.vue`).
-        * [x] Apply the `auth` layout.
-        * [x] Create the login form (email, password) and buttons for OAuth providers.
-        * [x] Connect the form submission to the `login` function in your `useAuth` composable.
-        * [x] Handle successful login by redirecting to the profile or dashboard page.
-    * [x] Build the **Signup Page** (`signup.vue`).
-        * [x] Apply the `auth` layout.
-        * [x] Create the registration form.
-        * [x] Connect the form submission to the `signup` function in your `useAuth` composable.
-
-* [ ] **Task 8: Implement Public Course Pages**
-    * [x] Build the **Catalog Listing Page** (`catalog/index.vue`).
-        * [x] Apply the `default` layout.
-        * [x] Use a server route to fetch all `published` records from your `catalog` collection in PocketBase.
-        * [x] Display the list of catalog.
-    * [ ] Build the **Course Detail Page** (`catalog/[id].vue`).
-        * [ ] Apply the `default` layout.
-        * [ ] Use the route parameter (`id`) to fetch the specific course's data from PocketBase.
-        * [ ] Display the course title, description, author, tags, etc.
-
-* [x] **Task 9: Implement the Protected Profile Page**
-    * [x] Build the **Profile Page** (`profile.vue`).
-        * [x] Apply the `default` layout.
-        * [x] Assign the `auth` middleware to this page to protect it.
-        * [x] Display the logged-in user's information (name, email, avatar) by accessing the state from the `useAuth` composable.
-        * [x] Include a "Logout" button that calls the `logout` function.
+#### **5. Player Controls & Advanced UX**
+* [ ] Task 5.1: Build the Player Controls Vue component (timeline slider, play/pause button, speed controls, chapter markers).
+* [ ] Task 5.2: Connect the play/pause button and speed controls to the `usePlayer` state.
+* [ ] Task 5.3: Implement the timeline scrubbing (fast-forward/rewind) functionality.
+* [ ] Task 5.4: Implement the full state-reset logic for seeking:
+    * [ ] Sub-task: Trigger a workspace state reset via the Bridge.
+    * [ ] Sub-task: Rapidly process all `state:commit` and `files:*` events up to the target timestamp to re-hydrate the workspace.
+    * [ ] Sub-task: Seek the audio element to the target timestamp.
+* [ ] Task 5.5: Implement the UI logic for "Action-Locked" periods (e.g., showing a "Process running..." message instead of unlocking the IDE on pause).
+* [ ] Task 5.6 (Nuxt Server): Create the server endpoint (`POST /api/progress`) to save learning progress.
+* [ ] Task 5.7 (Player): Implement the client-side logic to periodically call the progress-saving endpoint.

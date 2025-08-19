@@ -9,6 +9,9 @@
             <div class="absolute flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm rounded-md p-5">
                 <h2 class="text-white text-4xl lg:text-5xl font-bold tracking-tighter">{{ $t('learn.title') }}</h2>
                 <p class="text-white mt-4 text-lg max-w-2xl mx-auto">{{ $t('learn.subtitle') }}</p>
+                <UButton color="neutral" variant="subtle" class="mt-8" :to="$localePath('/catalog/')" size="lg">
+                    {{ $t('community.start_learning') }}
+                </UButton>
             </div>
         </div>
     </section>

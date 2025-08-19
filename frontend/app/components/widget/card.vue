@@ -93,7 +93,7 @@ article .banner>.techs::after {
 
 article:hover .banner>button:hover~.techs::after,
 article .banner>.techs:hover:after {
-  @apply bg-white/75 bg-black/75;
+  @apply dark:bg-white/75 bg-black/75;
 }
 
 article:hover .banner>button {

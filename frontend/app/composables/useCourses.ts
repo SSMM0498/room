@@ -33,6 +33,7 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
         section: '',
         durationFormatted,
         tags,
+        items: record.expand?.items || [],
         author: record.expand?.author, // Embed the expanded author record
         price: record.price,
     };
@@ -40,7 +41,7 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
 
 export const useCourses = () => {
     const courses = ref<CourseCard[]>([]);
-    const currentCourse = ref<RecordModel | null>(null);
+    const currentCourse = ref<CourseCard | null>(null);
 
     const pending = ref(false);
     const error = ref<Error | null>(null);
@@ -67,13 +68,13 @@ export const useCourses = () => {
 
     const fetchCourseById = async (id: string) => _handleRequest(async () => {
         const course = await $fetch<RecordModel>(`/api/courses/${id}`);
-        currentCourse.value = course;
+        currentCourse.value = parseCourseRecordToCard(course);
         return course;
     });
 
     const fetchCourseBySlug = async (slug: string) => _handleRequest(async () => {
         const course = await $fetch<RecordModel>(`/api/courses/slug/${slug}`);
-        currentCourse.value = course;
+        currentCourse.value = parseCourseRecordToCard(course);
         return course;
     });
 
@@ -109,7 +110,7 @@ export const useCourses = () => {
             courses.value[index] = parseCourseRecordToCard(updatedCourse);
         }
         if (currentCourse.value?.id === id) {
-            currentCourse.value = updatedCourse;
+            currentCourse.value = parseCourseRecordToCard(updatedCourse);
         }
         return updatedCourse;
     });
@@ -148,11 +149,13 @@ export const useCourses = () => {
             const newOrderedItems = orderedItemIds.map(id =>
                 currentCourse.value!.items.find((item: any) => item.id === id)
             ).filter(Boolean); // Filter out any undefined items
-            currentCourse.value.items = newOrderedItems;
+            if (newOrderedItems.length) {
+                currentCourse.value.items = newOrderedItems as typeof currentCourse.value.items;
+            }
         }
         console.warn("API for reordering not implemented. UI reordered only.");
 
-        return await $fetch(`/api/cursus/${cursusId}/order`, {
+        return await $fetch<any>(`/api/cursus/${cursusId}/order`, {
           method: 'PATCH',
           body: orderedItemIds,
         });
