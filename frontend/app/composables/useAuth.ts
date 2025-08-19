@@ -1,15 +1,11 @@
 import type { AuthModel } from 'pocketbase';
-import { type AuthResponse } from '../../types/api'
+import { type AuthResponse, type UserModel } from '../../types/api'
 
 export const useAuth = () => {
   const authUser = useAuthUser();
 
-  const setUser = (user: AuthModel | null) => {
+  const setUser = (user: UserModel | null) => {
     authUser.value = user;
-  };
-
-  const setCookie = (cookie: any) => {
-    cookie.value = cookie;
   };
 
   /**
@@ -68,6 +64,62 @@ export const useAuth = () => {
     }
   };
 
+  /**
+   * Updates the user's profile information (name and/or avatar).
+   * @param data - The new profile data containing name and/or avatar file.
+   * @returns The updated user model.
+   */
+  const updateProfile = async (data: { name?: string; avatar?: File }) => {
+    const formData = new FormData();
+    if (data.name) formData.append('name', data.name);
+    if (data.avatar) formData.append('avatar', data.avatar);
+
+    const response = await $fetch<AuthResponse>('/api/auth/profile', {
+      method: 'PATCH',
+      body: formData,
+    });
+    setUser(response.user);
+    return response.user;
+  };
+
+  /**
+   * Updates the user's password.
+   * @param passwords - An object containing the old password, new password, and confirmation.
+   * * This function does not return the updated user model, as the response is not needed.
+   */
+  const changePassword = async (passwords: Record<string, any>) => {
+    // We don't need the response, but fetching it confirms success.
+    await $fetch<AuthResponse>('/api/auth/change-password', {
+      method: 'POST',
+      body: passwords,
+    });
+  };
+
+  /**
+   * Sends a request to change the user's email address.
+   * @param newEmail - The new email address to request.
+   * @returns A success message indicating the request was sent.
+   */
+  const requestEmailChange = async (newEmail: string) => {
+    return await $fetch<{ success: boolean; message: string }>('/api/auth/request-email-change', {
+      method: 'POST',
+      body: { newEmail },
+    });
+  };
+
+  /**
+   * Permanently deletes the user's account.
+   */
+  const deleteAccount = async () => {
+    const response = await $fetch('/api/auth/delete-account', {
+      method: 'DELETE',
+    });
+    // On success, clear local state and redirect
+    setUser(null);
+    await navigateTo('/');
+    return response;
+  };
+
 
   // Expose the user state and auth functions
   return {
@@ -75,6 +127,10 @@ export const useAuth = () => {
     me,
     login,
     register,
-    logout
+    logout,
+    updateProfile,
+    changePassword,
+    requestEmailChange,
+    deleteAccount
   };
 };

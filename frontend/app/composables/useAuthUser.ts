@@ -1,7 +1,7 @@
-import { type AuthModel } from 'pocketbase';
+import type { UserModel } from "~~/types/api";
 
 export const useAuthUser = () => {
-  const currentUser = usePersistedState<AuthModel | null>("user", null);
+  const currentUser = usePersistedState<UserModel | null>("user", null);
 
   return currentUser;
 };
