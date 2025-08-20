@@ -3,3 +3,4 @@ frontend/app/pages/explore.vue
 frontend/server/api/blocks.get.ts
 backend/pb_data/*
 tmp.md
+README.md
