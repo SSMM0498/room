@@ -1,9 +1,9 @@
 <template>
   <footer class="fixed bottom-0 left-0 z-20 w-full flex items-center justify-between border-t ui-base p-1 text-xs">
-    <nav flex flex-wrap items-center>
-      <span mr-3>697 bytes</span>
-      <span mr-3>Spaces: 2</span>
-      <span mr-3>vue</span>
+    <nav class="flex flex-wrap items-center">
+      <span class="mr-3">697 bytes</span>
+      <span class="mr-3">Spaces: 2</span>
+      <span class="mr-3">vue</span>
       <span>Ln 5, Col 17</span>
     </nav>
   </footer>

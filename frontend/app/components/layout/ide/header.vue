@@ -2,62 +2,74 @@
   <header class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-gray-900 p-2">
     <nav class="flex px-2 p-0 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700 items-center
       text-sm justify-center space-x-1">
-      <NuxtLink :to="localePath('/')" font-inter class="logo">room_</NuxtLink>
-      <i class="icon i-ri:arrow-right-s-line"></i>
-      <NuxtLink class="hover:text-blue" :to="localePath('/wall/ssmm0498')">@ssmm0498</NuxtLink>
-      <i class="icon i-ri:arrow-right-s-line"></i>
-      <span>Learn Golang Base</span>
-      <i class="icon i-ri:arrow-right-s-line"></i>
-      <UPopover mode="hover">
-        <span>0 - Basics</span>
-
-        <template #panel>
-          <div class="p-2 w-48">
-            <ol class="flex flex-col gap-1 w-full items-start justify-start">
-              <li
-                class="block py-1 px-2 dark:hover:bg-gray-100/3 hover:bg-gray-900/7 w-full dark:hover:bg-gray-700 rounded-md">
-                <NuxtLink class="flex justify-between items-center w-full">
-                  <span>1 - Introduction</span>
-                  <span class="text-xs text-blue-500 font-semibold py-1 px-2 rounded-xl bg-gray-100/2">10:32</span>
-                </NuxtLink>
-              </li>
-              <li
-                class="block py-1 px-2 dark:hover:bg-gray-100/3 hover:bg-gray-900/7 w-full dark:hover:bg-gray-700 rounded-md">
-                <NuxtLink class="flex justify-between items-center w-full">
-                  <span>2 - Variables</span>
-                  <span class="text-xs text-blue-500 font-semibold py-1 px-2 rounded-xl bg-gray-100/2">15:23</span>
-                </NuxtLink>
-              </li>
-              <li
-                class="block py-1 px-2 dark:hover:bg-gray-100/3 hover:bg-gray-900/7 w-full dark:hover:bg-gray-700 rounded-md">
-                <NuxtLink class="flex justify-between items-center w-full">
-                  <span>3 - Control Flow</span>
-                  <span class="text-xs text-blue-500 font-semibold py-1 px-2 rounded-xl bg-gray-100/2">20:07</span>
-                </NuxtLink>
-              </li>
-            </ol>
-          </div>
+      <NuxtLink :to="localePath('/')" class="logo -mt-1 mr-3 font-inter text-black dark:text-white ">room_</NuxtLink>
+      <div v-if="pending"
+        class="flex items-center gap-2 px-2 p-1 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <USkeleton class="h-6 w-16" />
+        <USkeleton class="h-6 w-24" />
+        <USkeleton class="h-6 w-32" />
+      </div>
+      <UBreadcrumb v-else-if="currentCourse" :items="breadcrumbItems">
+        <template #item="{ item }">
+          <!-- Render a Popover for the last item if it's a cursus -->
+          <UPopover v-if="item.isPopover" mode="hover">
+            <!-- The trigger text is now the label of the active item -->
+            <span
+              class="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md cursor-pointer font-semibold text-primary-500 dark:text-primary-400">
+              {{ item.label }}
+            </span>
+            <template #content>
+              <div class="p-2 w-72">
+                <p v-if="!currentCourse.items || currentCourse.items.length === 0" class="text-xs text-gray-500 p-2">
+                  No items in this playlist.
+                </p>
+                <ol v-else class="flex flex-col gap-1 w-full items-start justify-start">
+                  <li v-for="(playlistItem, idx) in currentCourse.items" :key="playlistItem.id"
+                    class="block w-full rounded-md"
+                    :class="{ 'bg-gray-100 dark:bg-gray-800': idx === currentItemIndex }">
+                    <!-- Use a button to change state, not a link -->
+                    <button @click="() => handleItemSelect(playlistItem.order, currentCourse!.slug)"
+                      class="text-left text-sm py-1.5 px-2 w-full flex justify-between items-center cursor-pointer">
+                      <span class="truncate">{{ playlistItem.order + 1 }} - {{ playlistItem.expand?.course?.title
+                      }}</span>
+                    </button>
+                  </li>
+                </ol>
+              </div>
+            </template>
+          </UPopover>
+          <span v-else class="px-2 py-1">{{ item.label }}</span>
         </template>
-      </UPopover>
+
+        <template #separator>
+          <span class="text-muted">/</span>
+        </template>
+      </UBreadcrumb>
     </nav>
-    <nav v-if="!isPlayer"
+    <nav v-if="($route.name as String).startsWith('teach')"
       class="flex px-1 p-0 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700 items-center text-sm justify-center space-x-1">
-      <UButton size="xs" class="mr-1" :class="recording.isRecording ? 'text-red-700' : 'text-gray-700'"
-        icon="i-uim:record-audio" variant="link" @click="toggleRecording" />
+      <UButton size="xs" class="mr-1" :class="isRecording ? 'text-red-700' : 'text-gray-700'" icon="i-uim:record-audio"
+        variant="link" @click="toggleRecording" />
       <UButton size="xs" class="mr-1 text-gray-700" icon="i-heroicons:play-circle" variant="link"
-        :to="localePath('/ide/player')" />
+        :to="localePath(`/learn/${currentCourse?.slug}_0`)" />
     </nav>
     <div>
-      <UButton id="btn-run-code" size="xs" class="mr-1" label="Run" icon="i-heroicons:play" variant="solid"
-        @click="runProject"></UButton>
-      <UButton id="btn-show-browser" size="xs" class="mr-1" label="Preview" @click="startPreview"
-        icon="i-heroicons:globe-alt" variant="soft">
+      <UButton id="btn-run-code" size="xs" class="mr-1" icon="i-heroicons:play" variant="solid" @click="runProject">
+        {{ $t('ide.run') }}
       </UButton>
-      <UButton id="btn-show-console" size="xs" class="mr-1" label="Terminal" icon="i-ph-terminal-window-duotone"
-        @click="() => showTerminal = !showTerminal" variant="soft"></UButton>
-      <UButton id="btn-search" size="xs" class="mr-1" label="Search" icon="i-heroicons:magnifying-glass-solid"
-        variant="soft"></UButton>
+      <UButton id="btn-show-browser" size="xs" class="mr-1" @click="startPreview" icon="i-heroicons:globe-alt"
+        variant="soft">
+        {{ $t('ide.preview') }}
+      </UButton>
+      <UButton id="btn-show-console" size="xs" class="mr-1" icon="i-ph-terminal-window-duotone" @click="toggleTerminal"
+        variant="soft">
+        {{ $t('ide.terminal') }}
+      </UButton>
+      <UButton id="btn-search" size="xs" class="mr-1" icon="i-heroicons:magnifying-glass-solid" variant="soft">
+        {{ $t('search') }}
+      </UButton>
       <UButton id="btn-invite" size="xs" class="mr-1" label="Invite" icon="i-heroicons:user-plus" variant="soft">
+        {{ $t('ide.invite') }}
       </UButton>
       <layout-color-switch />
     </div>
@@ -65,11 +77,62 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  isPlayer: boolean
-}>();
+import { computed } from 'vue';
+import type { BreadcrumbItem } from '#ui/types';
 
+const { currentCourse, currentItemIndex, activePlaylistItem, pending, fetchCourseBySlug } = useCourses();
+const route = useRoute();
+
+await useAsyncData('current-course', () => fetchCourseBySlug(route.params.slug as string));
 const localePath = useLocalePath();
+const isRecording = ref(false);
+
+interface CustomBreadcrumbItem extends BreadcrumbItem {
+  isPopover?: boolean;
+}
+
+const breadcrumbItems = computed<CustomBreadcrumbItem[]>(() => {
+  const baseItems: CustomBreadcrumbItem[] = [];
+
+  if (!currentCourse.value || !currentCourse.value.author) {
+    return baseItems;
+  }
+
+  const author = currentCourse.value.author;
+  const course = currentCourse.value;
+
+  const items: CustomBreadcrumbItem[] = [
+    ...baseItems,
+    {
+      label: `@${author.username}`,
+      to: localePath(`/@/${author.username}`),
+    },
+    {
+      label: course.title,
+      to: localePath(`/learn/${course.slug}_0`),
+    },
+  ];
+
+  if (course.type === 'cursus' && activePlaylistItem.value) {
+    const item = activePlaylistItem.value;
+    items.push({
+      label: `${item.order + 1} - ${item.expand?.course?.title}`,
+      isPopover: true,
+    });
+  }
+
+  return items;
+});
+
+watchEffect(() => {
+  currentItemIndex.value = parseInt(route.params.index as string) || 0;
+})
+
+function handleItemSelect(index: number, slug?: string) {
+  if (slug) {
+    navigateTo(localePath(`/learn/${slug}_${index}`), { replace: true });
+  }
+}
 
 // const {
 //   showTerminal,
@@ -77,7 +140,7 @@ const localePath = useLocalePath();
 //   activeTerminal
 // } = useEditor();
 
-const { socketClient } = useSocket();
+// const { socketClient } = useSocket();
 
 const startPreview = (event: MouseEvent) => {
   // if (!activeTerminal.value) return;
@@ -90,7 +153,11 @@ const runProject = () => {
   // socketClient.runProject(activeTerminal.value);
 };
 
-const recording = useRecordingStore()
+// const recording = useRecordingStore()
+
+const toggleTerminal = () => {
+  // showTerminal = !showTerminal
+}
 
 const toggleRecording = () => {
   // console.log("toggleRecording")
@@ -110,6 +177,10 @@ header {
 }
 
 header .logo {
-  @apply relative flex justify-center items-center text-black dark:text-white text-xl font-bold;
+  @apply relative flex justify-center items-center text-xl font-bold;
+}
+
+:deep(.ol-base) {
+  @apply p-1 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700;
 }
 </style>

@@ -48,9 +48,9 @@
               </div>
             </div>
             <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
-              <h2 class="text-2xl font-medium">
-                {{ course?.title }}
-              </h2>
+              <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
+                {{ course.title }}
+              </NuxtLink>
               <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
               <div class="tags">
                 <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
@@ -83,7 +83,7 @@
       <div class="tags">
         <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
       </div>
-      <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
+      <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`" @click="uiStore.closeArticle">
         {{ course.title }}
       </NuxtLink>
       <p>

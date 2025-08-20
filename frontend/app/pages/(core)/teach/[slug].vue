@@ -3,6 +3,8 @@
 </template>
 <script lang="ts" setup>
 definePageMeta({
-  alias: ["/learn\/:slug()"],
+  alias: ["/teach/:slug()"],
+  name: "teach-page",
+  layout: "ide"
 })
 </script>

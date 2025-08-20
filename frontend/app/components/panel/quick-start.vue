@@ -82,7 +82,7 @@ const recommendations = [
       <section class="flex w-full gap-4">
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white rounded-lg"
-          :to="localePath('/learn/new')">
+          :to="localePath('/learn/new_0')">
           <i class="i-heroicons-squares-2x2-20-solid mr-2"></i>Start a room_
         </nuxt-link>
         <nuxt-link

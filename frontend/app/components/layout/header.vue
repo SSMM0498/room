@@ -5,13 +5,13 @@
       <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
     </NuxtLink>
 
-    <layout-nav-home-nav v-if="($route.name as String).startsWith('home')"/>
+    <layout-nav-home-nav v-if="($route.name as String).startsWith('home')" />
     <template v-else-if="($route.name as String).startsWith('settings')">
       <div class="w-full"></div>
     </template>
     <template v-else>
-    <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
-      variant="subtle" color="neutral" :trailing="false" placeholder="Search for a room" />
+      <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
+        variant="subtle" color="neutral" :trailing="false" :placeholder="$t('search') + '...'" />
       <layout-nav-default-nav />
     </template>
 

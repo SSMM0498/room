@@ -1,4 +1,20 @@
 {
+  "search": "Seach",
+  "ide": {
+    "run": "Run",
+    "preview": "Preview",
+    "terminal": "Terminal",
+    "invite": "Invite",
+    "record": "Record",
+    "stop_recording": "Stop Recording",
+    "recording": "Recording in progress...",
+    "player": "Player",
+    "loading": "Loading...",
+    "error": {
+      "title": "Project Loading Error",
+      "message": "Unable to load the project. Please try again later."
+    }
+  },
   "error": {
     "label": "Error",
     "title": {

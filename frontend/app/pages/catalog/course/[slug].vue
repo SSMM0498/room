@@ -9,7 +9,7 @@
     </template>
     <template v-else>
       <article class="full border-r-1 border-gray-300">
-        <NuxtLink class="banner" :to="localePath('/learn/' + course?.slug)">
+        <NuxtLink class="banner" :to="localePath('/learn/' + course?.slug + '_0')">
           <UIcon name="i-ri-play-circle-line" size="250" class="opacity-0 play-icon">
           </UIcon>
         </NuxtLink>

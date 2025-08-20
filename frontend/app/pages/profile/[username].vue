@@ -3,6 +3,6 @@
 </template>
 <script lang="ts" setup>
 definePageMeta({
-  alias: ["/profile/:username()"],
+  alias: ["/@/:username()"],
 })
 </script>

@@ -1,4 +1,20 @@
 {
+  "search": "Rechercher",
+  "ide": {
+    "run": "Exécuter",
+    "preview": "Aperçu",
+    "terminal": "Terminal",
+    "invite": "Inviter",
+    "record": "Enregistrer",
+    "stop_recording": "Arrêter l'enregistrement",
+    "recording": "Enregistrement en cours...",
+    "player": "Lecteur",
+    "loading": "Chargement...",
+    "error": {
+      "title": "Erreur de chargement du projet",
+      "message": "Impossible de charger le projet. Veuillez réessayer plus tard."
+    }
+  },
   "error": {
     "label": "Erreur",
     "title": {

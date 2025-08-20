@@ -33,7 +33,7 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
         section: '',
         durationFormatted,
         tags,
-        items: record.expand?.items || [],
+        items: record.items || [],
         author: record.expand?.author, // Embed the expanded author record
         price: record.price,
     };
@@ -42,6 +42,17 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
 export const useCourses = () => {
     const courses = ref<CourseCard[]>([]);
     const currentCourse = ref<CourseCard | null>(null);
+    const currentItemIndex = ref(0);
+    const activePlaylistItem = computed(() => {
+        if (
+            currentCourse.value?.type === 'cursus' &&
+            currentCourse.value.items &&
+            currentCourse.value.items.length > currentItemIndex.value
+        ) {
+            return currentCourse.value.items[currentItemIndex.value];
+        }
+        return null;
+    });
 
     const pending = ref(false);
     const error = ref<Error | null>(null);
@@ -147,7 +158,7 @@ export const useCourses = () => {
     const updateCursusOrder = async (cursusId: string, orderedItemIds: string[]) => _handleRequest(async () => {
         if (currentCourse.value && currentCourse.value.items) {
             const newOrderedItems = orderedItemIds.map(id =>
-                currentCourse.value!.items.find((item: any) => item.id === id)
+                currentCourse.value!.items!.find((item: any) => item.id === id)
             ).filter(Boolean); // Filter out any undefined items
             if (newOrderedItems.length) {
                 currentCourse.value.items = newOrderedItems as typeof currentCourse.value.items;
@@ -156,8 +167,8 @@ export const useCourses = () => {
         console.warn("API for reordering not implemented. UI reordered only.");
 
         return await $fetch<any>(`/api/cursus/${cursusId}/order`, {
-          method: 'PATCH',
-          body: orderedItemIds,
+            method: 'PATCH',
+            body: orderedItemIds,
         });
     });
 
@@ -165,6 +176,8 @@ export const useCourses = () => {
         // State
         courses,
         currentCourse,
+        currentItemIndex,
+        activePlaylistItem,
         pending,
         error,
 

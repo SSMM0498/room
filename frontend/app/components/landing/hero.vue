@@ -12,7 +12,7 @@
           <UButton :to="localPath('/register')" color="primary" size="xl" class="px-8 py-4">
             {{ $t('hero.start_learning') }}
           </UButton>
-          <UButton :to="localPath('/learn/demo')" variant="link" color="primary" size="xl" icon="i-heroicons-play-circle-20-solid">
+          <UButton :to="localPath('/learn/demo_0')" variant="link" color="primary" size="xl" icon="i-heroicons-play-circle-20-solid">
             {{ $t('hero.watch_video') }}
           </UButton>
         </div>
