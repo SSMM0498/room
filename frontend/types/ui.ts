@@ -15,6 +15,24 @@ export interface CourseCard {
   author?: RecordModel; 
 }
 
+export interface School extends RecordModel {
+  name: string;
+  owner: string; // User ID
+  // members?: string[]; // Array of User IDs
+  // courses?: string[]; // Array of Course IDs
+  // expand?: {
+  //   'courses(school)': CourseCard[];
+  //   owner: RecordModel; // User Record
+  // }
+}
+
+export type SimpleCourse = {
+  id: string;
+  title: string;
+  slug: string;
+  tags: RecordModel[];
+};
+
 export type Section = {
   title: string;
   courses: CourseCard[];
