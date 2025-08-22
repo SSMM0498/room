@@ -138,6 +138,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 //     console.log(error);
 //   }
 // }
+
+// async function loginWithGoogle() {
+//   try {
+//     await loginWithGoogle(event.data);
+//     navigateTo("/dashboard");
+//   } catch (error) {
+//     console.log(error);
+//   }
+// }
 </script>
 <style scoped lang="css">
 .login-background {

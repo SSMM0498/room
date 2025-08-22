@@ -1,6 +1,6 @@
 <template>
   <section
-    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0 !max-h-screen !min-h-screen': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay': uiStore.articleOpened && uiStore.currentSection !== section.title }"
+    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay': uiStore.articleOpened && uiStore.currentSection !== section.title }"
     :id="section.title.toLowerCase()"
      class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-4 pt-2 pb-8 border-gray-300 border-r overflow-x-hidden overflow-y-scroll">
     <div :class="{ '!hidden': uiStore.articleOpened && uiStore.currentSection === section.title, }"

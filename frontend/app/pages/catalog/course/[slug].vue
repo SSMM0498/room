@@ -9,8 +9,8 @@
     </template>
     <template v-else>
       <article class="full border-r-1 border-gray-300">
-        <NuxtLink class="banner" :to="localePath('/learn/' + course?.slug + '_0')">
-          <UIcon name="i-ri-play-circle-line" size="250" class="opacity-0 play-icon">
+        <NuxtLink class="banner bg-blue-200 dark:bg-gray-950" :to="localePath('/learn/' + course?.slug + '_0')">
+          <UIcon name="i-ri-play-circle-line" size="250" class="opacity-0 play-icon text-blue-300 dark:text-gray-800">
           </UIcon>
         </NuxtLink>
       </article>
@@ -118,7 +118,7 @@ article.full {
 }
 
 article.full .banner {
-  @apply flex items-center justify-center w-full cursor-pointer shadow-blue-500/40 m-6 bg-blue-200 rounded-[7.5px];
+  @apply flex items-center justify-center w-full cursor-pointer shadow-blue-500/40 m-6 rounded-[7.5px];
   height: calc(100vh - 125px);
 }
 

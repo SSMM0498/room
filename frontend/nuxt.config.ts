@@ -59,15 +59,20 @@ export default defineNuxtConfig({
     POCKETBASE_URL: process.env.POCKETBASE_URL,
     POCKETBASE_ADMIN_EMAIL: process.env.POCKETBASE_ADMIN_EMAIL,
     POCKETBASE_ADMIN_PASSWORD: process.env.POCKETBASE_ADMIN_PASSWORD,
+    MINIO_URL: process.env.MINIO_URL,
+    MINIO_PORT: process.env.MINIO_PORT,
+    MINIO_BUCKET: process.env.MINIO_BUCKET,
+    MINIO_ROOT_USER: process.env.MINIO_ROOT_USER,
+    MINIO_ROOT_PASSWORD: process.env.MINIO_ROOT_PASSWORD,
     ENV: process.env.ENV || 'DEV',
-    app: {
-      devtools: {
-        iframeProps: {
-          allow: 'cross-origin-isolated',
-          credentialless: true,
-        },
-      },
-    },
+    // app: {
+    //   devtools: {
+    //     iframeProps: {
+    //       allow: 'cross-origin-isolated',
+    //       credentialless: true,
+    //     },
+    //   },
+    // },
   },
 
   // image: {
