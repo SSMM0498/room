@@ -11,11 +11,11 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const items = await pb.collection('course_items').getFullList({ filter: `parent = "${cursusId}"` });
+    const items = await pb.collection('course_items').getFullList({ filter: `cursus = "${cursusId}"` });
 
     const newItem = await pb.collection('course_items').create({
-      parent: cursusId,
-      courses: [courseIdToAdd],
+      cursus: cursusId,
+      course: courseIdToAdd,
       order: items.length,
     });
     return newItem;

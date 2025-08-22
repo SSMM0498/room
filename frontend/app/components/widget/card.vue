@@ -1,15 +1,18 @@
 <template>
   <article
-    :class="{ 'reduce-height overflow-hidden none': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id, 'pt-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
+    v-if="!(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id)"
+    :class="{ 'py-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
     :id="`${course.section.toLowerCase()}-${course.id}`">
     <UButton
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
       class="close-btn absolute -top-1 -left-4 z-50" icon="i-heroicons-x-mark-20-solid" @click="uiStore.closeArticle"
       variant="ghost">
     </UButton>
-    <a class="banner dark:bg-blue-800 bg-blue-50 dark:after:bg-blue-900 after:bg-blue-200 dark:before:bg-blue-950 before:bg-blue-300"
-      :class="{ '!h-[550px]': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id }"
-      @click.prevent="($event) => {
+    <component :is="isPreview ? 'div' : 'a'"
+      class="banner dark:bg-gray-950 bg-blue-50 dark:after:bg-blue-900 after:bg-blue-200 dark:before:bg-blue-950 before:bg-blue-300"
+      :class="{ '!h-[550px]': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursor-pointer': !isPreview }"
+      @click.prevent="($event: any) => {
+        if (isPreview) return; // Block click action in preview mode
         uiStore.openArticle($event, 'django-chatgpt-clone-tutorial');
         uiStore.setCurrentSection(course.section)
         uiStore.setCurrentCourse(course.id)
@@ -19,14 +22,15 @@
         <i class="ri-play-circle-line ri-2x"></i>
       </button>
       <div class="techs">
+        <!-- Make sure tags exist before looping -->
         <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name" />
       </div>
-      <UAvatar :src="useFileUrl(course.author, 'avatar', '100x100')" :alt="course.author!.username"
+      <UAvatar v-if="course.author" :src="useFileUrl(course.author, 'avatar', '100x100')" :alt="course.author.username"
         crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
-      <div class="date">{{ course.createdDate }}</div>
+      <div class="date bg-[white] text-gray-950 dark:bg-gray-900 dark:text-white">{{ course.createdDate }}</div>
       <!-- HERE IS THE PRICE SECTION -->
       <!-- <div class="price-ribbon">{{ course.price }}</div> -->
-    </a>
+    </component>
     <div
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
       class="flex flex-col w-full gap-2 mt-4">
@@ -48,9 +52,11 @@
               </div>
             </div>
             <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
-              <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
+              <!-- Conditionally render NuxtLink or a simple div for the title -->
+              <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
+                :class="{'cursor-pointer': !isPreview}" :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
                 {{ course.title }}
-              </NuxtLink>
+              </component>
               <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
               <div class="tags">
                 <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
@@ -83,9 +89,12 @@
       <div class="tags">
         <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
       </div>
-      <NuxtLink class="cursor-pointer text-2xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`" @click="uiStore.closeArticle">
+      <!-- Conditionally render NuxtLink or a simple div for the title -->
+      <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
+        :class="{'cursor-pointer': !isPreview}" :to="isPreview ? undefined : `/catalog/course/${course.slug}`"
+        @click="uiStore.closeArticle">
         {{ course.title }}
-      </NuxtLink>
+      </component>
       <p>
         {{ course.description }}
       </p>
@@ -97,6 +106,7 @@ import type { CourseCard } from '../../../types/ui';
 
 defineProps<{
   course: CourseCard;
+  isPreview?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -170,7 +180,7 @@ article .banner>.techs>img:nth-child(3) {
 }
 
 article .banner>.date {
-  @apply absolute text-[0.8em] z-50 bg-[white] px-2 py-1 rounded-2xl right-3 bottom-3 text-gray-950;
+  @apply absolute text-[0.8em] z-50 px-2 py-1 rounded-2xl right-3 bottom-3;
 }
 
 article .banner>.price-ribbon {

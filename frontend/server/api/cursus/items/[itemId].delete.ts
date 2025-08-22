@@ -4,8 +4,8 @@ export default defineEventHandler(async (event) => {
 
   if (!pb.authStore.isValid) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
 
-  const itemToDelete = await pb.collection('course_items').getOne(itemId, { expand: 'parent' });
-  if (itemToDelete.expand?.parent.author !== pb.authStore.record?.id) {
+  const itemToDelete = await pb.collection('course_items').getOne(itemId, { expand: 'cursus' });
+  if (itemToDelete.expand?.cursus.author !== pb.authStore.record?.id) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' });
   }
 

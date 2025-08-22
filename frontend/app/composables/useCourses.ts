@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { type RecordModel } from 'pocketbase';
-import type { CourseCard } from '~~/types/ui';
+import type { CourseCard, SimpleCourse } from '~~/types/ui';
 
 /**
  * Parses a raw PocketBase course record into a clean CourseCard object
@@ -41,6 +41,7 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
 
 export const useCourses = () => {
     const courses = ref<CourseCard[]>([]);
+    const userCoursesList = ref<SimpleCourse[]>([]);
     const currentCourse = ref<CourseCard | null>(null);
     const currentItemIndex = ref(0);
     const activePlaylistItem = computed(() => {
@@ -71,10 +72,18 @@ export const useCourses = () => {
     };
 
     const fetchCourses = async () => _handleRequest(async () => {
-        console.trace("fetch courses");
         const rawCourses = await $fetch<RecordModel[]>('/api/courses');
         courses.value = rawCourses.map(parseCourseRecordToCard);
         return courses.value;
+    });
+
+    const fetchUserCoursesList = (type?: 'single' | 'cursus' | 'live') => _handleRequest(async () => {
+        const queryOptions = type ? { query: { type } } : {};
+
+        const list = await $fetch<SimpleCourse[]>('/api/courses/my-list', queryOptions);
+
+        userCoursesList.value = list;
+        return list;
     });
 
     const fetchCourseById = async (id: string) => _handleRequest(async () => {
@@ -99,15 +108,25 @@ export const useCourses = () => {
             .replace(/^-+|-+$/g, '') + '-' + randomSuffix; // Remove leading/trailing dashes and add random suffix
     };
 
-    const createCourse = async (data: Partial<RecordModel>) => _handleRequest(async () => {
-        if (data.title && !data.slug) {
-            data.slug = generateSlug(data.title);
-        }
-        const newCourse = await $fetch<RecordModel>('/api/courses', {
+    const createCourse = async (data: {
+        title: string;
+        type: string;
+        description: string;
+        tags: string[];
+        school: string;
+    }) => _handleRequest(async () => {
+        const courseData = {
+            ...data,
+            slug: generateSlug(data.title),
+            status: 'draft',
+        };
+        const newCourse = await $fetch<RecordModel>('/api/courses/new', {
             method: 'POST',
-            body: data,
+            body: courseData,
         });
-        courses.value.unshift(parseCourseRecordToCard(newCourse));
+        const parsedCourse = parseCourseRecordToCard(newCourse);
+        currentCourse.value = parsedCourse;
+        courses.value.unshift(parsedCourse);
         return newCourse;
     });
 
@@ -127,24 +146,28 @@ export const useCourses = () => {
     });
 
     const deleteCourse = async (id: string) => _handleRequest(async () => {
-        await $fetch(`/api/courses/${id}`, { method: 'DELETE' });
+        await $fetch(`/api/courses/${id}`, { method: 'delete' });
         courses.value = courses.value.filter(c => c.id !== id);
         return true;
     });
 
-    const toggleCourseType = async (courseId: string, currentType: 'single' | 'cursus') => _handleRequest(async () => {
-        const newType = currentType === 'single' ? 'cursus' : 'single';
-        return await updateCourse(courseId, { type: newType });
+    const toggleCourseType = async (currentType: 'single' | 'cursus') => _handleRequest(async () => {
+        if (currentCourse.value) {
+            const newType = currentType === 'single' ? 'cursus' : 'single';
+            return await updateCourse(currentCourse.value.id, { type: newType });
+        }
     });
 
-    const addCourseToCursus = async (cursusId: string, courseIdToAdd: string) => _handleRequest(async () => {
-        const newItem = await $fetch<RecordModel>(`/api/cursus/${cursusId}/items`, {
-            method: 'POST',
-            body: { courseIdToAdd },
-        });
+    const addCourseToCursus = async (courseIdToAdd: string) => _handleRequest(async () => {
+        if (currentCourse.value) {
+            const newItem = await $fetch<RecordModel>(`/api/cursus/${currentCourse.value.id}/items`, {
+                method: 'POST',
+                body: { courseIdToAdd },
+            });
 
-        await fetchCourseById(cursusId);
-        return newItem;
+            await fetchCourseById(currentCourse.value.id);
+            return newItem;
+        }
     });
 
     const removeCourseFromCursus = async (itemId: string) => _handleRequest(async () => {
@@ -176,6 +199,7 @@ export const useCourses = () => {
         // State
         courses,
         currentCourse,
+        userCoursesList,
         currentItemIndex,
         activePlaylistItem,
         pending,
@@ -185,6 +209,7 @@ export const useCourses = () => {
         fetchCourses,
         fetchCourseById,
         fetchCourseBySlug,
+        fetchUserCoursesList,
         createCourse,
         updateCourse,
         deleteCourse,

@@ -1,5 +1,5 @@
 <template>
-  <UBadge class="tag rounded-full mr-2" :size="size" color="neutral" variant="subtle" @click="uiStore.scrollToSection(link)">
+  <UBadge class="tag rounded-full mr-2" :size="size" color="neutral" variant="subtle" @click="link && uiStore.scrollToSection(link)">
     <slot></slot>
   </UBadge>
 </template>
@@ -8,7 +8,7 @@
 defineProps({
   link: {
     type: String,
-    required: true
+    required: false
   },
   size: {
     type: String as PropType<"md" | "xs" | "sm" | "lg" | "xl">,

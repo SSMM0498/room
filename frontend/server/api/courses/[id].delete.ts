@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   try {
     if (courseToDelete.type === 'cursus') {
       const items = await pb.collection('course_items').getFullList({
-        filter: `parent = "${courseId}"`,
+        filter: `cursus = "${courseId}"`,
       });
       const deletePromises = items.map(item => pb.collection('course_items').delete(item.id));
       await Promise.all(deletePromises);
