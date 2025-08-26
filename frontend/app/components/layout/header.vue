@@ -5,14 +5,15 @@
       <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
     </NuxtLink>
 
-    <layout-nav-home-nav v-if="($route.name as String).startsWith('home')" />
-    <template v-else-if="($route.name as String).startsWith('settings')">
+    <layout-nav-home v-if="isHomePage" />
+    <layout-nav-profile v-else-if="isProfilePage" />
+    <template v-else-if="isSettingsPage">
       <div class="w-full"></div>
     </template>
     <template v-else>
       <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
         variant="subtle" color="neutral" :trailing="false" :placeholder="$t('search') + '...'" />
-      <layout-nav-default-nav />
+      <layout-nav-default />
     </template>
 
     <layout-color-switch class="mx-2" />
@@ -44,27 +45,22 @@ import type { DropdownMenuItem } from '#ui/types'
 
 const { t } = useI18n();
 const localePath = useLocalePath();
+const route = useRoute();
 const user = useAuthUser();
 const { logout } = useAuth();
 
+const isHomePage = computed(() => (route.name as string).startsWith('home'));
+const isProfilePage = computed(() => (route.name as string).startsWith('profile'));
+const isSettingsPage = computed(() => (route.name as string).startsWith('settings'));
 const menuItems = computed<DropdownMenuItem[]>(() => [
   [
     {
-      label: user.value?.name,
+      label: `@${user.value?.username}`,
       slot: 'account-info',
-      disabled: true,
-      children: [
-        { label: `@${user.value?.username}`, disabled: true },
-        { label: user.value?.email, disabled: true }
-      ]
+      to: localePath(`/profile/${user.value?.username}`)
     }
   ],
   [
-    {
-      label: t("profile"),
-      icon: 'i-heroicons:user-20-solid',
-      to: localePath('/profile')
-    },
     {
       label: t("settings.title"),
       icon: 'i-heroicons:cog-6-tooth-20-solid',
