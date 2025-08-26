@@ -2,5 +2,7 @@ frontend/app/components/block-explorer.vue
 frontend/app/pages/explore.vue
 frontend/server/api/blocks.get.ts
 backend/pb_data/*
+tests/*
 tmp.md
+all-content
 README.md

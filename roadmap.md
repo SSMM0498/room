@@ -203,26 +203,58 @@ This roadmap is divided into sequential phases. Each phase builds upon the previ
         * [x] Display the logged-in user's information (name, email, avatar) by accessing the state from the `useAuth` composable.
         * [x] Include a "Logout" button that calls the `logout` function.
 
-### **Phase 3: Frontend Implementation (Recorder & Player)**
+### **Phase 3: The Core Experience (Recorder & Player) - Task List**
 
-*   **Task 1: IDE UI Components**
-    *   Integrate Monaco Editor as a Vue component.
-    *   Integrate Xterm.js as a Vue component for the terminal.
-*   **Task 2: Recorder Logic**
-    *   Create a `recorderService` or composable.
-    *   Capture Monaco editor changes (diffs), cursor movements, and selections.
-    *   Capture terminal input/output.
-    *   Capture audio using the Web Audio API (`MediaRecorder`).
-    *   Combine all events into a timestamped NDJSON stream.
-    *   On stop, package and upload the event stream and audio file to the `courses` collection via an API call.
-*   **Task 3: Player Logic**
-    *   Create a `playerService` or composable.
-    *   Fetch the event stream and audio file for a given course.
-    *   Synchronize event playback with the audio track.
-    *   Apply events to the read-only Monaco editor and Xterm.js instances.
-    *   Implement player controls: play, pause, and a basic timeline scrub bar.
-*   **Task 4: Integrate into Learning Page**
-    *   Build the **Learning Page** (`/learn/:course-id`) to host the player UI.
+#### **1. IDE UI & Foundational Components**
+* [x] Task 1.1: Create the main Learning/Recording page layout (`/learn/[slug]`) and (`/teach/[slug]`).
+* [ ] Task 1.4: Build a reactive File Tree Vue component.
+* [ ] Task 1.2: Create a reusable Vue wrapper component for the Monaco Editor.
+* [ ] Task 1.3: Create a reusable Vue wrapper component for the Xterm.js terminal.
+* [ ] Task 1.6: Build the Mini-Browser component (using an `<iframe>`).
+* [ ] Task 1.5: Build a Tab Management component for both editor and terminal instances.
+* [ ] Task 1.7: Assemble all UI components into the final IDE layout.
+
+#### **2. Bridge & Worker Enhancements (Backend Logic)**
+* [ ] Task 2.1 (Bridge) : Create WebSocket message handlers between the Nuxt server and the Worker for consuming the workspace.
+* [ ] Task 2.2 (Bridge): Create WebSocket message handlers for starting and stopping a recording session.
+* [ ] Task 2.3 (Bridge): Implement the `RecordingService` to listen for all commands/events and write them to a temporary NDJSON log.
+* [ ] Task 2.4 (Bridge): Implement logic to merge the all NDJSON logged separately in each component into a single NDJSON file.
+* [ ] Task 2.5 (Nuxt Server): Create the final server endpoint (`POST /api/course_contents`) to receive and save the packaged recording (NDJSON + audio) to storage.
+* [ ] Task 2.5 (Worker): Verify that all file, terminal, and state changes reliably emit events for the Bridge to capture.
+* [ ] Task 2.6 (Worker): Implement the `state:commit` event to capture workspace state changes and emit them to the Bridge.
+
+#### **3. The Recorder (Client-Side Capture Logic)**
+* [ ] Task 3.1: Create the `useRecorder` composable to manage recording state.
+* [ ] Task 3.2: Implement logic to connect to the Bridge's recording endpoints and manage the session lifecycle (start, stop, pause).
+* [ ] Task 3.3: Implement the `editor:type` event listener with a debounce strategy.
+* [ ] Task 3.4: Implement the `editor:paste` event listener for large content changes.
+* [ ] Task 3.5: Implement listeners for other editor events (`select`, `scroll`).
+* [ ] Task 3.6: Implement the `mouse:path` event listener with a throttle strategy.
+* [ ] Task 3.7: Implement the `mouse:click` event listener.
+* [ ] Task 3.8: Implement listeners for UI events from the File Tree (`files:create`, `delete`, `rename`).
+* [ ] Task 3.9: Implement listeners for IDE-level events (`ide:focus`, `tabs:switch`, `tabs:open`, `tabs:close`).
+* [ ] Task 3.10: Implement `MediaRecorder` API logic for high-quality audio capture.
+* [ ] Task 3.11: Implement the client-side function to package and upload the final recording data to the Nuxt server endpoint.
+
+#### **4. The Player (Client-Side Playback Logic)**
+* [ ] Task 4.1: Create the `usePlayer` composable to manage playback state with state-machine implementation (play,pause,resume,goto,loading,end,editing).
+* [ ] Task 4.2: Implement logic to fetch the NDJSON Action Log and audio file for a given course.
+* [ ] Task 4.3: Build the core playback loop (`requestAnimationFrame`) synchronized with the `<audio>` element's `currentTime`.
+* [ ] Task 4.4: Implement the event dispatcher to route actions from the log to the correct UI handlers.
+* [ ] Task 4.5: Implement handler functions to apply state changes to the IDE components (e.g., `updateEditorContent`, `createFileInTree`, `writeToTerminal`).
+* [ ] Task 4.6: Implement the local rendering of visual-only effects (e.g., the animated fake mouse cursor).
+
+#### **5. Player Controls & Advanced UX**
+* [ ] Task 5.1: Build the Player Controls Vue component (timeline slider, play/pause button, speed controls, chapter markers).
+* [ ] Task 5.2: Connect the play/pause button and speed controls to the `usePlayer` state.
+* [ ] Task 5.3: Implement the timeline scrubbing (fast-forward/rewind) functionality.
+* [ ] Task 5.4: Implement the full state-reset logic for seeking:
+    * [ ] Sub-task: Trigger a workspace state reset via the Bridge.
+    * [ ] Sub-task: Rapidly process all `state:commit` and `files:*` events up to the target timestamp to re-hydrate the workspace.
+    * [ ] Sub-task: Seek the audio element to the target timestamp.
+* [ ] Task 5.5: Implement the UI logic for "Action-Locked" periods (e.g., showing a "Process running..." message instead of unlocking the IDE on pause).
+* [ ] Task 5.6 (Nuxt Server): Create the server endpoint (`POST /api/progress`) to save learning progress.
+* [ ] Task 5.7 (Player): Implement the client-side logic to periodically call the progress-saving endpoint.
 
 ### **Phase 4: Content Management (Instructor Workflow)**
 
