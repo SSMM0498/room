@@ -13,10 +13,9 @@ export default defineEventHandler(async (event) => {
         const devNames = ['faty', 'baly', 'chebi', 'ping', 'ada'];
         const randomName = devNames[Math.floor(Math.random() * devNames.length)];
 
-        // Add a log to make it clear that the override is happening
         console.log(`[DEV MODE] Overriding workspace name. Original: "${name}", New: "${randomName}"`);
 
-        name = randomName; // Reassign the name variable
+        name = randomName;
     }
 
     if (!name || !language) {
@@ -28,25 +27,26 @@ export default defineEventHandler(async (event) => {
             name,
             course,
             owner: ownerId,
-            status: 'inactive',
+            status: 'sleeping',
             language,
-            is_active: false,
         };
-        const newWorkspaceRecord = await pb.collection('workspaces').create(newWorkspaceData);
+        const newWorkspaceRecord = await pb.collection('workspaces').create(newWorkspaceData, {
+            expand: 'language',
+        });
         console.log(`[PB] Created workspace record ${newWorkspaceRecord.id}`);
 
         const s3Path = `workspaces/${name}`;
-        const languageTag = await pb.collection('tags').getOne(language);
+        const languageTag = newWorkspaceRecord.expand!.language;
         const templateSource = `templates/${languageTag.name.toLowerCase()}`;
 
-        await copyMinioFolder(templateSource, s3Path);
+        copyMinioFolder(templateSource, s3Path);
         console.log(`[MINIO] Copied base template for ${languageTag.name} to ${s3Path}`);
 
+        setResponseStatus(event, 201);
         return newWorkspaceRecord;
-
     } catch (error: any) {
         console.error('[WORKSPACE CREATE] Error:', error);
         if (error.statusCode) throw error;
-        throw createError({ statusCode: 500, statusMessage: 'Failed to create workspace.' });
+        throw createError({ statusCode: 500, statusMessage: 'Failed to create workspace.', data: { error } });
     }
 });

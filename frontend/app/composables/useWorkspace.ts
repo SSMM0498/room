@@ -3,7 +3,7 @@ import { type RecordModel } from 'pocketbase';
 
 export const useWorkspace = () => {
   const currentWorkspace = ref<RecordModel | null>(null);
-  const isStarting = ref(false); // For the progress bar
+  const isStarting = ref(false);
   const error = ref<Error | null>(null);
 
   /**
@@ -47,11 +47,25 @@ export const useWorkspace = () => {
     }
   };
 
+  const fetchWorkspaceByCourse = async (courseId: string) => {
+    error.value = null;
+    try {
+      const workspace = await $fetch<RecordModel>(`/api/workspaces/by-course/${courseId}`);
+      currentWorkspace.value = workspace;
+      return workspace;
+    } catch (err: any) {
+      error.value = err;
+      currentWorkspace.value = null;
+      return null;
+    }
+  };
+
   return {
     currentWorkspace,
     isStarting,
     error,
     createWorkspace,
     startWorkspace,
+    fetchWorkspaceByCourse,
   };
 };

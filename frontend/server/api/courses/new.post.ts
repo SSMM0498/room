@@ -9,12 +9,12 @@ export default defineEventHandler(async (event) => {
         const body = await readBody(event);
 
         const dataToCreate = {
-        ...body,
-        author: pb.authStore.record!.id,
+            ...body,
+            author: pb.authStore.record!.id,
         };
 
         const newCourseRecord = await pb.collection('courses').create(dataToCreate, {
-        expand: 'author,tags',
+            expand: 'author,tags',
         });
 
         setResponseStatus(event, 201);

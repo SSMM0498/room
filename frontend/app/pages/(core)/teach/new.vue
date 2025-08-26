@@ -1,7 +1,7 @@
 <template>
     <div class="w-full base-height flex items-start justify-start">
-        <div class="w-4/5 px-8 py-4 h-full border-r border-gray-300 overflow-y-auto">
-            <h1 class="text-3xl font-bold mb-8">New Course</h1>
+        <div class="lg:w-4/5 px-8 py-4 h-full lg:border-r border-gray-300 overflow-y-auto w-full border-0">
+            <h1 class="text-3xl font-bold mb-8 text-black dark:text-white">New Course</h1>
 
             <UStepper v-model="currentStep" :items="steps" class="w-full" orientation="vertical">
 
@@ -9,7 +9,10 @@
                 <template #type>
                     <UCard>
                         <template #header>
-                            <h3 class="text-lg font-semibold">{{ steps[0]!.description }}</h3>
+                            <div class="flex w-full items-center justify-between">
+                                <h3 class="text-lg font-semibold">{{ steps[0]!.description }}</h3>
+                                <UButton @click="() => handleStartWorkspace('rgtf74rqqa8uegl')" label="Start Workspace"/>
+                            </div>
                         </template>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <!-- Single Course Option -->
@@ -186,7 +189,6 @@
                                             <div class="flex items-center gap-3">
                                                 <UIcon name="i-heroicons-bars-2"
                                                     class="handle cursor-grab text-gray-400" />
-                                                <!-- Each 'item' in a cursus is a linking record. We expand to the actual course for the title -->
                                                 <span class="font-medium">{{ element.expand.course.title }}</span>
                                             </div>
                                             <UButton @click="handleRemoveItemFromCursus(element.id)" color="error"
@@ -254,7 +256,7 @@
                                     <UIcon name="i-heroicons-check-circle-20-solid" class="h-6 w-6" />
                                     <p class="font-semibold">Workspace is configured and ready to launch.</p>
                                 </div>
-                                <UButton @click="handleStartWorkspace" size="lg"
+                                <UButton @click="() => handleStartWorkspace()" size="lg"
                                     icon="i-heroicons-arrow-right-end-on-rectangle">
                                     Start and Enter IDE
                                 </UButton>
@@ -267,7 +269,7 @@
                 <template #content />
             </UStepper>
         </div>
-        <div class="w-1/4 p-8 h-full flex items-center justify-center">
+        <div class="lg:w-1/4 p-8 h-full lg:flex items-center justify-center hidden">
             <widget-card class="w-full h-full" :course="coursePreview" v-if="coursePreview" :is-preview="true" />
         </div>
     </div>
@@ -362,7 +364,6 @@ const steps = computed<StepperItem[]>(() => {
     return [...baseSteps, ...dynamicSteps];
 });
 
-
 const liveDate = ref(new CalendarDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()));
 const liveTime = reactive({ hours: 18, minutes: 0 });
 
@@ -450,7 +451,7 @@ async function handleCreateCourse() {
     const result = await createCourse({
         title: courseState.title,
         description: courseState.description,
-        tags: courseState.tags,
+        tags: courseState.tags.map((t) => t.value),
         type: courseState.type as string,
         school: user.value!.school.id
     });
@@ -526,13 +527,13 @@ async function handleCreateWorkspace() {
     workspacePending.value = false;
 }
 
-async function handleStartWorkspace() {
-    if (!createdWorkspace.value) return;
-    const result = await startWorkspace(createdWorkspace.value.id);
+async function handleStartWorkspace(id?: string) {
+    if (!createdWorkspace.value && !id) return;
+    const result = await startWorkspace(id ?? createdWorkspace.value!.id);
     if (result?.url) {
         toast.add({ title: 'Workspace is ready!', description: `Redirecting...`, color: 'success' });
         // In a real app, you would navigate to the URL
-        // await navigateTo(result.url, { external: true });
+        await navigateTo(result.url, { external: true });
         console.log(`Redirecting to ${result.url}`);
     } else {
         toast.add({ title: 'Error starting workspace.', description: 'Please check the logs and try again.', color: 'error' });
