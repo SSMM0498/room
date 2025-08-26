@@ -38,8 +38,6 @@ const uniqueTags = computed(() => {
     if (!profileData.value?.courses) return [];
 
     const allTags = profileData.value?.courses.flatMap(course => course.tags);
-    console.log(">>> courses", profileData.value?.courses);
-    console.log(">>> allTags", allTags);
     const uniqueTagMap = new Map();
     allTags.forEach((tag: any) => {
         if (tag && !uniqueTagMap.has(tag.id)) {

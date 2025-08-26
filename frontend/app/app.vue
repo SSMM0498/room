@@ -15,7 +15,7 @@ useHead({
   <Body class="bg-white dark:bg-gray-900 h-screen w-screen">
     <NuxtLoadingIndicator />
     <NuxtLayout>
-      <UApp>
+      <UApp :toaster="{ position: 'bottom-center' }">
         <NuxtPage />
       </UApp>
     </NuxtLayout>

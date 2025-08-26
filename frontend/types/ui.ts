@@ -6,13 +6,14 @@ export interface CourseCard {
   slug: string;
   description: string;
   type?: string;
+  status?: string;
   createdDate: string;
   durationFormatted: string;
   items?: RecordModel[];
   price?: number;
   section: string;
   tags: RecordModel[];
-  author?: RecordModel; 
+  author?: RecordModel;
 }
 
 export interface School extends RecordModel {
@@ -24,6 +25,12 @@ export interface School extends RecordModel {
   //   'courses(school)': CourseCard[];
   //   owner: RecordModel; // User Record
   // }
+}
+
+export interface UserProfileData {
+  user: RecordModel | null;
+  school: RecordModel | null;
+  courses: CourseCard[];
 }
 
 export type SimpleCourse = {

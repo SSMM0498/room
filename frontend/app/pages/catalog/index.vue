@@ -18,39 +18,43 @@ const { tags } = useTags();
 
 await useAsyncData('home-page-data', async () => await fetchCourses());
 
-const sections = computed<Section[]>(() => {
-  if (!courses.value || !tags.value) return [];
+const sectionUI = useSectionUIStore();
 
-  const sectionsArray: Section[] = [];
-  const parsedCourses = courses.value;
+watch([courses, tags], () => {
+  if (!courses.value || !tags.value) {
+    sectionUI.sections = []
+    return
+  }
+
+  const parsedCourses = courses.value
+  const sectionsArray: Section[] = []
 
   sectionsArray.push({
     title: 'Latest',
-    courses: parsedCourses.slice(0, Math.min(parsedCourses.length, 5)).map((c) => ({ ...c, section: 'Latest' })), // Get the 5 newest courses
-  });
+    courses: parsedCourses.slice(0, Math.min(parsedCourses.length, 5)).map(c => ({ ...c, section: 'Latest' })),
+  })
 
   if (parsedCourses.length > 5) {
     sectionsArray.push({
       title: 'Top',
-      courses: parsedCourses.slice(5, 10).map((c) => ({ ...c, section: 'Top' })),
-    });
+      courses: parsedCourses.slice(5, 10).map(c => ({ ...c, section: 'Top' })),
+    })
   }
 
   for (const tag of tags.value) {
     const coursesForTag = parsedCourses.filter(course =>
       course.tags.some((t: any) => t.id === tag.id)
-    );
-
+    )
     if (coursesForTag.length > 0) {
       sectionsArray.push({
         title: tag.name,
-        courses: coursesForTag.map((c) => ({ ...c, section: tag.name })),
-      });
+        courses: coursesForTag.map(c => ({ ...c, section: tag.name })),
+      })
     }
   }
 
-  return sectionsArray;
-});
+  sectionUI.sections = sectionsArray
+}, { immediate: true })
 </script>
 
 <template>
@@ -59,5 +63,5 @@ const sections = computed<Section[]>(() => {
   </widget-pinned-section>
   <div v-if="isPending" class="p-6">Loading sections...</div>
   <div v-else-if="hasError" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
-  <layout-section :section="section" v-for="section in sections" :key="section.title"></layout-section>
+  <layout-section :section="section" v-for="section in sectionUI.sections" :key="section.title"></layout-section>
 </template>

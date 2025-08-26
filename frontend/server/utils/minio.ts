@@ -12,7 +12,6 @@ export function createMinioClient() {
     });
 }
 
-// This utility copies a folder within a MinIO bucket.
 export async function copyMinioFolder(source: string, destination: string) {
     const minioClient = createMinioClient();
     const config = useRuntimeConfig();

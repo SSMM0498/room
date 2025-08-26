@@ -55,7 +55,6 @@ const recommendations = [
 <template>
   <div class="flex flex-col w-full h-full items-start justify-between p-4 gap-4">
     <header class="flex flex-col justify-start items-start">
-      <h1 class="text-3xl font-bold">{{ $t("welcome") }} </h1>
       <h1 class="text-3xl font-bold">{{ $t("quick-start") }} </h1>
     </header>
 

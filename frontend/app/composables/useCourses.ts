@@ -29,6 +29,7 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
         slug: record.slug,
         description: record.description,
         type: record.type,
+        status: record.status,
         createdDate,
         section: '',
         durationFormatted,
