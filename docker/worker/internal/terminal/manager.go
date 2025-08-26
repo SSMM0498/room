@@ -21,22 +21,30 @@ func NewManager() *Manager {
 	}
 }
 
-func (m *Manager) Create(id string, onData func(data []byte)) (string, error) {
+func (m *Manager) Get(id string) (*os.File, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	ptmx, ok := m.terminals[id]
+	return ptmx, ok
+}
+
+func (m *Manager) CreateOrGet(id string, cwd string, onData func(data []byte)) (string, *os.File, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if ptmx, ok := m.terminals[id]; ok {
+		return id, ptmx, nil
+	}
 
 	if id == "" {
 		id = uuid.New().String()
 	}
 
-	if _, ok := m.terminals[id]; ok {
-		return "", fmt.Errorf("terminal with id %s already exists", id)
-	}
-
 	cmd := exec.Command("bash")
+	cmd.Dir = cwd
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
-		return "", fmt.Errorf("failed to start pty: %w", err)
+		return "", nil, fmt.Errorf("failed to start pty: %w", err)
 	}
 
 	m.terminals[id] = ptmx
@@ -62,7 +70,7 @@ func (m *Manager) Create(id string, onData func(data []byte)) (string, error) {
 		}
 	}()
 
-	return id, nil
+	return id, ptmx, nil
 }
 
 func (m *Manager) Write(id string, data string) error {

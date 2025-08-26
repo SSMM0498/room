@@ -6,19 +6,22 @@ import (
 	"net/http"
 	"worker/internal/filesystem"
 	"worker/internal/terminal"
+	"worker/internal/watcher"
 	"worker/pkg/types"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/websocket"
 )
 
 type Handler struct {
-	hub        *Hub
-	fsSvc      *filesystem.Service
-	termSvc    *terminal.Service
+	hub      *Hub
+	fsSvc    *filesystem.Service
+	termSvc  *terminal.Service
+	watchSvc *watcher.Service
 }
 
-func NewHandler(hub *Hub, fsSvc *filesystem.Service, termSvc *terminal.Service) *Handler {
-	return &Handler{hub: hub, fsSvc: fsSvc, termSvc: termSvc}
+func NewHandler(hub *Hub, fsSvc *filesystem.Service, termSvc *terminal.Service, watchSvc *watcher.Service) *Handler {
+	return &Handler{hub: hub, fsSvc: fsSvc, termSvc: termSvc, watchSvc: watchSvc}
 }
 
 var upgrader = websocket.Upgrader{
@@ -57,13 +60,13 @@ func (c *Client) readPump(h *Handler) {
 		if err != nil {
 			break
 		}
-		
+
 		var msg types.Message
 		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Printf("WORKER: Error unmarshaling message: %v", err)
+			log.Printf("[WORKER] Error unmarshaling message: %v", err)
 			continue
 		}
-		
+
 		go h.routeMessage(c, msg)
 	}
 }
@@ -83,7 +86,7 @@ func (c *Client) writePump() {
 func (h *Handler) routeMessage(client *Client, msg types.Message) {
 	dataBytes, _ := json.Marshal(msg.Data)
 	ack := types.Acknowledge{Event: msg.Event}
-    var reqAckID string
+	var reqAckID string
 
 	var tempData map[string]interface{}
 	if json.Unmarshal(dataBytes, &tempData) == nil {
@@ -95,72 +98,123 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 
 	switch msg.Event {
 	case "init":
-		log.Println("WORKER: Bridge initialized.")
+		log.Println("[WORKER] Bridge initialized.")
+		go h.watchSvc.StartEventLoop(func(event fsnotify.Event) {
+			log.Printf("WORKER: Watch event detected %s", event.Op)
+			var eventType string
+			switch {
+			case event.Op&fsnotify.Create == fsnotify.Create:
+				eventType = "create"
+			case event.Op&fsnotify.Write == fsnotify.Write:
+				eventType = "write"
+			case event.Op&fsnotify.Remove == fsnotify.Remove:
+				eventType = "remove"
+			case event.Op&fsnotify.Rename == fsnotify.Rename:
+				eventType = "rename"
+			default:
+				return
+			}
+
+			watchMsg := &types.Message{
+				Event: "file-changed",
+				Data:  map[string]string{"event": eventType, "path": event.Name},
+			}
+			client.hub.Send(watchMsg)
+		})
+		h.watchSvc.Watch("./workspace/")
 		return
 	case "hydrate-create-file":
+		log.Println("[WORKER] Hydrating file.")
 		var req types.HydrateFileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.CreateFile(req.TargetPath, req.ContentBase64)
+		err := h.fsSvc.CreateFileBase64(req.TargetPath, req.ContentBase64)
 		if err != nil {
 			ack.Error = err.Error()
 		}
 	case "crud-read-folder":
+		log.Println("[WORKER] Reading folder.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
+		h.watchSvc.Watch(req.TargetPath)
 		entries, err := h.fsSvc.ReadFolder(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
-			ack.Data = map[string]interface{}{"folderContents": entries, "ackID": reqAckID}
+			ack.Data = map[string]interface{}{
+				"ackID":          reqAckID,
+				"targetPath":     req.TargetPath,
+				"folderContents": entries,
+			}
 		}
+	case "crud-collapse-folder":
+		var req types.FileRequest
+		json.Unmarshal(dataBytes, &req)
+		h.watchSvc.Unwatch(req.TargetPath)
+		return
 	case "crud-read-file":
+		log.Println("[WORKER] Reading file.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
 		content, err := h.fsSvc.ReadFile(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
-			ack.Data = map[string]interface{}{"fileContent": content, "ackID": reqAckID}
+			ack.Data = map[string]interface{}{
+				"ackID":       reqAckID,
+				"targetPath":  req.TargetPath,
+				"fileContent": content,
+			}
 		}
+	case "crud-close-file":
+		var req types.FileRequest
+		json.Unmarshal(dataBytes, &req)
+		h.watchSvc.RemoveFileReference(req.TargetPath)
+		return
 	case "crud-update-file":
+		log.Println("[WORKER] Updating file.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
 		err := h.fsSvc.UpdateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
 		}
-    case "crud-create-file":
-        var req types.FileRequest
+	case "crud-create-file":
+		log.Println("[WORKER] Creating file.")
+		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
 		err := h.fsSvc.CreateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
 		}
-    case "crud-create-folder":
-        var req types.FileRequest
+	case "crud-create-folder":
+		log.Println("[WORKER] Creating folder.")
+		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
 		err := h.fsSvc.CreateFolder(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		}
-    case "crud-delete-resource":
-        var req types.FileRequest
+	case "crud-delete-resource":
+		log.Println("[WORKER] Deleting resource.")
+		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
 		err := h.fsSvc.DeleteResource(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		}
-    case "crud-move-resource":
-        var req types.MoveRequest
+	case "crud-move-resource":
+		log.Println("[WORKER] Moving resource.")
+		var req types.MoveRequest
 		json.Unmarshal(dataBytes, &req)
 		err := h.fsSvc.MoveResource(req.TargetPath, req.NewPath)
 		if err != nil {
 			ack.Error = err.Error()
 		}
 	case "create-terminal":
+		log.Println("[WORKER] Creating terminal.")
 		var req types.TerminalRequest
 		json.Unmarshal(dataBytes, &req)
-		_, err := h.termSvc.CreateTerminal(req.ID, func(data []byte) {
+		_, err := h.termSvc.CreateOrGetTerminal(req.ID, func(data []byte) {
 			client.hub.Send(&types.Message{
 				Event: "terminal-data",
 				Data:  map[string]interface{}{"id": req.ID, "content": string(data)},
@@ -170,32 +224,32 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 			ack.Error = err.Error()
 		}
 	case "terminal-input":
+		log.Println("[WORKER] Inputing terminal.")
 		var req types.TerminalInput
 		json.Unmarshal(dataBytes, &req)
 		h.termSvc.WriteToTerminal(req)
-		return 
-    case "close-terminal":
-        var req types.TerminalRequest
-        json.Unmarshal(dataBytes, &req)
-        h.termSvc.CloseTerminal(req.ID)
+		return
+	case "close-terminal":
+		log.Println("[WORKER] Closing terminal.")
+		var req types.TerminalRequest
+		json.Unmarshal(dataBytes, &req)
+		h.termSvc.CloseTerminal(req.ID)
 	default:
-		log.Printf("WORKER: Unknown event type: %s", msg.Event)
+		log.Printf("[WORKER] Unknown event type: %s", msg.Event)
 		return
 	}
 
 	if reqAckID != "" {
-		// --- THIS IS THE FIX ---
 		responseMsg := &types.Message{
 			Event: ack.Event,
 			Data:  ack.Data,
 		}
-		// If there was an error, we can add it to the Data payload
 		if ack.Error != "" {
 			if dataMap, ok := responseMsg.Data.(map[string]interface{}); ok {
 				dataMap["error"] = ack.Error
 			}
 		}
-		
+
 		client.Send <- responseMsg
 	}
 }
