@@ -22,14 +22,15 @@
         <i class="ri-play-circle-line ri-2x"></i>
       </button>
       <div class="techs">
-        <!-- Make sure tags exist before looping -->
         <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name" />
       </div>
-      <UAvatar v-if="course.author" :src="useFileUrl(course.author, 'avatar', '100x100')" :alt="course.author.username"
-        crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
+      <NuxtLink :to.stop="localePath(`/@/${course.author!.username}`)" @click.stop="">
+        <UAvatar v-if="course.author" :src="useFileUrl(course.author, 'avatar', '100x100')"
+          :alt="course.author.username" crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
+      </NuxtLink>
       <div class="date bg-[white] text-gray-950 dark:bg-gray-900 dark:text-white">{{ course.createdDate }}</div>
       <!-- HERE IS THE PRICE SECTION -->
-      <!-- <div class="price-ribbon">{{ course.price }}</div> -->
+      <div class="price-ribbon">{{ course.price ? course.price + '$' : 'Free' }}</div>
     </component>
     <div
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
@@ -54,7 +55,7 @@
             <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
               <!-- Conditionally render NuxtLink or a simple div for the title -->
               <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
-                :class="{'cursor-pointer': !isPreview}" :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
+                :class="{ 'cursor-pointer': !isPreview }" :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
                 {{ course.title }}
               </component>
               <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
@@ -91,7 +92,7 @@
       </div>
       <!-- Conditionally render NuxtLink or a simple div for the title -->
       <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
-        :class="{'cursor-pointer': !isPreview}" :to="isPreview ? undefined : `/catalog/course/${course.slug}`"
+        :class="{ 'cursor-pointer': !isPreview }" :to="isPreview ? undefined : `/catalog/course/${course.slug}`"
         @click="uiStore.closeArticle">
         {{ course.title }}
       </component>
@@ -110,6 +111,7 @@ defineProps<{
 }>();
 
 const { t } = useI18n();
+const localePath = useLocalePath();
 const uiStore = useSectionUIStore();
 
 const tabs = [{
