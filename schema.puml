@@ -1,0 +1,55 @@
+@startuml
+!theme vibrant
+
+actor User
+participant "Browser (Nuxt Frontend)" as Frontend
+participant "Nuxt Server (Orchestrator)" as NuxtServer
+participant "PocketBase" as PB
+participant "Kubernetes API" as K8s
+participant "Workspace Pod\n(Bridge + Worker)" as Pod
+participant "MinIO S3" as S3
+
+skinparam sequenceMessageAlign center
+
+User -> Frontend : Clicks "Start Workspace"
+Frontend -> NuxtServer : POST /api/workspace/start\n(body: {workspaceId})
+NuxtServer -> PB : Get workspace record\n(ID: workspaceId)
+PB --> NuxtServer : Returns workspace metadata
+
+group Kubernetes Orchestration
+    NuxtServer -> K8s : Delete old resources\n(Deployment, Service, Ingress)
+    note right of K8s: Ensures a clean start
+    K8s --> NuxtServer : Acknowledge deletion
+
+    NuxtServer -> K8s : Create new resources\n(from service-template.yaml)
+    K8s --> NuxtServer : Acknowledge creation
+
+    loop Poll for Readiness (e.g., every 5s)
+        NuxtServer -> K8s : Get Deployment status
+        K8s --> NuxtServer : Returns status (e.g., "0/1 Ready")
+    end
+    K8s --> NuxtServer : Returns status ("1/1 Ready")
+end
+
+NuxtServer -> PB : PATCH record\n(status: 'active')
+PB --> NuxtServer : Acknowledge update
+NuxtServer --> Frontend : 200 OK\n(body: { url: "https://..." })
+
+group Live Session Initialization
+    Frontend -> Pod : WebSocket Connect\n(to Bridge on URL)
+    
+    Pod -> Pod : Bridge connects to Worker\n(internal WebSocket)
+    note right of Pod
+        Bridge triggers one-time
+        hydration process
+    end note
+    
+    Pod -> S3 : Bridge fetches files from MinIO
+    S3 --> Pod : Returns file streams
+    
+    Pod -> Pod : Bridge sends files to Worker
+    
+    Pod --> Frontend : WebSocket connection established
+end
+
+@enduml
