@@ -146,6 +146,7 @@
       "name_label": "Nom",
       "name_placeholder": "Votre nom complet",
       "username_label": "Nom d'utilisateur",
+      "bio": "Bio",
       "validation": "Le nom doit comporter au moins 2 caractères",
       "button_save": "Enregistrer le Profil",
       "toast_success": "Profil mis à jour avec succès !",
@@ -191,10 +192,14 @@
       "toast_error": "Impossible de supprimer le compte"
     }
   },
-  "upload": "Télécharger l'image",
-  "change": " Changer l'image",
-  "remove": "Retirer",
+  "avatar": {
+    "save": "Sauvegarder le avatar",
+    "upload": "Télécharger l'image",
+    "change": " Changer l'image",
+    "remove": "Retirer"
+  },
   "errors": {
+    "selectOne": "Veuillez sélectionner un fichier image.",
     "imageTooLarge": " L'image est trop grande.Veuillez choisir une image inférieure à 2 Mo.",
     "invalidImageType": " Veuillez télécharger un fichier image valide (jpeg, png ou webp).",
     "invalidDimensions": " Les dimensions de l'image ne sont pas valides.Veuillez télécharger une image entre 200x200 et 4096x4096 pixels."

@@ -86,7 +86,7 @@
   },
   "learn": {
     "title": "Master Any Technology",
-    "subtitle": "From frontend frameworks to backend systems, our growing library of interactive courses has you covered."
+    "subtitle": "From frontend frameworks to backend systems, our growing library of interactive courses has everything you need."
   },
   "community": {
     "title": "Ready to Share Your Knowledge?",
@@ -141,11 +141,12 @@
       "delete_account": "Delete Account"
     },
     "profile": {
-      "title": "Profile Information",
+      "title": "Profile Informations",
       "avatar_label": "New Avatar",
       "name_label": "Name",
       "name_placeholder": "Your full name",
       "username_label": "Username",
+      "bio": "Bio",
       "validation": "Name must be at least 2 characters",
       "button_save": "Save Profile",
       "toast_success": "Profile updated successfully!",
@@ -191,10 +192,14 @@
       "toast_error": "Could not delete account"
     }
   },
-  "upload": "Upload image",
-  "change": "Change image",
-  "remove": "Remove",
+  "avatar": {
+    "save": "Save avatar",
+    "upload": "Upload image",
+    "change": "Change image",
+    "remove": "Remove"
+  },
   "errors": {
+    "selectOne": "Please select an image file.",
     "imageTooLarge": "The image is too large. Please choose an image smaller than 2MB.",
     "invalidImageType": "Please upload a valid image file (JPEG, PNG, or WebP).",
     "invalidDimensions": "The image dimensions are invalid. Please upload an image between 200x200 and 4096x4096 pixels."
