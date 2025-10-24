@@ -10,15 +10,17 @@ import type { RecordModel } from 'pocketbase';
  * @returns A URL string pointing to our local file proxy.
  */
 export const useFileUrl = (
-  record: RecordModel | null | undefined,
+  record: any,
   filename: string,
-  thumb?: string
+  thumb?: string,
+  multiple?: boolean,
+  index?: number,
 ): string => {
   if (!record || !record[filename]) {
     return '';
   }
 
-  let url = `/api/files/${record.collectionId}/${record.id}/${record[filename]}`;
+  let url = `/api/files/${record.collectionId}/${record.id}/${multiple ? record[filename][index ?? 0] : record[filename]}`;
 
   if (thumb) {
     url += `?thumb=${thumb}`;

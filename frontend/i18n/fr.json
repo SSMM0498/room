@@ -39,6 +39,17 @@
   "feedback": "Retour",
   "welcome": "Bienvenue 👋!",
   "quick-start": "Démarrage rapide",
+  "quick_start": {
+    "title": "Démarrage Rapide",
+    "keep_learning": "Continuer l'Apprentissage",
+    "loading": "Chargement des cours...",
+    "no_courses": "Aucun cours en cours. Commencez à apprendre quelque chose de nouveau !",
+    "action_shortcuts": "Raccourcis d'Actions",
+    "join_school": "Rejoindre une école",
+    "find_room": "Trouver une salle",
+    "start_room": "Démarrer une salle",
+    "create_school": "Créer une école"
+  },
   "home": "Accueil",
   "sign_up": "S'inscrire",
   "sign_in": "Se connecter",

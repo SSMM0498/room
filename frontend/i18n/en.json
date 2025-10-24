@@ -39,6 +39,17 @@
   "feedback": "Feedback",
   "welcome": "Welcome 👋!",
   "quick-start": "Quick start",
+  "quick_start": {
+    "title": "Quick Start",
+    "keep_learning": "Keep Learning",
+    "loading": "Loading courses...",
+    "no_courses": "No courses in progress. Start learning something new!",
+    "action_shortcuts": "Action Shortcuts",
+    "join_school": "Join a school",
+    "find_room": "Find a room",
+    "start_room": "Start a room",
+    "create_school": "Create a school"
+  },
   "home": "Home",
   "sign_up": "Sign up",
   "sign_in": "Sign in",
