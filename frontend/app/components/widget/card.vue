@@ -39,7 +39,7 @@
       <UTabs :items="tabs" class="w-full" variant="link">
         <template #overview>
           <div class="flex flex-col w-full items-start justify-start">
-            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-300 mb-2">
+            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-200 dark:border-gray-800 mb-2">
               <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
               <div class="flex flex-col">
                 <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
@@ -55,7 +55,8 @@
             <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
               <!-- Conditionally render NuxtLink or a simple div for the title -->
               <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
-                :class="{ 'cursor-pointer': !isPreview }" :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
+                :class="{ 'cursor-pointer': !isPreview }"
+                :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
                 {{ course.title }}
               </component>
               <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>

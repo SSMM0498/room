@@ -47,10 +47,10 @@
                     </div>
                     <!-- Right Panel -->
                     <div class="flex flex-[40%] flex-col text-[min(2vw,14px)] lg:text-[min(1vw,14px)]"
-                        :class="darkMode ? 'dark:border-gray-700 border-gray-200' : 'border-gray-200'">
+                        :class="darkMode ? 'dark:border-gray-700 border-gray-200 dark:border-gray-800' : 'border-gray-200 dark:border-gray-800'">
                         <!-- Right Panel Header -->
                         <div class="flex h-[10%] border-b items-center"
-                            :class="darkMode ? 'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 bg-white text-gray-500' : 'border-gray-200 bg-white text-gray-500'">
+                            :class="darkMode ? 'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-800 bg-white text-gray-500' : 'border-gray-200 dark:border-gray-800 bg-white text-gray-500'">
                             <svg stroke="currentColor" fill="currentColor" stroke-width="0.5" viewBox="0 0 16 16"
                                 class="aspect-1 ml-[5%] h-auto w-[7%]" height="1em" width="1em">
                                 <path fill-rule="evenodd"

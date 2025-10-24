@@ -34,7 +34,9 @@
                         <div v-for="metric in metrics" :key="metric.name" class="flex items-center gap-[5%]">
                             <span class="min-w-[30%]">{{ metric.name }}</span>
                             <div class="relative h-[35%] flex-1">
-                                <div class="h-full w-full rounded-full border border-gray-200 bg-gray-100"></div>
+                                <div
+                                    class="h-full w-full rounded-full border border-gray-200 dark:border-gray-800 bg-gray-100">
+                                </div>
                                 <div class="absolute inset-y-0 rounded-full border border-yellow-400 bg-yellow-400"
                                     :style="{ width: metric.value + '%' }"></div>
                             </div>

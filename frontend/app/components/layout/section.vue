@@ -1,8 +1,8 @@
 <template>
   <section
-    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay': uiStore.articleOpened && uiStore.currentSection !== section.title }"
+    :class="{ 'w-[80vw] pr-5 !gap-0 pt-0': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay border-gray-700': uiStore.articleOpened && uiStore.currentSection !== section.title }"
     :id="section.title.toLowerCase()"
-     class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-4 pt-2 pb-8 border-gray-300 border-r overflow-x-hidden overflow-y-scroll">
+    class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-4 pt-2 pb-8 border-gray-200 dark:border-gray-800 border-r overflow-x-hidden overflow-y-scroll">
     <div :class="{ '!hidden': uiStore.articleOpened && uiStore.currentSection === section.title, }"
       class="flex w-[110%] justify-between items-center sticky z-50 bg-white dark:bg-gray-900 py-3 -ml-3 px-3 -top-2">
       <h1 class="flex font-semibold text-3xl">{{ section.title }}
@@ -70,7 +70,7 @@ section::after {
   left: 0;
   right: -9px;
   bottom: 0;
-  height: 300%;
+  height: 100%;
   pointer-events: none;
   transition: opacity 1s;
   @apply bg-black/85 opacity-0 z-50;

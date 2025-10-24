@@ -14,7 +14,10 @@
             </div>
 
             <div class="mt-12 flex items-center justify-center w-2/3 dark:text-white text-black">
-                <UAccordion :items="faqItems">
+                <UAccordion :items="faqItems" :ui="{
+                    trigger: 'text-lg',
+                    body: 'text-base text-muted'
+                }">
                     <template #default="{ item }">
                         {{ item.label }}
                     </template>

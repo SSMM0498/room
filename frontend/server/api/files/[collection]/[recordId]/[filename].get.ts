@@ -2,7 +2,7 @@ export default defineEventHandler(async (event) => {
   const pb = createPocketBaseInstance(event);
 
   const { collection, recordId, filename } = event.context.params as Record<string, string>;
-  
+
   const query = getQuery(event);
   const thumb = query.thumb as string | undefined;
 

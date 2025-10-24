@@ -3,7 +3,7 @@
     :class="{ 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
     :id="`${course.section.toLowerCase()}-${course.id}`"
     :style="{ '--random-right': `${randomRight}%`, '--random-top': `${randomTop}%` }"
-    class="p-2 border border-gray-300 rounded-lg">
+    class="p-2 border border-gray-200 dark:border-gray-800 rounded-lg">
     <NuxtLink class="cursor-pointer text-xl mb-2 font-medium" :to="`/catalog/course/${course.slug}`">
       {{ course.id }} . {{ course.title }}
     </NuxtLink>

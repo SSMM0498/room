@@ -1,14 +1,14 @@
 <template>
     <nav class="flex items-center justify-start overflow-hidden ml-4">
         <UPopover :popper="{ placement: 'bottom-start' }">
-            <UBadge variant="subtle" class="tag rounded-full mr-2" color="neutral">
+            <UBadge variant="subtle" class="tag rounded-full mr-4" color="neutral">
                 <b>Filters</b>
                 <UIcon name="i-hugeicons:filter-horizontal" class="mr-1" />
             </UBadge>
             <template #content>
-                <div class="p-4 w-full flex flex-col gap-4">
+                <div class="p-3 w-full flex flex-col gap-4">
                     <div>
-                        <p class="text-sm font-bold mb-2">Room Type</p>
+                        <p class="text-xs font-bold mb-1">Room Type</p>
                         <UButtonGroup size="xs">
                             <UButton color="primary" variant="solid" :active="true">All</UButton>
                             <UButton color="neutral" variant="soft">Cursus</UButton>
@@ -18,7 +18,7 @@
                         </UButtonGroup>
                     </div>
                     <div>
-                        <p class="text-sm font-bold mb-2">Pricing</p>
+                        <p class="text-xs font-bold mb-1">Pricing</p>
                         <UButtonGroup size="xs">
                             <UButton color="primary" variant="solid" :active="true">All</UButton>
                             <UButton color="neutral" variant="soft">Free</UButton>
@@ -28,7 +28,7 @@
                         </UButtonGroup>
                     </div>
                     <div>
-                        <p class="text-sm font-bold mb-2">Duration</p>
+                        <p class="text-xs font-bold mb-1">Duration</p>
                         <UButtonGroup size="xs">
                             <UButton color="primary" variant="solid" :active="true">All</UButton>
                             <UButton color="neutral" variant="soft">Short</UButton>
@@ -37,7 +37,7 @@
                         </UButtonGroup>
                     </div>
                     <div>
-                        <p class="text-sm font-bold mb-2">Sort by</p>
+                        <p class="text-xs font-bold mb-1">Sort by</p>
                         <UButtonGroup size="xs">
                             <UButton color="primary" variant="solid" :active="true">Relevance</UButton>
                             <UButton color="neutral" variant="soft">Upload date</UButton>

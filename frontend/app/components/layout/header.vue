@@ -1,5 +1,6 @@
 <template>
-  <header class="fixed left-0 top-0 z-50 w-full flex items-center border-gray-300 border-b ui-base text-gray-900 px-2">
+  <header
+    class="fixed left-0 top-0 z-50 w-full flex items-center border-gray-200 dark:border-gray-800 border-b ui-base text-gray-900 px-2">
     <NuxtLink :to="localePath('/')"
       class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2 pb-3">
       <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
@@ -22,7 +23,7 @@
         align: 'start',
         side: 'bottom',
       }" :ui="{
-        content: 'w-64 p-2'
+        content: 'w-64 p-1'
       }">
         <UAvatar class="mr-3 cursor-pointer" :src="useFileUrl(user, 'avatar', '100x100')" :alt="user.username"
           crossorigin="anonymous" />
@@ -71,7 +72,7 @@ const menuItems = computed<DropdownMenuItem[]>(() => [
     {
       label: t("logout"),
       icon: 'i-heroicons:arrow-right-on-rectangle-20-solid',
-      click: () => handleLogout()
+      onSelect: () => handleLogout()
     }
   ]
 ]);

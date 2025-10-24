@@ -68,24 +68,24 @@ const recommendations = [
       <h1 class="text-2xl font-bold"># Action Shortcuts</h1>
       <section class="flex w-full gap-4">
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white rounded-lg"
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/catalog')">
           <i class="i-heroicons-academic-cap-20-solid mr-2"></i>Join a school
         </nuxt-link>
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white rounded-lg"
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/catalog')">
           <i class="i-heroicons-magnifying-glass-20-solid mr-2"></i>Find a room_
         </nuxt-link>
       </section>
       <section class="flex w-full gap-4">
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white rounded-lg"
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/teach/new')">
           <i class="i-heroicons-squares-2x2-20-solid mr-2"></i>Start a room_
         </nuxt-link>
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-black dark:border-white bg-primary-600 text-white rounded-lg">
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-4 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg">
           <!-- :to="localePath('/create/school')"> -->
           <i class="i-heroicons-plus-circle-20-solid mr-2"></i>Create a school
         </nuxt-link>

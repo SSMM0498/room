@@ -8,7 +8,7 @@
       <USkeleton class="w-full h-full" />
     </template>
     <template v-else>
-      <article class="full border-r-1 border-gray-300">
+      <article class="full border-r-1 border-gray-200 dark:border-gray-800">
         <NuxtLink class="banner bg-blue-200 dark:bg-gray-950" :to="localePath('/learn/' + course?.slug + '_0')">
           <UIcon name="i-ri-play-circle-line" size="250" class="opacity-0 play-icon text-blue-300 dark:text-gray-800">
           </UIcon>
@@ -17,7 +17,7 @@
       <UTabs :items="tabs" class="w-full" variant="link">
         <template #overview>
           <div class="flex flex-col w-full items-start justify-start">
-            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-300 mb-2">
+            <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-200 dark:border-gray-800 mb-2">
               <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
               <div class="flex flex-col">
                 <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>

@@ -1,7 +1,7 @@
 <template>
     <nav class="flex items-center justify-start overflow-hidden w-full ml-4">
         <UPopover :popper="{ placement: 'bottom-start' }">
-            <UBadge variant="subtle" class="tag rounded-full mr-2" color="neutral">
+            <UBadge variant="subtle" class="tag rounded-full mr-3" color="neutral">
                 <b>Filters</b>
                 <UIcon name="i-hugeicons:filter-horizontal" class="mr-1" />
             </UBadge>
