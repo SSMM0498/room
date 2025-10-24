@@ -1,5 +1,5 @@
 <template>
-    <nav class="flex items-center justify-start overflow-hidden w-full ml-4">
+    <nav class="flex items-center justify-start overflow-hidden ml-4">
         <UPopover :popper="{ placement: 'bottom-start' }">
             <UBadge variant="subtle" class="tag rounded-full mr-3" color="neutral">
                 <b>Filters</b>
@@ -11,13 +11,11 @@
                 </div>
             </template>
         </UPopover>
-
         <div>
             <div v-if="pending">Loading tags...</div>
             <div v-else-if="error">Error loading tags</div>
             <template v-else>
                 <widget-tag v-if="isOwner" link="drafts">Drafts</widget-tag>
-
                 <widget-tag v-for="tag in uniqueTags" :key="tag.id" :link="tag.name.toLowerCase()">
                     {{ tag.name }}
                 </widget-tag>
@@ -54,7 +52,15 @@ nav {
     @apply flex items-center justify-start overflow-hidden;
 }
 
-nav div {
-    @apply flex items-center justify-start w-full overflow-x-auto;
+nav div::-webkit-scrollbar,
+nav div::-webkit-scrollbar-track,
+nav div::-webkit-scrollbar-track:hover,
+nav div::-webkit-scrollbar-thumb,
+nav div::-webkit-scrollbar-thumb:hover {
+    display: none;
+}
+
+nav>div {
+    @apply flex items-center justify-between w-full overflow-x-auto;
 }
 </style>

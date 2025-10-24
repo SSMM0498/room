@@ -2,22 +2,22 @@
   <header
     class="fixed left-0 top-0 z-50 w-full flex items-center border-gray-200 dark:border-gray-800 border-b ui-base text-gray-900 px-2">
     <NuxtLink :to="localePath('/')"
-      class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[200px] font-inter pl-2 pb-3">
-      <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="30000" />
+      class="relative flex justify-start items-start mt-[-5px] text-gray-900 dark:text-white text-5xl font-bold w-[190px] font-inter pl-2 pb-3">
+      <widget-type-writer text="room" :typing-speed="250" :deleting-speed="200" :delay-before-delete="15000" />
     </NuxtLink>
 
     <layout-nav-home v-if="isHomePage" />
-    <layout-nav-profile v-else-if="isProfilePage" />
     <template v-else-if="isSettingsPage">
       <div class="w-full"></div>
     </template>
     <template v-else>
       <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
-        variant="subtle" color="neutral" :trailing="false" :placeholder="$t('search') + '...'" />
-      <layout-nav-default />
+      variant="subtle" color="neutral" :trailing="false" :placeholder="$t('search') + '...'" />
+      <layout-nav-profile v-if="isProfilePage" />
+      <layout-nav-default v-else />
     </template>
 
-    <layout-color-switch class="mx-2" />
+    <layout-color-switch class="ml-auto mr-2" />
     <template v-if="user">
       <UDropdownMenu arrow :items="menuItems" :content="{
         align: 'start',

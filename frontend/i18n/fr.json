@@ -52,6 +52,18 @@
   "profile": "Profil",
   "student_dashboard": "Dashboard étudiant",
   "instructor_dashboard": "Dashboard instructeur",
+  "user_profile": {
+    "edit_profile": "Modifier le profil",
+    "followers": "abonnés",
+    "courses": "cours",
+    "views": "vues",
+    "continue_learning": "Continuer l'apprentissage",
+    "no_courses_in_progress": "Aucun cours en cours",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "add_skill": "Ajouter une compétence",
+    "drafts": "Brouillons"
+  },
   "nav": {
     "features": "Fonctionnalités",
     "learn": "Apprentissage",

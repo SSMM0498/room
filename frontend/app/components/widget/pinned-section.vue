@@ -4,7 +4,7 @@ const hideSection = ref(false);
 
 <template>
   <div :class="{ '!w-[20px] !p-0': hideSection }"
-    class="pinned-section w-[600px] max-w-[500px] h-full border-r transition-all duration-100 border-gray-200 dark:border-gray-800">
+    class="pinned-section w-[600px] max-w-[500px] h-full border-r transition-all duration-100 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
     <div v-show="!hideSection" class="flex items-start justify-start flex-col w-full h-full">
       <slot v-if="!hideSection"></slot>
     </div>
@@ -14,10 +14,17 @@ const hideSection = ref(false);
   </div>
 </template>
 
-<style scoped>
+<style>
 .pinned-section {
-  position: relative;
+  position: fixed;
+  left: 0;
   min-height: calc(100vh - 85px);
   max-height: calc(100vh - 85px);
+  z-index: 100;
+}
+
+.pinned-section + * {
+  margin-left: 25px;
+  transition: margin-left 0.1s;
 }
 </style>

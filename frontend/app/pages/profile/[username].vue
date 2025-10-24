@@ -2,7 +2,6 @@
   <widget-pinned-section>
     <panel-profile />
   </widget-pinned-section>
-
   <div v-if="pending" class="p-6">Loading sections...</div>
   <div v-else-if="error" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
   <layout-section v-else v-for="section in sectionUI.sections" :key="section.title" :section="section" />
@@ -20,14 +19,20 @@ definePageMeta({
 const { profileData, pending, error, fetchProfile } = useUserProfile()
 const route = useRoute()
 const authUser = useAuthUser()
-const username = route.params.username as string
+const username = computed(() => route.params.username as string)
 
 const sectionUI = useSectionUIStore()
 
-await useAsyncData(`profile-${username}`, async () => await fetchProfile(username))
+await useAsyncData(
+  () => `profile-${username.value}`,
+  async () => await fetchProfile(username.value),
+  {
+    watch: [username]
+  }
+)
 
 watch([profileData, authUser], () => {
-  if (!profileData.value?.courses) {
+  if (!profileData.value?.courses || !profileData.value?.user) {
     sectionUI.sections = []
     return
   }
@@ -36,6 +41,7 @@ watch([profileData, authUser], () => {
   const allCourses = profileData.value.courses
   const isOwner = profileData.value?.user?.id === authUser.value?.id
 
+  // Show draft courses section only for the profile owner
   if (isOwner) {
     const draftCourses = allCourses.filter(course => course.status === 'draft')
     if (draftCourses.length > 0) {
@@ -46,20 +52,26 @@ watch([profileData, authUser], () => {
     }
   }
 
-  const publishedCourses = allCourses.filter(course => course.status === 'published')
+  // Show published courses grouped by tags
+  const publishedCourses = allCourses
+
+  // Collect unique tags from published courses
   const uniqueTagMap = new Map()
   publishedCourses.forEach(course => {
-    course.tags?.forEach(tag => {
-      if (tag && !uniqueTagMap.has(tag.id)) {
-        uniqueTagMap.set(tag.id, tag)
-      }
-    })
+    if (course.tags && course.tags.length > 0) {
+      course.tags.forEach(tag => {
+        if (tag && tag.id && tag.name && !uniqueTagMap.has(tag.id)) {
+          uniqueTagMap.set(tag.id, tag)
+        }
+      })
+    }
   })
   const uniqueTags = Array.from(uniqueTagMap.values())
 
+  // Create a section for each tag
   for (const tag of uniqueTags) {
     const coursesForTag = publishedCourses.filter(course =>
-      course.tags?.some(t => t.id === tag.id)
+      course.tags?.some(t => t && t.id === tag.id)
     )
     if (coursesForTag.length > 0) {
       sectionsArray.push({
@@ -67,6 +79,17 @@ watch([profileData, authUser], () => {
         courses: coursesForTag.map(c => ({ ...c, section: tag.name })),
       })
     }
+  }
+
+  // Handle published courses without tags
+  const coursesWithoutTags = publishedCourses.filter(course =>
+    !course.tags || course.tags.length === 0
+  )
+  if (coursesWithoutTags.length > 0) {
+    sectionsArray.push({
+      title: 'Other Courses',
+      courses: coursesWithoutTags.map(c => ({ ...c, section: 'Other Courses' })),
+    })
   }
 
   sectionUI.sections = sectionsArray

@@ -52,6 +52,18 @@
   "profile": "Profile",
   "student_dashboard": "Student Dashboard",
   "instructor_dashboard": "Instructor Dashboard",
+  "user_profile": {
+    "edit_profile": "Edit Profile",
+    "followers": "followers",
+    "courses": "courses",
+    "views": "views",
+    "continue_learning": "Continue Learning",
+    "no_courses_in_progress": "No courses in progress yet",
+    "follow": "Follow",
+    "following": "Following",
+    "add_skill": "Add skill",
+    "drafts": "Drafts"
+  },
   "nav": {
     "features": "Features",
     "learn": "Learning",

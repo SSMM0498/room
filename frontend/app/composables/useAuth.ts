@@ -69,15 +69,12 @@ export const useAuth = () => {
    * @param data - The new profile data containing name and/or avatar file.
    * @returns The updated user model.
    */
-  const updateProfile = async (data: { name?: string; avatar?: File }) => {
-    const formData = new FormData();
-    if (data.name) formData.append('name', data.name);
-    if (data.avatar) formData.append('avatar', data.avatar);
-
+  const updateProfile = async (data: Partial<UserModel> | FormData) => {
     const response = await $fetch<AuthResponse>('/api/auth/profile', {
       method: 'PATCH',
-      body: formData,
+      body: data,
     });
+
     setUser(response.user);
     return response.user;
   };
