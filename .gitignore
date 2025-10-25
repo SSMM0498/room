@@ -6,3 +6,13 @@ tests/*
 tmp.md
 all-content
 README.md
+
+# Environment files
+.env
+.env.local
+docker/bridge/.env
+docker/worker/.env
+workspace/*
+docker/bridge/bridge
+.gitignore
+docker/worker/worker

@@ -1,5 +1,5 @@
 <template>
-  <footer class="fixed bottom-0 left-0 z-20 w-full flex items-center justify-between border-t ui-base p-1 text-xs">
+  <footer class="fixed bottom-0 left-0 z-20 w-full flex items-center justify-between border-t ui-base p-1 text-xs border-gray-200 dark:border-gray-800">
     <nav class="flex flex-wrap items-center">
       <span class="mr-3">697 bytes</span>
       <span class="mr-3">Spaces: 2</span>

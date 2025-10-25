@@ -1,4 +1,3 @@
-// stores/section-ui-store.ts
 import { defineStore } from 'pinia'
 import type { Section } from '~~/types/ui'
 
@@ -6,16 +5,14 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
   const articleOpened = ref(false)
   const currentSection = ref("")
   const currentCourseId = ref("")
-  const sections = ref<Section[]>([])   // all sections live here
+  const sections = ref<Section[]>([])
 
-  // derived count
   const sectionCount = computed(() => sections.value.length)
   const contentSize = computed(() => {
     const c = sectionCount.value / 16 * 3.8;
     return c < 1 ? 1 : c
   })
 
-  // === your existing methods ===
   const openArticle = (e: MouseEvent, slug: string) => {
     e.preventDefault()
     articleOpened.value = true

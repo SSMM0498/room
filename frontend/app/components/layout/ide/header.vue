@@ -1,19 +1,17 @@
 <template>
-  <header class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-gray-900 p-2">
-    <nav class="flex px-2 p-0 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700 items-center
+  <header class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-hightlighted p-2 border-gray-200 dark:border-gray-800">
+    <nav class="flex px-2 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center
       text-sm justify-center space-x-1">
       <NuxtLink :to="localePath('/')" class="logo -mt-1 mr-3 font-inter text-black dark:text-white ">room_</NuxtLink>
       <div v-if="pending"
-        class="flex items-center gap-2 px-2 p-1 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        class="flex items-center gap-2 px-2 p-1 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800">
         <USkeleton class="h-6 w-16" />
         <USkeleton class="h-6 w-24" />
         <USkeleton class="h-6 w-32" />
       </div>
       <UBreadcrumb v-else-if="currentCourse" :items="breadcrumbItems">
         <template #item="{ item }">
-          <!-- Render a Popover for the last item if it's a cursus -->
           <UPopover v-if="item.isPopover" mode="hover">
-            <!-- The trigger text is now the label of the active item -->
             <span
               class="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md cursor-pointer font-semibold text-primary-500 dark:text-primary-400">
               {{ item.label }}
@@ -47,9 +45,9 @@
       </UBreadcrumb>
     </nav>
     <nav v-if="($route.name as String).startsWith('teach')"
-      class="flex px-1 p-0 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700 items-center text-sm justify-center space-x-1">
-      <UButton size="xs" class="mr-1" :class="isRecording ? 'text-red-700' : 'text-gray-700'" icon="i-uim:record-audio"
-        variant="link" @click="toggleRecording" />
+      class="flex px-1 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center text-sm justify-center space-x-1">
+      <UButton size="xs" class="mr-1" :class="recording.isRecording ? 'text-red-700' : 'text-gray-700'"
+        icon="i-uim:record-audio" variant="link" @click="toggleRecording" />
       <UButton size="xs" class="mr-1 text-gray-700" icon="i-heroicons:play-circle" variant="link"
         :to="localePath(`/learn/${currentCourse?.slug}_0`)" />
     </nav>
@@ -80,12 +78,10 @@
 import { computed } from 'vue';
 import type { BreadcrumbItem } from '#ui/types';
 
-const { currentCourse, currentItemIndex, activePlaylistItem, pending, fetchCourseBySlug } = useCourses();
+const { currentCourse, currentItemIndex, activePlaylistItem, pending } = useCourses();
 const route = useRoute();
 
-await useAsyncData('current-course', () => fetchCourseBySlug(route.params.slug as string));
 const localePath = useLocalePath();
-const isRecording = ref(false);
 
 interface CustomBreadcrumbItem extends BreadcrumbItem {
   isPopover?: boolean;
@@ -113,12 +109,15 @@ const breadcrumbItems = computed<CustomBreadcrumbItem[]>(() => {
     },
   ];
 
-  if (course.type === 'cursus' && activePlaylistItem.value) {
-    const item = activePlaylistItem.value;
-    items.push({
-      label: `${item.order + 1} - ${item.expand?.course?.title}`,
-      isPopover: true,
-    });
+  // Only add playlist item for cursus type courses
+  if (course.type === 'cursus') {
+    if (activePlaylistItem.value) {
+      const item = activePlaylistItem.value;
+      items.push({
+        label: `${item.order + 1} - ${item.expand?.course?.title}`,
+        isPopover: true,
+      });
+    }
   }
 
   return items;
@@ -134,38 +133,51 @@ function handleItemSelect(index: number, slug?: string) {
   }
 }
 
-// const {
-//   showTerminal,
-//   changeURL,
-//   activeTerminal
-// } = useEditor();
+const {
+  showTerminal,
+  changeURL,
+  activeTerminal
+} = useIDE();
 
-// const { socketClient } = useSocket();
+const { socketClient } = useSocket();
+
+// Handle preview command results
+socketClient.handlePreview((data: any) => {
+  console.log('[IDE] Preview result:', data);
+  if (data.preview) {
+    console.log('[IDE] Preview output:', data.preview);
+  }
+  if (data.url) {
+    changeURL(data.url);
+  }
+});
 
 const startPreview = (event: MouseEvent) => {
-  // if (!activeTerminal.value) return;
-  // changeURL("http://localhost:1337/")
-  // socketClient.startPreview(activeTerminal.value);
+  // Default preview command - can be customized based on project type
+  const previewCommand = 'npm run dev';
+  socketClient.startPreview(previewCommand);
+  console.log('[IDE] Starting preview with command:', previewCommand);
 };
 
 const runProject = () => {
-  // if (!activeTerminal.value) return;
-  // socketClient.runProject(activeTerminal.value);
+  // Default run command - can be customized based on project type
+  const runCommand = 'npm start';
+  socketClient.runProject(runCommand);
+  console.log('[IDE] Running project with command:', runCommand);
 };
 
-// const recording = useRecordingStore()
+const recording = useRecorder()
 
 const toggleTerminal = () => {
-  // showTerminal = !showTerminal
+  showTerminal.value = !showTerminal.value;
 }
 
 const toggleRecording = () => {
-  // console.log("toggleRecording")
-  // if (recording.isRecording) {
-  //   recording.stopRecording()
-  // } else {
-  //   recording.startRecording()
-  // }
+  if (recording.isRecording.value) {
+    recording.stopRecording()
+  } else {
+    recording.startRecording()
+  }
 }
 </script>
 
@@ -181,6 +193,6 @@ header .logo {
 }
 
 :deep(.ol-base) {
-  @apply p-1 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700;
+  @apply p-1 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800;
 }
 </style>

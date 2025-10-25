@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"worker/internal/filesystem"
 	"worker/internal/terminal"
 	"worker/internal/watcher"
@@ -101,27 +103,45 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Bridge initialized.")
 		go h.watchSvc.StartEventLoop(func(event fsnotify.Event) {
 			log.Printf("WORKER: Watch event detected %s", event.Op)
-			var eventType string
+
+			// Convert absolute path to /workspace relative path
+			relPath := strings.TrimPrefix(event.Name, h.fsSvc.GetBaseDir())
+			relPath = strings.TrimPrefix(relPath, "/")
+			relPath = "/workspace/" + relPath
+
+			// Check if it's a directory
+			isDir := false
+			if info, err := os.Stat(event.Name); err == nil {
+				isDir = info.IsDir()
+			}
+
+			var watchMsg *types.Message
+
+			// Send specific events that match frontend expectations
 			switch {
 			case event.Op&fsnotify.Create == fsnotify.Create:
-				eventType = "create"
+				if isDir {
+					watchMsg = &types.Message{Event: "addDir", Data: map[string]interface{}{"path": relPath}}
+				} else {
+					watchMsg = &types.Message{Event: "add", Data: map[string]interface{}{"path": relPath}}
+				}
 			case event.Op&fsnotify.Write == fsnotify.Write:
-				eventType = "write"
+				watchMsg = &types.Message{Event: "change", Data: map[string]interface{}{"path": relPath}}
 			case event.Op&fsnotify.Remove == fsnotify.Remove:
-				eventType = "remove"
+				if isDir {
+					watchMsg = &types.Message{Event: "unlinkDir", Data: map[string]interface{}{"path": relPath}}
+				} else {
+					watchMsg = &types.Message{Event: "unlink", Data: map[string]interface{}{"path": relPath}}
+				}
 			case event.Op&fsnotify.Rename == fsnotify.Rename:
-				eventType = "rename"
+				watchMsg = &types.Message{Event: "rename", Data: map[string]interface{}{"path": relPath}}
 			default:
 				return
 			}
 
-			watchMsg := &types.Message{
-				Event: "file-changed",
-				Data:  map[string]string{"event": eventType, "path": event.Name},
-			}
 			client.hub.Send(watchMsg)
 		})
-		h.watchSvc.Watch("./workspace/")
+		h.watchSvc.Watch("/workspace")
 		return
 	case "hydrate-create-file":
 		log.Println("[WORKER] Hydrating file.")
@@ -234,6 +254,135 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		var req types.TerminalRequest
 		json.Unmarshal(dataBytes, &req)
 		h.termSvc.CloseTerminal(req.ID)
+	case "watch":
+		log.Println("[WORKER] Watching path.")
+		var req types.FileRequest
+		json.Unmarshal(dataBytes, &req)
+		h.watchSvc.Watch(req.TargetPath)
+		return
+	case "command-preview":
+		log.Println("[WORKER] Preview command.")
+		var req struct {
+			Command string `json:"command"`
+			AckID   string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		// Execute the preview command (typically starts a dev server)
+		go func() {
+			terminalID, err := h.termSvc.CreateOrGetTerminal("", func(data []byte) {
+				// Forward terminal output to client
+				client.hub.Send(&types.Message{
+					Event: "terminal-data",
+					Data:  map[string]interface{}{"id": "preview-terminal", "content": string(data)},
+				})
+			})
+
+			if err != nil {
+				log.Printf("[WORKER] Failed to create preview terminal: %v", err)
+				client.Send <- &types.Message{
+					Event: "command-result-preview",
+					Data: map[string]interface{}{
+						"ackID": req.AckID,
+						"error": err.Error(),
+					},
+				}
+				return
+			}
+
+			// Write the command to the terminal
+			err = h.termSvc.WriteToTerminal(types.TerminalInput{
+				ID:    terminalID,
+				Input: req.Command + "\n",
+			})
+
+			if err != nil {
+				log.Printf("[WORKER] Failed to execute preview command: %v", err)
+			}
+
+			// Send initial response with preview info
+			client.Send <- &types.Message{
+				Event: "command-result-preview",
+				Data: map[string]interface{}{
+					"ackID":      req.AckID,
+					"command":    req.Command,
+					"terminalId": terminalID,
+					"preview":    "Preview command started: " + req.Command,
+					"url":        "http://localhost:3000", // Default dev server URL
+				},
+			}
+		}()
+		return
+	case "command-run":
+		log.Println("[WORKER] Run command.")
+		var req struct {
+			Command string `json:"command"`
+			AckID   string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		// Execute the run command
+		go func() {
+			terminalID, err := h.termSvc.CreateOrGetTerminal("", func(data []byte) {
+				// Forward terminal output to client
+				client.hub.Send(&types.Message{
+					Event: "terminal-data",
+					Data:  map[string]interface{}{"id": "run-terminal", "content": string(data)},
+				})
+			})
+
+			if err != nil {
+				log.Printf("[WORKER] Failed to create run terminal: %v", err)
+				if req.AckID != "" {
+					ack.Data = map[string]interface{}{
+						"ackID": req.AckID,
+						"error": err.Error(),
+					}
+					client.Send <- &types.Message{
+						Event: msg.Event,
+						Data:  ack.Data,
+					}
+				}
+				return
+			}
+
+			// Write the command to the terminal
+			err = h.termSvc.WriteToTerminal(types.TerminalInput{
+				ID:    terminalID,
+				Input: req.Command + "\n",
+			})
+
+			if err != nil {
+				log.Printf("[WORKER] Failed to execute run command: %v", err)
+			}
+
+			// Send acknowledgment
+			if req.AckID != "" {
+				ack.Data = map[string]interface{}{
+					"ackID":      req.AckID,
+					"command":    req.Command,
+					"terminalId": terminalID,
+					"status":     "executed",
+				}
+			}
+		}()
+		return
+	case "crud-download-workspace":
+		log.Println("[WORKER] Download workspace.")
+		var req struct {
+			AckID string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+		// TODO: Implement workspace download (create zip/tar)
+		// For now, send error that it's not implemented
+		client.Send <- &types.Message{
+			Event: "download-workspace",
+			Data: map[string]interface{}{
+				"ackID": req.AckID,
+				"error": "Workspace download not yet implemented",
+			},
+		}
+		return
 	default:
 		log.Printf("[WORKER] Unknown event type: %s", msg.Event)
 		return

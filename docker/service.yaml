@@ -1,20 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service_name
+  name: service-name
   labels:
-    app: service_name
+    app: service-name
 spec:
   replicas: 1
   selector:
-    name: service_name
     matchLabels:
-      app: service_name
+      app: service-name
   template:
     metadata:
-      name: service_name
       labels:
-        app: service_name
+        app: service-name
     spec:
       volumes:
         - name: workspace-volume
@@ -44,6 +42,8 @@ spec:
           env:
             - name: WORKSPACE_ID
               value: "service_name"
+            - name: WORKER_HOST
+              value: "localhost:3002"
           resources:
             requests:
               cpu: "1"
@@ -53,15 +53,15 @@ spec:
               cpu: "1"
               memory: "1Gi"
               ephemeral-storage: "1Gi"
-
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: service_name
+  name: service-name
 spec:
+  type: NodePort
   selector:
-    app: service_name
+    app: service-name
   ports:
     - protocol: TCP
       name: ws
@@ -75,7 +75,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: service_name
+  name: service-name
 spec:
   ingressClassName: nginx
   rules:
@@ -86,16 +86,16 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: service_name
+                name: service-name
                 port:
                   number: 2024
     - host: service_name.room.com
       http:
         paths:
-          - path: /
+          - path: /worker
             pathType: Prefix
             backend:
               service:
-                name: service_name
+                name: service-name
                 port:
                   number: 3002

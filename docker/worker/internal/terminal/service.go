@@ -18,7 +18,7 @@ func NewService(workspaceDir string) *Service {
 
 func (s *Service) CreateOrGetTerminal(id string, onData func(data []byte)) (string, error) {
 	if s.workspaceDir == "./" {
-		createdID, _, err := s.manager.CreateOrGet(id, "./workspace", onData)
+		createdID, _, err := s.manager.CreateOrGet(id, "/workspace", onData)
 		return createdID, err
 	} else {
 		createdID, _, err := s.manager.CreateOrGet(id, s.workspaceDir, onData)

@@ -68,6 +68,8 @@ async function deleteExistingResources(k8sName: string, namespace: string): Prom
 // --- MAIN EVENT HANDLER ---
 export default defineEventHandler(async (event) => {
     const pb = createPocketBaseInstance(event);
+    const config = useRuntimeConfig();
+    const env = config.ENV || 'DEV';
 
     if (!pb.authStore.isValid) {
         console.warn(`[AUTH] Unauthorized request received.`);
@@ -89,19 +91,33 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 403, statusMessage: 'Forbidden: You do not own this workspace.' });
     }
 
-    const k8sName = `${workspace.name}`;
-    const namespace = 'default'; // Or from config
-    console.log(`[K8S] Starting deployment for workspace=${workspace.name}, k8sName=${k8sName}, namespace=${namespace}`);
+    // Skip K8s deployment in DEV mode
+    if (env === 'DEV') {
+        console.log(`[WORKSPACE START] DEV mode detected - skipping K8s deployment for ${workspace.name}`);
 
-    // Clean up old resources
-    console.log(`[K8S] Cleaning up any existing resources for ${k8sName}...`);
-    await deleteExistingResources(k8sName, namespace);
+        // Update workspace status to running without deploying
+        await pb.collection('workspaces').update(workspaceId, {
+            k8s_name: workspace.name,
+            status: 'running'
+        });
 
-    // Parse YAML template
+        return {
+            success: true,
+            message: `Workspace ${workspace.name} is ready (DEV mode - using local bridge/worker).`,
+            url: 'ws://localhost:2024',
+        };
+    }
+
+    const namespace = 'default';
+    console.log(`[K8S] Starting deployment for workspace=${workspace.name}, k8sName=${workspace.name}, namespace=${namespace}`);
+
+    console.log(`[K8S] Cleaning up any existing resources for ${workspace.name}...`);
+    await deleteExistingResources(workspace.name, namespace);
+
     const templatePath = path.join(process.cwd(), '..' ,'docker', 'service.yaml');
     console.log(`[K8S] Reading Kubernetes manifest template from: ${templatePath}`);
-    const manifests = await readAndParseKubeYaml(templatePath, k8sName);
-    console.log(`[K8S] Parsed ${manifests.length} manifest(s) from template for ${k8sName}`);
+    const manifests = await readAndParseKubeYaml(templatePath, workspace.name);
+    console.log(`[K8S] Parsed ${manifests.length} manifest(s) from template for ${workspace.name}`);
 
     const { appsV1Api, coreV1Api, networkingV1Api, batchV1Api } = createK8sClients();
 
@@ -132,13 +148,13 @@ export default defineEventHandler(async (event) => {
             console.log(`[K8S] Successfully created ${manifest.kind}: ${manifest.metadata.name}`);
         }
 
-        console.log(`[K8S] ✅ All resources for ${k8sName} have been created.`);
+        console.log(`[K8S] ✅ All resources for ${workspace.name} have been created.`);
 
-        const ingressUrl = `https://${k8sName}.room.com`;
+        const ingressUrl = `https://${workspace.name}.room.com`;
         console.log(`[WORKSPACE START] Updating workspace ${workspaceId} status to 'running'. Ingress URL: ${ingressUrl}`);
 
         await pb.collection('workspaces').update(workspaceId, {
-            k8s_name: k8sName,
+            k8s_name: workspace.name,
             status: 'running'
         });
 
@@ -149,7 +165,7 @@ export default defineEventHandler(async (event) => {
         };
 
     } catch (error: any) {
-        console.error(`[WORKSPACE START] ❌ Error deploying Kubernetes resources for ${k8sName}:`, error.body || error);
+        console.error(`[WORKSPACE START] ❌ Error deploying Kubernetes resources for ${workspace.name}:`, error.body || error);
         await pb.collection('workspaces').update(workspaceId, { status: 'failed', is_active: false });
         throw createError({ statusCode: 500, statusMessage: 'Failed to deploy workspace to Kubernetes.' });
     }

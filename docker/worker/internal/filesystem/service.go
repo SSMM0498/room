@@ -14,7 +14,19 @@ type Service struct {
 }
 
 func (s *Service) securePath(relativePath string) (string, error) {
-	cleanPath := filepath.Clean(relativePath)
+	// Strip /workspace prefix if present to make it relative
+	cleanPath := strings.TrimPrefix(relativePath, "/workspace")
+	cleanPath = strings.TrimPrefix(cleanPath, "/workspace/")
+
+	// If the path is just "/workspace", make it empty (root of workspace)
+	if cleanPath == "" || cleanPath == "/" {
+		return s.baseDir, nil
+	}
+
+	// Clean the path to handle any .. or . segments
+	cleanPath = filepath.Clean(cleanPath)
+
+	// Security check: ensure the cleaned path doesn't try to escape
 	if strings.HasPrefix(cleanPath, "..") {
 		return "", fmt.Errorf("invalid path: attempts to escape workspace")
 	}
@@ -24,6 +36,10 @@ func (s *Service) securePath(relativePath string) (string, error) {
 
 func NewService(baseDir string) *Service {
 	return &Service{baseDir: baseDir}
+}
+
+func (s *Service) GetBaseDir() string {
+	return s.baseDir
 }
 
 func (s *Service) ReadFolder(relativePath string) ([]types.DirectoryEntry, error) {
@@ -41,9 +57,17 @@ func (s *Service) ReadFolder(relativePath string) ([]types.DirectoryEntry, error
 		if entry.IsDir() {
 			entryType = "directory"
 		}
+
+		// Construct the path relative to /workspace
+		entryRelativePath := strings.TrimPrefix(relativePath, "/workspace")
+		if entryRelativePath == "" {
+			entryRelativePath = "/"
+		}
+		entryPath := filepath.Join("/workspace", entryRelativePath, entry.Name())
+
 		dirEntries = append(dirEntries, types.DirectoryEntry{
 			Type: entryType,
-			Path: filepath.Join(fullPath, entry.Name()),
+			Path: filepath.ToSlash(entryPath), // Ensure forward slashes for consistency
 			Name: entry.Name(),
 		})
 	}

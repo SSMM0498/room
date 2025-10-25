@@ -4,6 +4,7 @@ import { type RecordModel } from 'pocketbase';
 export const useWorkspace = () => {
   const currentWorkspace = ref<RecordModel | null>(null);
   const isStarting = ref(false);
+  const progressMessage = ref('');
   const error = ref<Error | null>(null);
 
   /**
@@ -47,10 +48,52 @@ export const useWorkspace = () => {
     }
   };
 
+  /**
+     * NEW: Checks if the workspace for a course is active, and starts it if not.
+     * This is the primary function the UI will call.
+     * @param courseId The ID of the course.
+     * @returns The active workspace record, or null if it fails.
+     */
+  const ensureWorkspaceIsRunning = async (courseId: string): Promise<RecordModel | null> => {
+    error.value = null;
+    isStarting.value = true;
+
+    try {
+      // 1. Find the workspace linked to the course.
+      progressMessage.value = 'Locating workspace...';
+      const workspace = await fetchWorkspaceByCourse(courseId);
+
+      if (!workspace) {
+        throw new Error('No workspace is associated with this course.');
+      }
+
+      // 2. Check its status. If it's already active, we're done.
+      if (workspace.status === 'running') {
+        progressMessage.value = 'Workspace is already active!';
+        isStarting.value = false;
+        return workspace;
+      }
+
+      // 3. If not active, call the start endpoint.
+      progressMessage.value = 'Workspace is sleeping. Waking it up...';
+      const startResult = await startWorkspace(workspace.id);
+
+      progressMessage.value = 'Workspace is ready!';
+      isStarting.value = false;
+      return currentWorkspace.value; // startWorkspace updates the currentWorkspace ref
+
+    } catch (err: any) {
+      error.value = err;
+      isStarting.value = false;
+      progressMessage.value = `Error: ${err.message}`;
+      return null;
+    }
+  };
+
   const fetchWorkspaceByCourse = async (courseId: string) => {
     error.value = null;
     try {
-      const workspace = await $fetch<RecordModel>(`/api/workspaces/by-course/${courseId}`);
+      const workspace = await $fetch<RecordModel>(`/api/workspace/by-course/${courseId}`);
       currentWorkspace.value = workspace;
       return workspace;
     } catch (err: any) {
@@ -63,9 +106,11 @@ export const useWorkspace = () => {
   return {
     currentWorkspace,
     isStarting,
+    progressMessage,
     error,
     createWorkspace,
     startWorkspace,
     fetchWorkspaceByCourse,
+    ensureWorkspaceIsRunning,
   };
 };

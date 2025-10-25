@@ -8,7 +8,6 @@
 
 <script setup lang="ts">
 const route = useRoute();
-
 const isPlayer = computed(() => (route.name as string).startsWith('ide/player'));
 </script>
 

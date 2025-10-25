@@ -3,6 +3,7 @@ package watcher
 import (
 	"log"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -32,6 +33,20 @@ func NewService(rootPath string) (*Service, error) {
 	}, nil
 }
 
+// translatePath converts /workspace paths to actual filesystem paths
+func (s *Service) translatePath(path string) string {
+	// Strip /workspace prefix if present
+	cleanPath := strings.TrimPrefix(path, "/workspace")
+	cleanPath = strings.TrimPrefix(cleanPath, "/workspace/")
+
+	// If the path is just "/workspace", return the root
+	if cleanPath == "" || cleanPath == "/" {
+		return s.rootPath
+	}
+
+	return filepath.Join(s.rootPath, cleanPath)
+}
+
 func (s *Service) StartEventLoop(onEvent func(event fsnotify.Event)) {
 	for {
 		select {
@@ -49,15 +64,18 @@ func (s *Service) Watch(path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	info, exists := s.watched[path]
+	// Translate /workspace path to actual filesystem path
+	actualPath := s.translatePath(path)
+
+	info, exists := s.watched[actualPath]
 	if !exists {
 		info = &watchInfo{}
-		s.watched[path] = info
+		s.watched[actualPath] = info
 		// If it wasn't watched for any reason before, add it to fsnotify.
-		if err := s.watcher.Add(path); err != nil {
-			log.Printf("WATCHER: Failed to add watch on %s: %v", path, err)
+		if err := s.watcher.Add(actualPath); err != nil {
+			log.Printf("WATCHER: Failed to add watch on %s: %v", actualPath, err)
 		} else {
-			log.Printf("WATCHER: Started monitoring directory: %s (explicit)", path)
+			log.Printf("WATCHER: Started monitoring directory: %s (explicit)", actualPath)
 		}
 	}
 	info.isExplicitlyWatched = true
@@ -67,9 +85,12 @@ func (s *Service) Unwatch(path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if info, exists := s.watched[path]; exists {
+	// Translate /workspace path to actual filesystem path
+	actualPath := s.translatePath(path)
+
+	if info, exists := s.watched[actualPath]; exists {
 		info.isExplicitlyWatched = false
-		s.checkAndRemoveWatch(path)
+		s.checkAndRemoveWatch(actualPath)
 	}
 }
 
@@ -77,7 +98,10 @@ func (s *Service) AddFileReference(filePath string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	parentDir := filepath.Dir(filePath)
+	// Translate /workspace path to actual filesystem path
+	actualPath := s.translatePath(filePath)
+	parentDir := filepath.Dir(actualPath)
+
 	info, exists := s.watched[parentDir]
 	if !exists {
 		info = &watchInfo{}
@@ -95,8 +119,11 @@ func (s *Service) AddFileReference(filePath string) {
 func (s *Service) RemoveFileReference(filePath string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
-	parentDir := filepath.Dir(filePath)
+
+	// Translate /workspace path to actual filesystem path
+	actualPath := s.translatePath(filePath)
+	parentDir := filepath.Dir(actualPath)
+
 	if info, exists := s.watched[parentDir]; exists {
 		if info.fileReferenceCount > 0 {
 			info.fileReferenceCount--

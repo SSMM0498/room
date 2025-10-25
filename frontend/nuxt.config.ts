@@ -65,6 +65,9 @@ export default defineNuxtConfig({
     MINIO_ROOT_USER: process.env.MINIO_ROOT_USER,
     MINIO_ROOT_PASSWORD: process.env.MINIO_ROOT_PASSWORD,
     ENV: process.env.ENV || 'DEV',
+    public: {
+      ENV: process.env.ENV || 'DEV',
+    },
     // app: {
     //   devtools: {
     //     iframeProps: {

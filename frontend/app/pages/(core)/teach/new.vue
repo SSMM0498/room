@@ -1,41 +1,39 @@
 <template>
     <div class="w-full base-height flex items-start justify-start">
-        <div class="lg:w-4/5 px-8 py-4 h-full lg:border-r border-gray-300 overflow-y-auto w-full border-0">
+        <div
+            class="lg:w-4/5 px-8 py-4 h-full lg:border-r border-gray-200 dark:border-gray-800 overflow-y-auto w-full border-0">
             <h1 class="text-3xl font-bold mb-8 text-black dark:text-white">New Course</h1>
 
             <UStepper v-model="currentStep" :items="steps" class="w-full" orientation="vertical">
 
-                <!-- Step 1: Course Type Selection -->
                 <template #type>
                     <UCard>
                         <template #header>
                             <div class="flex w-full items-center justify-between">
                                 <h3 class="text-lg font-semibold">{{ steps[0]!.description }}</h3>
-                                <UButton @click="() => handleStartWorkspace('rgtf74rqqa8uegl')" label="Start Workspace"/>
+                                <UButton @click="() => handleStartWorkspace('rgtf74rqqa8uegl')"
+                                    label="Start Workspace" />
                             </div>
                         </template>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- Single Course Option -->
                             <div @click="handleSelectType('single')"
-                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-300 rounded-lg cursor-pointer transition-all"
+                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-200 dark:border-gray-800 rounded-lg cursor-pointer transition-all"
                                 :class="courseState.type === 'single' ? 'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/25' : 'hover:bg-gray-50 dark:hover:bg-gray-800'">
                                 <UIcon name="i-heroicons-document-text" class="w-15 h-15 text-blue-300 mb-2" />
                                 <h4 class="font-semibold text-lg">Single Course</h4>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">A standard course with video
                                     lessons, code, and text, recorded in a dedicated environment.</p>
                             </div>
-                            <!-- Cursus/Path Option -->
                             <div @click="handleSelectType('cursus')"
-                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-300 rounded-lg cursor-pointer transition-all"
+                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-200 dark:border-gray-800 rounded-lg cursor-pointer transition-all"
                                 :class="courseState.type === 'cursus' ? 'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/25' : 'hover:bg-gray-50 dark:hover:bg-gray-800'">
                                 <UIcon name="i-heroicons-list-bullet" class="w-15 h-15 text-blue-300 mb-2" />
                                 <h4 class="font-semibold text-lg">Cursus / Path</h4>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">A collection of existing courses or
                                     articles organized into a guided learning path.</p>
                             </div>
-                            <!-- Live Session Option -->
                             <div @click="handleSelectType('live')"
-                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-300 rounded-lg cursor-pointer transition-all"
+                                class="h-[300px] flex items-start justify-end flex-col p-6 border border-gray-200 dark:border-gray-800 rounded-lg cursor-pointer transition-all"
                                 :class="courseState.type === 'live' ? 'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/25' : 'hover:bg-gray-50 dark:hover:bg-gray-800'">
                                 <UIcon name="i-heroicons-video-camera" class="w-15 h-15 text-blue-300 mb-2" />
                                 <h4 class="font-semibold text-lg">Live Session</h4>
@@ -47,7 +45,6 @@
                     </UCard>
                 </template>
 
-                <!-- Step 2: Course Details Content -->
                 <template #course>
                     <UCard>
                         <template #header>
@@ -172,7 +169,8 @@
                             </div>
 
                             <!-- Draggable List of Courses -->
-                            <div class="p-4 border border-gray-300 rounded-lg min-h-[200px] relative">
+                            <div
+                                class="p-4 border border-gray-200 dark:border-gray-800 rounded-lg min-h-[200px] relative">
                                 <div v-if="coursePending"
                                     class="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center z-10">
                                     <UIcon name="i-heroicons-arrow-path" class="animate-spin h-8 w-8" />
@@ -227,7 +225,7 @@
                                 </div>
 
                                 <!-- Live Finish Button -->
-                                <div class="flex justify-end pt-4 border-t border-gray-300">
+                                <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-800">
                                     <UButton type="submit" size="lg" icon="i-heroicons-check-circle"
                                         :loading="coursePending">
                                         Save and Finish
@@ -292,6 +290,7 @@ const { createWorkspace, startWorkspace, isStarting } = useWorkspace();
 const { tags } = useTags();
 const toast = useToast();
 const user = useAuthUser();
+const localePath = useLocalePath();
 
 const createdWorkspace = ref<RecordModel | null>(null);
 const workspacePending = ref(false);
@@ -311,7 +310,6 @@ const cursusItems = computed({
 });
 
 const coursePreview = computed<CourseCard>(() => {
-    // Map selected tag IDs back to full tag objects for the preview
     const selectedTags = tags.value.filter(tag => courseState.tags.includes(tag.id));
 
     return {
@@ -532,9 +530,9 @@ async function handleStartWorkspace(id?: string) {
     const result = await startWorkspace(id ?? createdWorkspace.value!.id);
     if (result?.url) {
         toast.add({ title: 'Workspace is ready!', description: `Redirecting...`, color: 'success' });
-        // In a real app, you would navigate to the URL
-        await navigateTo(result.url, { external: true });
-        console.log(`Redirecting to ${result.url}`);
+        const slug = currentCourse.value ? currentCourse.value!.slug : 'introduction-to-go-j387sx'
+        await navigateTo(localePath(`/teach/${slug}`));
+        console.log(`Redirecting to ...`);
     } else {
         toast.add({ title: 'Error starting workspace.', description: 'Please check the logs and try again.', color: 'error' });
     }

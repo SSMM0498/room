@@ -37,7 +37,7 @@ func (c *Client) ReadPump() {
 		case "crud-read-file", "crud-read-folder", "create-terminal", "close-terminal":
 			go c.handleRequestResponse(msg)
 
-		case "crud-update-file", "crud-create-file", "crud-create-folder", "crud-delete-resource", "crud-move-resource", "terminal-input", "crud-collapse-folder", "crud-close-file":
+		case "crud-update-file", "crud-create-file", "crud-create-folder", "crud-delete-resource", "crud-move-resource", "terminal-input", "crud-collapse-folder", "crud-close-file", "command-preview", "command-run":
 			// No response needed, just forward to the worker.
 			c.Worker.SendFireAndForget(&msg)
 			

@@ -27,6 +27,13 @@ export interface School extends RecordModel {
   // }
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+}
+
 export interface UserProfileData {
   user: RecordModel | null;
   school: RecordModel | null;

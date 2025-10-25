@@ -14,10 +14,10 @@ build-backend:
 		cd backend && go build .
 
 build-bridge:
-		docker build -t mrsedok/bridge-image ./docker/bridge/
+		docker build --progress=plain -t mrsedok/bridge-image ./docker/bridge/
 
 build-worker:
-		docker build -t mrsedok/worker-image ./docker/worker/
+		docker build --progress=plain -t mrsedok/worker-image ./docker/worker/
 
 dev: dev-frontend dev-backend
 
@@ -26,6 +26,15 @@ dev-frontend:
 
 dev-backend:
 		cd backend && go run . serve
+
+dev-bridge:
+		cd docker/bridge && ENV=DEV WORKSPACE_ID=demo WORKER_HOST=localhost:3002 go run cmd/bridge/main.go
+
+dev-worker:
+		cd docker/worker && ENV=DEV WORKER_WORKSPACE_DIR=$(PWD)/workspace go run cmd/worker/main.go
+
+dev-docker:
+		cd docker && docker-compose -f dev.docker-compose.yml up --build
 
 test: test-frontend test-backend 
 
@@ -48,10 +57,10 @@ deploy-worker:
 		docker push mrsedok/worker-image:latest
 
 run-bridge:
-		docker run -it mrsedok/bridge-image:latest /bin/sh
+		docker rm bridge ; docker run -it -p 2024:2024 --name bridge mrsedok/bridge-image:latest
 
 run-worker:
-		docker run -it mrsedok/worker-image:latest /bin/sh
+		docker rm worker ; docker run -it -p 3002:3002 --name worker mrsedok/worker-image:latest
 
 clean: clean-frontend clean-bridge clean-worker
 
@@ -73,8 +82,11 @@ help:
 	   @echo "Available targets:"
 	   @echo " + build: Build all components"
 	   @echo " + build-<component>: Build a specific component (e.g., build-frontend)"
-	   @echo " + dev: Start development servers for all components"
+	   @echo " + dev: Start development servers for frontend and backend"
 	   @echo " + dev-<component>: Start development server for a specific component"
+	   @echo " + dev-bridge: Run bridge locally (requires worker running)"
+	   @echo " + dev-worker: Run worker locally using local workspace folder"
+	   @echo " + dev-docker: Run bridge and worker in Docker with local workspace mounted"
 	   @echo " + test: Run tests for all components"
 	   @echo " + test-<component>: Run tests for a specific component"
 	   @echo " + deploy: Deploy all components to Kubernetes"

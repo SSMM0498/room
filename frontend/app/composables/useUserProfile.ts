@@ -25,6 +25,7 @@ export const useUserProfile = () => {
             followingCount.value = status.followingCount;
             isFollowing.value = status.isFollowing;
             followRecordId.value = status.followRecordId;
+            console.log(">>> isFollowing", isFollowing.value)
         } catch (err) {
             console.error("Failed to fetch follower status:", err);
         }
@@ -37,6 +38,7 @@ export const useUserProfile = () => {
     const fetchProfile = async (username: string) => {
         pending.value = true;
         error.value = null;
+        profileData.value = null;
         try {
             const rawData = await $fetch<{
                 user: RecordModel;
@@ -101,12 +103,12 @@ export const useUserProfile = () => {
     };
 
     return {
-        profileData: profileData,
-        pending: pending,
-        error: error,
-        followerCount: followerCount,
-        followingCount: followingCount,
-        isFollowing: isFollowing,
+        profileData,
+        pending,
+        error,
+        followerCount,
+        followingCount,
+        isFollowing,
         fetchProfile,
         follow,
         unfollow,

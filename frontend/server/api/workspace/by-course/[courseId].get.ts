@@ -2,10 +2,6 @@ export default defineEventHandler(async (event) => {
   const pb = createPocketBaseInstance(event);
   const courseId = event.context.params?.courseId as string;
 
-  // Authentication: Ensure user is logged in
-  if (!pb.authStore.isValid) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
-  }
 
   try {
     // Find the first workspace that has a relation to this course.

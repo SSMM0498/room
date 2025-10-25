@@ -53,7 +53,12 @@ func GetInstance() *Client {
 }
 
 func (c *Client) supervisor() {
-	workerURL := url.URL{Scheme: "ws", Host: "localhost:3002", Path: "/"}
+	workerHost := os.Getenv("WORKER_HOST")
+	if workerHost == "" {
+		workerHost = "localhost:3002" // sensible default
+	}
+	workerURL := url.URL{Scheme: "ws", Host: workerHost, Path: "/"}
+
 	for {
 		log.Println("BRIDGE: Attempting to connect to Worker...")
 
@@ -75,13 +80,20 @@ func (c *Client) supervisor() {
 
 		// The isReady channel is now managed ONLY within this loop.
 		c.isReady = make(chan struct{})
-		
+
 		// Start the readPump for this connection.
 		go c.readPump(readPumpDone)
 
 		// Send init message and start hydration.
 		c.send <- &types.Message{Event: "init"}
-		go c.hydrateWorkspace()
+
+		// Skip hydration in development mode
+		env := os.Getenv("ENV")
+		if env != "DEV" {
+			go c.hydrateWorkspace()
+		} else {
+			log.Println("[BRIDGE] DEV mode detected - skipping workspace hydration")
+		}
 
 		// Signal that the connection is now ready for use.
 		close(c.isReady)
@@ -191,7 +203,7 @@ func (c *Client) hydrateWorkspace() {
 	// 1. Get Workspace ID from the environment variable.
 	workspaceID := os.Getenv("WORKSPACE_ID")
 	if workspaceID == "" {
-		workspaceID = "ws-local-dev-session"
+		workspaceID = "demo"
 		log.Printf("[BRIDGE] WARNING - WORKSPACE_ID not set, falling back to default for hydration: %s", workspaceID)
 	}
 
@@ -241,7 +253,7 @@ func (c *Client) hydrateWorkspace() {
 			}
 
 			contentBase64 := base64.StdEncoding.EncodeToString(contentBytes)
-			relativePath := strings.Replace(objKey, s3Path, "./workspace", 1)
+			relativePath := strings.Replace(objKey, s3Path, "/workspace", 1)
 
 			hydrateMsg := &types.Message{
 				Event: "hydrate-create-file",
