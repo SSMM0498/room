@@ -3,7 +3,7 @@ const hideSection = ref(false);
 </script>
 
 <template>
-  <div :class="{ '!w-[20px] !p-0': hideSection }"
+  <div :class="{ '!w-[20px] !p-0': hideSection, 'shadow-right': !hideSection }"
     class="pinned-section w-[600px] max-w-[500px] h-full border-r transition-all duration-100 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
     <div v-show="!hideSection" class="flex items-start justify-start flex-col w-full h-full">
       <slot v-if="!hideSection"></slot>
@@ -14,7 +14,11 @@ const hideSection = ref(false);
   </div>
 </template>
 
-<style>
+<style scoped lang="css">
+.shadow-right {
+    box-shadow: 5px 0px 10px -5px rgba(0, 0, 0, 0.25);
+}
+
 .pinned-section {
   position: fixed;
   left: 0;

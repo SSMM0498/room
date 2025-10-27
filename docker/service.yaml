@@ -79,7 +79,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: service_name.room.com
+    - host: service_name.roomcursor.com
       http:
         paths:
           - path: /
@@ -89,7 +89,7 @@ spec:
                 name: service-name
                 port:
                   number: 2024
-    - host: service_name.room.com
+    - host: service_name.roomcursor.com
       http:
         paths:
           - path: /worker

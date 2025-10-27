@@ -1,4 +1,7 @@
 <template>
+  <Head>
+    <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
+  </Head>
   <div class="flex flex-col w-full h-full">
     <!-- Course Progress Header - only show for cursus type with playlist items -->
     <div v-if="currentCourse && currentCourse.type === 'cursus' && activePlaylistItem" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">

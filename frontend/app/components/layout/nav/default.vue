@@ -1,5 +1,5 @@
 <template>
-    <nav class="flex items-center justify-start overflow-hidden ml-4">
+    <nav class="flex items-center justify-start overflow-hidden ml-4 relative">
         <UPopover :popper="{ placement: 'bottom-start' }">
             <UBadge variant="subtle" class="tag rounded-full mr-4" color="neutral">
                 <b>Filters</b>
@@ -48,7 +48,13 @@
                 </div>
             </template>
         </UPopover>
-        <div>
+
+        <div ref="scrollContainer"
+            class="relative flex items-center justify-between w-full overflow-x-auto scroll-smooth px-2 transition-shadow duration-200"
+            :class="{
+                'shadow-left': canScrollLeft,
+                'shadow-right': canScrollRight,
+            }">
             <div v-if="pending">Loading tags...</div>
             <div v-else-if="error">Error loading tags</div>
             <template v-else>
@@ -65,16 +71,29 @@
 <script setup lang="ts">
 const { tags, pending, error, fetchTags } = useTags();
 
+const scrollContainer = ref<HTMLElement | null>(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+
+const updateShadows = () => {
+    const el = scrollContainer.value;
+    if (!el) return;
+    canScrollLeft.value = el.scrollLeft > 0;
+    canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+};
+
 onMounted(async () => {
     await fetchTags();
+    nextTick(() => updateShadows());
+    scrollContainer.value?.addEventListener("scroll", updateShadows);
+});
+onUnmounted(() => {
+    scrollContainer.value?.removeEventListener("scroll", updateShadows);
 });
 </script>
 
 <style scoped lang="css">
-nav {
-    @apply flex items-center justify-start overflow-hidden;
-}
-
+/* Hide scrollbars */
 nav div::-webkit-scrollbar,
 nav div::-webkit-scrollbar-track,
 nav div::-webkit-scrollbar-track:hover,
@@ -83,7 +102,23 @@ nav div::-webkit-scrollbar-thumb:hover {
     display: none;
 }
 
-nav>div {
-    @apply flex items-center justify-between w-full overflow-x-auto;
+nav div {
+    scrollbar-width: none;
+}
+
+/* Inset shadows for edges */
+.shadow-left {
+    box-shadow: inset 20px 0 15px -15px rgba(0, 0, 0, 0.25);
+}
+
+.shadow-right {
+    box-shadow: inset -20px 0 15px -15px rgba(0, 0, 0, 0.25);
+}
+
+/* If both sides scrollable */
+.shadow-left.shadow-right {
+    box-shadow:
+        inset 20px 0 15px -15px rgba(0, 0, 0, 0.25),
+        inset -20px 0 15px -15px rgba(0, 0, 0, 0.25);
 }
 </style>

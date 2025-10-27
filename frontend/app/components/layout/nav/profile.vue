@@ -6,12 +6,54 @@
                 <UIcon name="i-hugeicons:filter-horizontal" class="mr-1" />
             </UBadge>
             <template #content>
-                <div class="p-4">
-                    <p class="text-sm text-gray-500">Filters coming soon.</p>
+                <div class="p-3 w-full flex flex-col gap-4">
+                    <div>
+                        <p class="text-xs font-bold mb-1">Room Type</p>
+                        <UButtonGroup size="xs">
+                            <UButton color="primary" variant="solid" :active="true">All</UButton>
+                            <UButton color="neutral" variant="soft">Cursus</UButton>
+                            <UButton color="neutral" variant="soft">Live</UButton>
+                            <UButton color="neutral" variant="soft">Single</UButton>
+                            <UButton color="neutral" variant="soft">School</UButton>
+                        </UButtonGroup>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold mb-1">Pricing</p>
+                        <UButtonGroup size="xs">
+                            <UButton color="primary" variant="solid" :active="true">All</UButton>
+                            <UButton color="neutral" variant="soft">Free</UButton>
+                            <UButton color="neutral" variant="soft">&lt;5$</UButton>
+                            <UButton color="neutral" variant="soft">&lt;10$</UButton>
+                            <UButton color="neutral" variant="soft">&lt;20$</UButton>
+                        </UButtonGroup>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold mb-1">Duration</p>
+                        <UButtonGroup size="xs">
+                            <UButton color="primary" variant="solid" :active="true">All</UButton>
+                            <UButton color="neutral" variant="soft">Short</UButton>
+                            <UButton color="neutral" variant="soft">Medium</UButton>
+                            <UButton color="neutral" variant="soft">Long</UButton>
+                        </UButtonGroup>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold mb-1">Sort by</p>
+                        <UButtonGroup size="xs">
+                            <UButton color="primary" variant="solid" :active="true">Relevance</UButton>
+                            <UButton color="neutral" variant="soft">Upload date</UButton>
+                            <UButton color="neutral" variant="soft">Participation</UButton>
+                            <UButton color="neutral" variant="soft">Rating</UButton>
+                        </UButtonGroup>
+                    </div>
                 </div>
             </template>
         </UPopover>
-        <div>
+        <div ref="scrollContainer"
+            class="relative flex items-center justify-between w-full overflow-x-auto scroll-smooth px-2 transition-shadow duration-200"
+            :class="{
+                'shadow-left': canScrollLeft,
+                'shadow-right': canScrollRight,
+            }">
             <div v-if="pending">Loading tags...</div>
             <div v-else-if="error">Error loading tags</div>
             <template v-else>
@@ -29,6 +71,9 @@ import { computed } from 'vue';
 
 const { profileData, pending, error } = useUserProfile();
 const authUser = useAuthUser();
+const scrollContainer = ref<HTMLElement | null>(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
 
 const isOwner = computed(() => profileData.value?.user?.id === authUser.value?.id);
 
@@ -45,13 +90,25 @@ const uniqueTags = computed(() => {
 
     return Array.from(uniqueTagMap.values());
 });
+
+const updateShadows = () => {
+    const el = scrollContainer.value;
+    if (!el) return;
+    canScrollLeft.value = el.scrollLeft > 0;
+    canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+};
+
+onMounted(async () => {
+    nextTick(() => updateShadows());
+    scrollContainer.value?.addEventListener("scroll", updateShadows);
+});
+onUnmounted(() => {
+    scrollContainer.value?.removeEventListener("scroll", updateShadows);
+});
 </script>
 
 <style scoped lang="css">
-nav {
-    @apply flex items-center justify-start overflow-hidden;
-}
-
+/* Hide scrollbars */
 nav div::-webkit-scrollbar,
 nav div::-webkit-scrollbar-track,
 nav div::-webkit-scrollbar-track:hover,
@@ -60,7 +117,23 @@ nav div::-webkit-scrollbar-thumb:hover {
     display: none;
 }
 
-nav>div {
-    @apply flex items-center justify-between w-full overflow-x-auto;
+nav div {
+    scrollbar-width: none;
+}
+
+/* Inset shadows for edges */
+.shadow-left {
+    box-shadow: inset 20px 0 15px -15px rgba(0, 0, 0, 0.25);
+}
+
+.shadow-right {
+    box-shadow: inset -20px 0 15px -15px rgba(0, 0, 0, 0.25);
+}
+
+/* If both sides scrollable */
+.shadow-left.shadow-right {
+    box-shadow:
+        inset 20px 0 15px -15px rgba(0, 0, 0, 0.25),
+        inset -20px 0 15px -15px rgba(0, 0, 0, 0.25);
 }
 </style>
