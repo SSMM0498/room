@@ -1,43 +1,33 @@
 <template>
-  <div class="comment-item border-gray border rounded-lg p-4">
+  <div class="comment-item border-accented border rounded-lg p-2">
     <div class="flex items-start gap-3">
-      <img 
-        :src="comment.avatar" 
-        :alt="comment.author"
-        class="w-10 h-10 rounded-full"
-      />
+      <UAvatar :src="comment.avatar" :alt="comment.author" class="size-10 rounded-full" />
       <div class="flex-1">
         <div class="flex items-center gap-2">
           <span class="font-medium">{{ comment.author }}</span>
-          <span class="text-sm">{{ comment.timestamp }}</span>
+          <span class="text-sm text-dimmed">{{ comment.timestamp }}</span>
         </div>
-        <p class="mt-1">{{ comment.content }}</p>
+        <p class="mt-1 text-sm">{{ comment.content }}</p>
         <div class="flex items-center gap-4 mt-2">
-          <button 
-            class="flex items-center gap-1 hover:text-primary"
-            @click="toggleLike"
-          >
+          <UButton class="flex items-center gap-1 hover:text-primary p-1 cursor-pointer" variant="ghost"
+            @click="toggleLike">
             <span>👍</span>
             <span>{{ comment.likes }}</span>
-          </button>
-          <button 
-            class="flex items-center gap-1 hover:text-primary"
-            @click="toggleHeart"
-          >
+          </UButton>
+          <UButton class="flex items-center gap-1 hover:text-primary p-1 cursor-pointer" variant="ghost"
+            @click="toggleHeart">
             <span>❤️</span>
             <span>{{ comment.hearts }}</span>
-          </button>
-          <button 
-            class="hover:text-primary"
-            @click="$emit('reply', comment.id)"
-          >
+          </UButton>
+          <UButton class="hover:text-primary p-1 cursor-pointer" variant="link" color="neutral"
+            @click="$emit('reply', comment.id)">
             Reply
-          </button>
+          </UButton>
         </div>
       </div>
-      <button class="text-black">
+      <UButton size="xs" class="px-2 py-1 cursor-pointer" color="neutral" variant="ghost">
         ⋮
-      </button>
+      </UButton>
     </div>
   </div>
 </template>

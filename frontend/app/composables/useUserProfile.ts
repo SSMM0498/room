@@ -19,7 +19,7 @@ export const useUserProfile = () => {
                 followingCount: number;
                 isFollowing: boolean;
                 followRecordId: string | null;
-            }>(`/api/users/${profileUserId}/follow-status`);
+            }>(`/api/users/id/${profileUserId}/follow-status`);
 
             followerCount.value = status.followerCount;
             followingCount.value = status.followingCount;
@@ -44,7 +44,7 @@ export const useUserProfile = () => {
                 user: RecordModel;
                 school: RecordModel | null;
                 courses: RecordModel[];
-            }>(`/api/users/${username}`);
+            }>(`/api/users/username/${username}`);
 
             if (rawData.user) {
                 await fetchFollowerStatus(rawData.user.id);
@@ -76,7 +76,7 @@ export const useUserProfile = () => {
 
     const follow = async (profileUserId: string) => {
         try {
-            const response = await $fetch<{ success: boolean, followRecordId: string }>(`/api/users/${profileUserId}/follow`, {
+            const response = await $fetch<{ success: boolean, followRecordId: string }>(`/api/users/id/${profileUserId}/follow`, {
                 method: 'POST',
             });
             if (response.success) {
@@ -91,7 +91,7 @@ export const useUserProfile = () => {
 
     const unfollow = async (profileUserId: string) => {
         try {
-            await $fetch(`/api/users/${profileUserId}/unfollow`, {
+            await $fetch(`/api/users/id/${profileUserId}/unfollow`, {
                 method: 'POST',
             });
             isFollowing.value = false;

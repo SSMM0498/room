@@ -1,25 +1,15 @@
 <template>
   <div class="comment-input">
-    <UInput
-      type="text"
-      v-model="commentText"
-      :placeholder="placeholder"
-      input-class="input-base" size="sm" color="white"
-      @keyup.enter="submitComment"
-    />
-    <div v-if="replyTo" class="mt-2 flex gap-2">
-      <button
-        @click="submitComment"
-        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
+    <UTextarea class="w-full" :ui="{ base: 'border-b border-accented rounded-b-none' }" v-model="commentText"
+      :placeholder="placeholder" color="neutral" variant="ghost" :rows="1" input-class="input-base" size="md"
+      @keyup.enter="submitComment" />
+    <div v-if="replyTo" class="mt-1 flex gap-2">
+      <UButton @click="submitComment">
         Reply
-      </button>
-      <button
-        @click="$emit('cancel-reply')"
-        class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600"
-      >
+      </UButton>
+      <UButton @click="$emit('cancel-reply')" variant="ghost" color="neutral">
         Cancel
-      </button>
+      </UButton>
     </div>
   </div>
 </template>
@@ -39,8 +29,8 @@ const emit = defineEmits(['post-comment', 'cancel-reply'])
 const commentText = ref('')
 
 const placeholder = computed(() => {
-  return props.replyTo 
-    ? 'Write a reply...' 
+  return props.replyTo
+    ? 'Write a reply...'
     : 'Write comment'
 })
 
