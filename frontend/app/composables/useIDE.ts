@@ -40,6 +40,9 @@ const url = ref('');
 const activeTerminal = ref<string>('');
 const openFolders = ref<string[]>(['/workspace']);
 const openTabs = reactive<{ tabs: ActiveFile[] }>({ tabs: [] });
+const savingFiles = ref<Set<string>>(new Set());
+const deletingResources = ref<Set<string>>(new Set());
+const movingResources = ref<Set<string>>(new Set());
 
 export const useIDE = () => {
   // --- Directory Tree Management ---
@@ -134,7 +137,6 @@ export const useIDE = () => {
   };
 
   // --- Resource Creation ---
-
   const handleCreateSubmit = () => {
     resourceCreation.isCreating = false;
     const folder = activeResources[0]?.type === 'directory'
@@ -170,8 +172,6 @@ export const useIDE = () => {
     resourceCreation.name = 'New folder';
   };
 
-  // --- Folder Management ---
-
   const addOpenFolder = (folderPath: string) => {
     if (!openFolders.value.includes(folderPath)) {
       openFolders.value.push(folderPath);
@@ -193,27 +193,14 @@ export const useIDE = () => {
   // --- File System Operations Handlers ---
 
   const handleFileDelete = (filePath: string) => {
-    // Remove from open tabs if present
-    const tabIndex = openTabs.tabs.findIndex((tab) => tab.filePath === filePath);
-    if (tabIndex !== -1) {
-      deleteTab(openTabs.tabs[tabIndex]!, tabIndex);
-    }
+    deletingResources.value.add(filePath);
 
-    // Emit delete event
     socketClient.deleteResource({ targetPath: filePath });
   };
 
   const handleDirectoryDelete = (dirPath: string) => {
-    // Remove from open folders
-    removeOpenFolder(dirPath);
+    deletingResources.value.add(dirPath);
 
-    // Close tabs for files in deleted directory
-    const tabsToDelete = openTabs.tabs.filter((tab) => tab.filePath.startsWith(dirPath));
-    tabsToDelete.forEach((tab) => {
-      deleteTab(tab, openTabs.tabs.indexOf(tab));
-    });
-
-    // Emit delete event
     socketClient.deleteResource({ targetPath: dirPath });
   };
 
@@ -283,6 +270,7 @@ export const useIDE = () => {
   };
 
   const saveFile = (filePath: string, content: string) => {
+    savingFiles.value.add(filePath);
     socketClient.updateFile({
       targetPath: filePath,
       fileContent: content,
@@ -362,6 +350,9 @@ export const useIDE = () => {
     showTerminal,
     openFolders,
     activeTerminal,
+    savingFiles,
+    deletingResources,
+    movingResources,
 
     // Setters
     setIsDragging,

@@ -1,5 +1,6 @@
 <template>
-  <header class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-hightlighted p-2 border-gray-200 dark:border-gray-800">
+  <header
+    class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-hightlighted p-2 border-gray-200 dark:border-gray-800">
     <nav class="flex px-2 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center
       text-sm justify-center space-x-1">
       <NuxtLink :to="localePath('/')" class="logo -mt-1 mr-3 font-inter text-black dark:text-white ">room_</NuxtLink>
@@ -29,7 +30,7 @@
                     <button @click="() => handleItemSelect(playlistItem.order, currentCourse!.slug)"
                       class="text-left text-sm py-1.5 px-2 w-full flex justify-between items-center cursor-pointer">
                       <span class="truncate">{{ playlistItem.order + 1 }} - {{ playlistItem.expand?.course?.title
-                      }}</span>
+                        }}</span>
                     </button>
                   </li>
                 </ol>
@@ -63,10 +64,11 @@
         variant="soft">
         {{ $t('ide.terminal') }}
       </UButton>
-      <UButton id="btn-search" size="xs" class="mr-1" icon="i-heroicons:magnifying-glass-solid" variant="soft">
+      <UButton id="btn-search" size="xs" class="mr-1" icon="i-heroicons:magnifying-glass-solid" variant="soft" disabled>
         {{ $t('search') }}
       </UButton>
-      <UButton id="btn-invite" size="xs" class="mr-1" label="Invite" icon="i-heroicons:user-plus" variant="soft">
+      <UButton id="btn-invite" size="xs" class="mr-1" label="Invite" icon="i-heroicons:user-plus" variant="soft"
+        disabled>
         {{ $t('ide.invite') }}
       </UButton>
       <layout-color-switch />
@@ -136,34 +138,47 @@ function handleItemSelect(index: number, slug?: string) {
 const {
   showTerminal,
   changeURL,
-  activeTerminal
 } = useIDE();
 
 const { socketClient } = useSocket();
+const { addTerminal } = useTerminals();
 
 // Handle preview command results
 socketClient.handlePreview((data: any) => {
   console.log('[IDE] Preview result:', data);
-  if (data.preview) {
-    console.log('[IDE] Preview output:', data.preview);
+  if (data.error) {
+    console.error('[IDE] Preview error:', data.error);
+    return;
   }
-  if (data.url) {
-    changeURL(data.url);
+  if (data.terminalId) {
+    addTerminal(data.terminalId);
+    console.log('[IDE] Preview terminal created:', data.terminalId);
+  }
+});
+
+// Handle run command results
+socketClient.handleRun((data: any) => {
+  console.log('[IDE] Run result:', data);
+  if (data.error) {
+    console.error('[IDE] Run error:', data.error);
+    return;
+  }
+  if (data.terminalId) {
+    addTerminal(data.terminalId);
+    console.log('[IDE] Run terminal created:', data.terminalId);
   }
 });
 
 const startPreview = (event: MouseEvent) => {
-  // Default preview command - can be customized based on project type
-  const previewCommand = 'npm run dev';
-  socketClient.startPreview(previewCommand);
-  console.log('[IDE] Starting preview with command:', previewCommand);
+  // Command is now configured in workspace config.toml
+  socketClient.startPreview();
+  console.log('[IDE] Starting preview (command from config.toml)');
 };
 
 const runProject = () => {
-  // Default run command - can be customized based on project type
-  const runCommand = 'npm start';
-  socketClient.runProject(runCommand);
-  console.log('[IDE] Running project with command:', runCommand);
+  // Command is now configured in workspace config.toml
+  socketClient.runProject();
+  console.log('[IDE] Running project (command from config.toml)');
 };
 
 const recording = useRecorder()

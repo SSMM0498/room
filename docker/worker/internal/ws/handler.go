@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"worker/internal/config"
 	"worker/internal/filesystem"
 	"worker/internal/terminal"
 	"worker/internal/watcher"
@@ -150,6 +151,29 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.CreateFileBase64(req.TargetPath, req.ContentBase64)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			// Extract parent folder path
+			parts := strings.Split(req.TargetPath, "/")
+			parentPath := "/"
+			if len(parts) > 1 {
+				parentPath = strings.Join(parts[:len(parts)-1], "/")
+				if parentPath == "" {
+					parentPath = "/"
+				}
+			}
+
+			// Read parent folder contents to return to frontend
+			folderContents, err := h.fsSvc.ReadFolder(parentPath)
+			if err != nil {
+				ack.Error = err.Error()
+			} else {
+				// Return response similar to crud-read-folder
+				ack.Data = map[string]interface{}{
+					"ackID":          reqAckID,
+					"targetPath":     parentPath,
+					"folderContents": folderContents,
+				}
+			}
 		}
 	case "crud-read-folder":
 		log.Println("[WORKER] Reading folder.")
@@ -197,6 +221,12 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.UpdateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			ack.Data = map[string]interface{}{
+				"ackID":      reqAckID,
+				"targetPath": req.TargetPath,
+				"status":     "updated",
+			}
 		}
 	case "crud-create-file":
 		log.Println("[WORKER] Creating file.")
@@ -205,6 +235,29 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.CreateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			// Extract parent folder path
+			parts := strings.Split(req.TargetPath, "/")
+			parentPath := "/"
+			if len(parts) > 1 {
+				parentPath = strings.Join(parts[:len(parts)-1], "/")
+				if parentPath == "" {
+					parentPath = "/"
+				}
+			}
+
+			// Read parent folder contents to return to frontend
+			folderContents, err := h.fsSvc.ReadFolder(parentPath)
+			if err != nil {
+				ack.Error = err.Error()
+			} else {
+				// Return response similar to crud-read-folder
+				ack.Data = map[string]interface{}{
+					"ackID":          reqAckID,
+					"targetPath":     parentPath,
+					"folderContents": folderContents,
+				}
+			}
 		}
 	case "crud-create-folder":
 		log.Println("[WORKER] Creating folder.")
@@ -213,6 +266,29 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.CreateFolder(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			// Extract parent folder path
+			parts := strings.Split(req.TargetPath, "/")
+			parentPath := "/"
+			if len(parts) > 1 {
+				parentPath = strings.Join(parts[:len(parts)-1], "/")
+				if parentPath == "" {
+					parentPath = "/"
+				}
+			}
+
+			// Read parent folder contents to return to frontend
+			folderContents, err := h.fsSvc.ReadFolder(parentPath)
+			if err != nil {
+				ack.Error = err.Error()
+			} else {
+				// Return response similar to crud-read-folder
+				ack.Data = map[string]interface{}{
+					"ackID":          reqAckID,
+					"targetPath":     parentPath,
+					"folderContents": folderContents,
+				}
+			}
 		}
 	case "crud-delete-resource":
 		log.Println("[WORKER] Deleting resource.")
@@ -221,6 +297,12 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.DeleteResource(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			ack.Data = map[string]interface{}{
+				"ackID":      reqAckID,
+				"targetPath": req.TargetPath,
+				"status":     "deleted",
+			}
 		}
 	case "crud-move-resource":
 		log.Println("[WORKER] Moving resource.")
@@ -229,6 +311,30 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		err := h.fsSvc.MoveResource(req.TargetPath, req.NewPath)
 		if err != nil {
 			ack.Error = err.Error()
+		} else {
+			// Extract parent folder path from the new location
+			parts := strings.Split(req.NewPath, "/")
+			parentPath := "/"
+			if len(parts) > 1 {
+				parentPath = strings.Join(parts[:len(parts)-1], "/")
+				if parentPath == "" {
+					parentPath = "/"
+				}
+			}
+
+			// Read parent folder contents to return to frontend
+			folderContents, err := h.fsSvc.ReadFolder(parentPath)
+			if err != nil {
+				ack.Error = err.Error()
+			} else {
+				ack.Data = map[string]interface{}{
+					"ackID":          reqAckID,
+					"targetPath":     parentPath,
+					"folderContents": folderContents,
+					"oldPath":        req.TargetPath,
+					"newPath":        req.NewPath,
+				}
+			}
 		}
 	case "create-terminal":
 		log.Println("[WORKER] Creating terminal.")
@@ -263,109 +369,148 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 	case "command-preview":
 		log.Println("[WORKER] Preview command.")
 		var req struct {
-			Command string `json:"command"`
-			AckID   string `json:"ackID"`
+			AckID string `json:"ackID"`
 		}
 		json.Unmarshal(dataBytes, &req)
 
-		// Execute the preview command (typically starts a dev server)
-		go func() {
+		// Load configuration from config.toml
+		cfg, err := config.LoadConfig(h.fsSvc.GetBaseDir())
+		if err != nil {
+			log.Printf("[WORKER] Failed to load config: %v", err)
+			client.Send <- &types.Message{
+				Event: "command-result-preview",
+				Data: map[string]interface{}{
+					"ackID": req.AckID,
+					"error": "Failed to load config.toml: " + err.Error(),
+				},
+			}
+			return
+		}
+
+		// Execute the preview command from config
+		go func(c *Client, ackID string, previewCfg config.PreviewConfig) {
+			// Create terminal - use pointer to capture terminal ID for callback
+			terminalIDPtr := new(string)
 			terminalID, err := h.termSvc.CreateOrGetTerminal("", func(data []byte) {
 				// Forward terminal output to client
-				client.hub.Send(&types.Message{
+				log.Printf("[WORKER] Sending terminal-data event: terminalId=%s, contentLength=%d", *terminalIDPtr, len(data))
+				c.hub.Send(&types.Message{
 					Event: "terminal-data",
-					Data:  map[string]interface{}{"id": "preview-terminal", "content": string(data)},
+					Data:  map[string]interface{}{"id": *terminalIDPtr, "content": string(data)},
 				})
 			})
+			*terminalIDPtr = terminalID
 
 			if err != nil {
 				log.Printf("[WORKER] Failed to create preview terminal: %v", err)
-				client.Send <- &types.Message{
+				log.Printf("[WORKER] Sending command-result-preview event (error): ackID=%s, error=%s", ackID, err.Error())
+				c.Send <- &types.Message{
 					Event: "command-result-preview",
 					Data: map[string]interface{}{
-						"ackID": req.AckID,
+						"ackID": ackID,
 						"error": err.Error(),
 					},
 				}
 				return
 			}
 
-			// Write the command to the terminal
+			// Send initial response with preview info and terminal ID
+			log.Printf("[WORKER] Sending command-result-preview event: ackID=%s, terminalId=%s, command=%s, url=%s", ackID, terminalID, previewCfg.Command, previewCfg.URL)
+			c.Send <- &types.Message{
+				Event: "command-result-preview",
+				Data: map[string]interface{}{
+					"ackID":      ackID,
+					"command":    previewCfg.Command,
+					"terminalId": terminalID,
+					"preview":    "Preview command started: " + previewCfg.Command,
+					"url":        previewCfg.URL,
+				},
+			}
+
+			// Write the command from config to the terminal
 			err = h.termSvc.WriteToTerminal(types.TerminalInput{
 				ID:    terminalID,
-				Input: req.Command + "\n",
+				Input: previewCfg.Command + "\n",
 			})
 
 			if err != nil {
 				log.Printf("[WORKER] Failed to execute preview command: %v", err)
 			}
-
-			// Send initial response with preview info
-			client.Send <- &types.Message{
-				Event: "command-result-preview",
-				Data: map[string]interface{}{
-					"ackID":      req.AckID,
-					"command":    req.Command,
-					"terminalId": terminalID,
-					"preview":    "Preview command started: " + req.Command,
-					"url":        "http://localhost:3000", // Default dev server URL
-				},
-			}
-		}()
+		}(client, req.AckID, cfg.Preview)
 		return
 	case "command-run":
 		log.Println("[WORKER] Run command.")
 		var req struct {
-			Command string `json:"command"`
-			AckID   string `json:"ackID"`
+			AckID string `json:"ackID"`
 		}
 		json.Unmarshal(dataBytes, &req)
 
-		// Execute the run command
-		go func() {
+		// Load configuration from config.toml
+		cfg, err := config.LoadConfig(h.fsSvc.GetBaseDir())
+		if err != nil {
+			log.Printf("[WORKER] Failed to load config: %v", err)
+			client.Send <- &types.Message{
+				Event: "command-result-run",
+				Data: map[string]interface{}{
+					"ackID": req.AckID,
+					"error": "Failed to load config.toml: " + err.Error(),
+				},
+			}
+			return
+		}
+
+		// Execute the run command from config
+		go func(c *Client, ackID string, runCfg config.RunConfig) {
+			// Create terminal - use pointer to capture terminal ID for callback
+			terminalIDPtr := new(string)
 			terminalID, err := h.termSvc.CreateOrGetTerminal("", func(data []byte) {
-				// Forward terminal output to client
-				client.hub.Send(&types.Message{
+				log.Printf("[WORKER] Sending terminal-data event: terminalId=%s, contentLength=%d", *terminalIDPtr, len(data))
+				c.hub.Send(&types.Message{
 					Event: "terminal-data",
-					Data:  map[string]interface{}{"id": "run-terminal", "content": string(data)},
+					Data:  map[string]interface{}{"id": *terminalIDPtr, "content": string(data)},
 				})
 			})
+			*terminalIDPtr = terminalID
 
 			if err != nil {
 				log.Printf("[WORKER] Failed to create run terminal: %v", err)
-				if req.AckID != "" {
-					ack.Data = map[string]interface{}{
-						"ackID": req.AckID,
-						"error": err.Error(),
-					}
-					client.Send <- &types.Message{
-						Event: msg.Event,
-						Data:  ack.Data,
+				if ackID != "" {
+					log.Printf("[WORKER] Sending command-result-run event (error): ackID=%s, error=%s", ackID, err.Error())
+					c.Send <- &types.Message{
+						Event: "command-result-run",
+						Data: map[string]interface{}{
+							"ackID": ackID,
+							"error": err.Error(),
+						},
 					}
 				}
 				return
 			}
 
-			// Write the command to the terminal
+			// Send acknowledgment with terminal ID
+			if ackID != "" {
+				log.Printf("[WORKER] Sending command-result-run event: ackID=%s, terminalId=%s, command=%s, status=executed", ackID, terminalID, runCfg.Command)
+				c.Send <- &types.Message{
+					Event: "command-result-run",
+					Data: map[string]interface{}{
+						"ackID":      ackID,
+						"command":    runCfg.Command,
+						"terminalId": terminalID,
+						"status":     "executed",
+					},
+				}
+			}
+
+			// Write the command from config to the terminal
 			err = h.termSvc.WriteToTerminal(types.TerminalInput{
 				ID:    terminalID,
-				Input: req.Command + "\n",
+				Input: runCfg.Command + "\n",
 			})
 
 			if err != nil {
 				log.Printf("[WORKER] Failed to execute run command: %v", err)
 			}
-
-			// Send acknowledgment
-			if req.AckID != "" {
-				ack.Data = map[string]interface{}{
-					"ackID":      req.AckID,
-					"command":    req.Command,
-					"terminalId": terminalID,
-					"status":     "executed",
-				}
-			}
-		}()
+		}(client, req.AckID, cfg.Run)
 		return
 	case "crud-download-workspace":
 		log.Println("[WORKER] Download workspace.")

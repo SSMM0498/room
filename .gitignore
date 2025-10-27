@@ -12,7 +12,11 @@ README.md
 .env.local
 docker/bridge/.env
 docker/worker/.env
-workspace/*
+docker/worker/workspace/*
+docker/worker/workspace/*/**
 docker/bridge/bridge
 .gitignore
 docker/worker/worker
+CLAUDE.md
+docker/bridge/cmd/bridge/bridge
+docker/worker/cmd/worker/worker

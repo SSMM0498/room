@@ -123,13 +123,17 @@ func (c *Client) readPump(done chan<- struct{}) {
 			return // Exit to trigger the defer and signal disconnect.
 		}
 
+		log.Printf("[BRIDGE] Worker → Bridge: event=%s", msg.Event)
+
 		if msg.Event == "file-changed" || msg.Event == "terminal-data" {
+			log.Printf("[BRIDGE] Publishing event to EventBus: %s", msg.Event)
 			c.eventBus.Publish("worker.events", &msg)
 		}
 
 		if ackID, ok := msg.Data.(map[string]interface{})["ackID"].(string); ok {
 			c.mu.Lock()
 			if ch, exists := c.ackChans[ackID]; exists {
+				log.Printf("[BRIDGE] Resolving ackID=%s for event=%s", ackID, msg.Event)
 				ch <- types.Acknowledge{Event: msg.Event, Data: msg.Data}
 				delete(c.ackChans, ackID)
 			}
@@ -146,6 +150,7 @@ func (c *Client) writePump() {
 			c.mu.Unlock()
 			continue
 		}
+		log.Printf("[BRIDGE] Bridge → Worker: event=%s", msg.Event)
 		err := c.conn.WriteJSON(msg)
 		c.mu.Unlock()
 

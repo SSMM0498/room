@@ -5,20 +5,20 @@
 		@drop.prevent="handleDrop" :class="{ 'bg-primary/20': isDragTarget && item.type === 'directory' }" @click="(event: MouseEvent) => {
 			if (isRenaming || event.ctrlKey || event.metaKey) {
 				return;
-			}
+			}65
 			handleOpen(item);
 		}">
-		<UInput v-if="isRenaming" ref="renamingContainer" type="text" v-model="newResourceName"
-			@vue:mounted="({ el }: any): void => el.focus()" @blur.prevent="(event: FocusEvent) => isRenaming = false"
+		<UInput v-if="isRenaming" variant="subtle" type="text" v-model="newResourceName" autofocus
+			@blur.prevent="(event: FocusEvent) => isRenaming = false"
 			@keyup.prevent.enter="(ev: KeyboardEvent) => handleRenameSubmit(item.path)"
 			@keyup.prevent.escape="handleRenameCancel" />
-		<div flex items-center w-full v-else>
-			<widget-file-icon mr-1 flex-none :path="item.name" :is-directory="item.type && item.type === 'directory'"
+		<div class="flex items-center w-full" v-else>
+			<widget-file-icon class="ml-1 mr-2 flex-none" :path="item.name" :is-directory="item.type && item.type === 'directory'"
 				:is-directory-open="item.isOpen" />
-			<p class="file-resource-name w-full max-w-[125px]">{{ item.name }}</p>
+			<p class="file-resource-name text-sm w-full max-w-[125px]">{{ item.name }}</p>
 		</div>
 		<UPopover absolute>
-			<UButton variant="soft" square size="xs" color="primary" icon="i-tdesign-more">
+			<UButton variant="soft" square size="xs" color="primary" icon="i-tdesign-more" @click.stop>
 			</UButton>
 			<template #content>
 				<div class="flex flex-col items-start justify-start p-1.5">
@@ -66,7 +66,7 @@ const newResourceName = ref(item.name);
 const isDragTarget = ref(false);
 let folderOpenTimeout: NodeJS.Timeout | null = null;
 const renamingContainer = ref<HTMLElement | null>(null);
-const openResource = ref(false)
+const openResource = ref(false);
 
 onClickOutside(renamingContainer, () => {
 	if (isRenaming.value) {

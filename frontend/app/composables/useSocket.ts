@@ -56,7 +56,6 @@ class SocketClient {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
 
-          // Handle acknowledgment responses
           if (message.ack && this.ackCallbacks.has(message.ack)) {
             const callback = this.ackCallbacks.get(message.ack);
             if (callback) {
@@ -66,7 +65,6 @@ class SocketClient {
             return;
           }
 
-          // Handle regular event messages
           const handlers = this.eventHandlers.get(message.event) || [];
           handlers.forEach(handler => handler(message.data));
         } catch (error) {
@@ -77,7 +75,6 @@ class SocketClient {
       this.socket.onclose = (event: CloseEvent) => {
         console.log(`[Socket] Disconnected. Code: ${event.code}, Reason: ${event.reason}`);
 
-        // Trigger disconnect event handlers
         const handlers = this.eventHandlers.get('disconnect') || [];
         handlers.forEach(handler => handler({ code: event.code, reason: event.reason }));
 
@@ -133,23 +130,14 @@ class SocketClient {
     this.on('connect', callback);
   }
 
-  /**
-   * Checks if socket is connected.
-   */
   get isConnected(): boolean {
     return this.socket?.readyState === WebSocket.OPEN;
   }
 
-  /**
-   * Gets the socket instance.
-   */
   get instance(): WebSocket | null {
     return this.socket;
   }
 
-  /**
-   * Emit an event to the server
-   */
   private emit(event: string, data?: any, callback?: (response: any) => void) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.error('[Socket] Cannot emit - socket not connected');
@@ -158,7 +146,6 @@ class SocketClient {
 
     const message: WebSocketMessage = { event, data };
 
-    // Handle acknowledgment callback
     if (callback) {
       const ackId = `ack_${++this.ackCounter}`;
       message.ack = ackId;
@@ -168,9 +155,6 @@ class SocketClient {
     this.socket.send(JSON.stringify(message));
   }
 
-  /**
-   * Register an event handler
-   */
   private on(event: string, handler: MessageHandler) {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, []);
@@ -178,28 +162,28 @@ class SocketClient {
     this.eventHandlers.get(event)!.push(handler);
   }
 
-  /**
-   * Public method to register event handlers for connection events
-   */
   public onConnectError(handler: (error: any) => void) {
     this.on('connect_error', handler);
   }
 
-  /**
-   * Public method to register event handlers for disconnect events
-   */
   public onDisconnect(handler: (data: any) => void) {
     this.on('disconnect', handler);
   }
-
-  // --- File System Operations ---
 
   createFile(event: CreateFileEventType) {
     this.emit('crud-create-file', event);
   }
 
+  handleCreateFile(handle: (response: ReadFolderResponse) => void) {
+    this.on('crud-create-file', handle);
+  }
+
   createFolder(event: CreateFolderEventType) {
     this.emit('crud-create-folder', event);
+  }
+
+  handleCreateFolder(handle: (response: ReadFolderResponse) => void) {
+    this.on('crud-create-folder', handle);
   }
 
   readFile(event: ReadFileEventType, callback?: (response: ReadFileResponse) => void) {
@@ -214,12 +198,24 @@ class SocketClient {
     this.emit('crud-update-file', event);
   }
 
+  handleUpdateFile(handle: (response: any) => void) {
+    this.on('crud-update-file', handle);
+  }
+
   moveResource(event: MoveEventType) {
     this.emit('crud-move-resource', event);
   }
 
+  handleMoveResource(handle: (response: any) => void) {
+    this.on('crud-move-resource', handle);
+  }
+
   deleteResource(event: DeleteEventType) {
     this.emit('crud-delete-resource', event);
+  }
+
+  handleDeleteResource(handle: (response: any) => void) {
+    this.on('crud-delete-resource', handle);
   }
 
   handleWatch(handle: (data: WatchResponse) => void) {
@@ -231,8 +227,6 @@ class SocketClient {
     this.on('rename', (data) => handle({ event: 'rename', data }));
   }
 
-  // --- File System Event Handlers ---
-
   handleReadFile(handle: (response: ReadFileResponse) => void) {
     this.on('crud-read-file', handle);
   }
@@ -240,8 +234,6 @@ class SocketClient {
   handleReadFolder(handle: (response: ReadFolderResponse) => void) {
     this.on('crud-read-folder', handle);
   }
-
-  // --- Terminal Operations ---
 
   createTerminal(terminalId: string) {
     this.emit('create-terminal', { id: terminalId });
@@ -259,20 +251,22 @@ class SocketClient {
     this.on('terminal-data', handle);
   }
 
-  // --- Project Operations ---
-
-  startPreview(command: string) {
+  startPreview() {
     const ackId = `ack_${++this.ackCounter}`;
-    this.emit('command-preview', { command, ackID: ackId });
+    this.emit('command-preview', { ackID: ackId });
   }
 
   handlePreview(handle: (data: any) => void) {
     this.on('command-result-preview', handle);
   }
 
-  runProject(command: string) {
+  runProject() {
     const ackId = `ack_${++this.ackCounter}`;
-    this.emit('command-run', { command, ackID: ackId });
+    this.emit('command-run', { ackID: ackId });
+  }
+
+  handleRun(handle: (data: any) => void) {
+    this.on('command-result-run', handle);
   }
 
   downloadProject(targetPath: string) {
@@ -283,14 +277,16 @@ class SocketClient {
     this.on('download-workspace', handle);
   }
 
-  // --- Additional Operations ---
-
   init() {
     this.emit('init', {});
   }
 
   hydrateCreateFile(targetPath: string, contentBase64: string) {
     this.emit('hydrate-create-file', { targetPath, contentBase64 });
+  }
+
+  handleHydrateCreateFile(handle: (response: ReadFolderResponse) => void) {
+    this.on('hydrate-create-file', handle);
   }
 
   collapseFolder(targetPath: string) {
@@ -300,8 +296,6 @@ class SocketClient {
   closeFile(targetPath: string) {
     this.emit('crud-close-file', { targetPath });
   }
-
-  // --- Connection Management ---
 
   disconnect() {
     if (this.reconnectTimer) {
@@ -319,7 +313,6 @@ class SocketClient {
   }
 }
 
-// Create singleton instance
 const socketClient = new SocketClient();
 
 /**
@@ -332,10 +325,8 @@ export const getSocketUrl = (workspaceName: string): string => {
   const env = config.public.ENV || config.ENV || 'PROD';
 
   if (env === 'DEV') {
-    // In development, connect to local bridge
     return 'ws://localhost:2024/ws';
   } else {
-    // In production, connect to the workspace-specific ingress
     return `ws://${workspaceName}.room.com/ws`;
   }
 };

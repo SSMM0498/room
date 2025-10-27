@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
     let courseFilter = `author = "${targetUser.id}"`;
     if (authUserId !== targetUser.id) {
-      courseFilter += ` && status = "published"`;
+      courseFilter += ` && status = "public"`;
     }
 
     const courses = await pb.collection('courses').getFullList({

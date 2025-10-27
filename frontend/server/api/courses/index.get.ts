@@ -2,7 +2,7 @@ export default defineEventHandler(async (event) => {
     const pb = createPocketBaseInstance(event);
     try {
         const courses = await pb.collection('courses').getFullList({
-            filter: 'status = "published"',
+            filter: 'status = "public"',
             sort: '-created',
             expand: 'author,tags', // Expand author and tags for the listing cards
         });

@@ -34,13 +34,20 @@ func (c *Client) ReadPump() {
 		}
 
 		switch msg.Event {
-		case "crud-read-file", "crud-read-folder", "create-terminal", "close-terminal":
+		// Events that require request-response pattern
+		case "crud-read-file", "crud-read-folder", "create-terminal", "close-terminal", "crud-download-workspace",
+			"hydrate-create-file", "crud-create-file", "crud-create-folder", "command-preview", "command-run",
+			"crud-update-file", "crud-delete-resource", "crud-move-resource":
+			log.Printf("[BRIDGE] Frontend → Worker (request-response): event=%s", msg.Event)
 			go c.handleRequestResponse(msg)
 
-		case "crud-update-file", "crud-create-file", "crud-create-folder", "crud-delete-resource", "crud-move-resource", "terminal-input", "crud-collapse-folder", "crud-close-file", "command-preview", "command-run":
+		// Fire-and-forget events (no response expected from worker)
+		case "terminal-input", "crud-collapse-folder", "crud-close-file",
+			"watch", "init":
+			log.Printf("[BRIDGE] Frontend → Worker (fire-and-forget): event=%s", msg.Event)
 			// No response needed, just forward to the worker.
 			c.Worker.SendFireAndForget(&msg)
-			
+
 		default:
 			log.Printf("BRIDGE: Received unknown event type from client: %s", msg.Event)
 		}
@@ -55,6 +62,7 @@ func (c *Client) WritePump() {
 			c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
+		log.Printf("[BRIDGE] Worker → Frontend: event=%s", message.Event)
 		c.Conn.WriteJSON(message)
 	}
 }
@@ -67,11 +75,10 @@ func (c *Client) handleRequestResponse(msg types.Message) {
 	ack, err := c.Worker.ForwardCommand(&msg, internalAckID)
 	if err != nil {
 		log.Printf("BRIDGE: Error forwarding command '%s': %v", msg.Event, err)
-		// Send an error response back to the client
 		c.Conn.WriteJSON(types.Acknowledge{Event: msg.Event, Error: err.Error(), Data: map[string]interface{}{"ackID": internalAckID}})
 		return
 	}
+	log.Printf("BRIDGE: Send forwarding command '%s': %v", msg.Event, err)
 
-	// Forward the successful acknowledgement from the worker back to the client.
 	c.Conn.WriteJSON(ack)
 }

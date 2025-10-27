@@ -2,7 +2,9 @@
 	<div class="browser rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
 		<nav
 			class="flex items-center flex-nowrap w-full rounded-t-lg p-1 border-b border-gray-200 dark:border-gray-800 text-sm justify-between gap-2">
-			<div class="flex gap-1">
+			<UIcon name="i-ph-globe" class="size-4" />
+			<h5>Browser</h5>
+			<div class="ml-1 flex gap-1">
 				<!-- <UButton square variant="ghost" color="neutral" size="xs" icon="i-heroicons:arrow-small-left-20-solid">
 				</UButton> -->
 				<UButton square variant="ghost" color="neutral" size="xs" icon="i-heroicons:arrow-path-solid"
@@ -44,9 +46,9 @@ const navigate = () => {
 	changeURL(url.value);
 };
 
-socketClient.handlePreview((previewUrl: string) => {
-	changeURL(previewUrl);
-	url.value = previewUrl;
+socketClient.handlePreview((previewData: any) => {
+	changeURL(previewData.url);
+	url.value = previewData.url;
 	refresh();
 });
 

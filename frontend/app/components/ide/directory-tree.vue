@@ -7,8 +7,8 @@
       @open-file="(data: ReadFileEventType) => emit('open-file', data)"
       @delete-resource="(data: DeleteEventType) => emit('delete-resource', data)"
       @move-resource="(data: MoveEventType) => emit('move-resource', data)" />
-    <UInput color="neutral" variant="ghost" v-if="resourceCreation.isCreating && activeResources[0]!.path == item.path"
-      type="text" v-model="resourceCreation.name" @vue:mounted="({ el }: any): void => el.focus()"
+    <UInput variant="subtle" v-if="resourceCreation.isCreating && (activeResources.length > 0 ? activeResources[0]!.path : '/workspace') == item.path"
+      type="text" v-model="resourceCreation.name" autofocus
       @blur.prevent="(event: FocusEvent) => resourceCreation.isCreating = false"
       @keyup.prevent.enter="handleCreateSubmit" />
     <ide-directory-tree v-if="item.content !== null && item.isOpen" :depth="depth + 1" :directory="item"
