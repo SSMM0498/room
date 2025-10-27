@@ -5,15 +5,15 @@
     :id="`${course.section.toLowerCase()}-${course.id}`">
     <UButton
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
-      class="close-btn absolute -top-1 -left-4 z-50" icon="i-heroicons-x-mark-20-solid" @click="uiStore.closeArticle"
-      variant="ghost">
+      class="close-btn absolute -top-1 -left-4 z-50" size="xs" icon="i-heroicons-x-mark-20-solid"
+      @click="uiStore.closeArticle" variant="ghost" color="error">
     </UButton>
-    <component :is="isPreview ? 'div' : 'a'"
-      class="banner dark:bg-gray-950 bg-blue-50 dark:after:bg-blue-900 after:bg-blue-200 dark:before:bg-blue-950 before:bg-blue-300"
+    <component :is="titleComponent"
+      class="banner dark:bg-gray-950 bg-blue-50 dark:after:bg-blue-900 after:bg-blue-200 dark:before:bg-blue-950 before:bg-blue-300" :to="`/catalog/course/${course.slug}`"
       :class="{ '!h-[550px]': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursor-pointer': !isPreview }"
       @click.prevent="($event: any) => {
-        if (isPreview) return; // Block click action in preview mode
-        uiStore.openArticle($event, 'django-chatgpt-clone-tutorial');
+        if (isPreview) return;
+        uiStore.openCourse($event, course.slug);
         uiStore.setCurrentSection(course.section)
         uiStore.setCurrentCourse(course.id)
         uiStore.scrollToCurrentSection()
@@ -29,7 +29,6 @@
           :alt="course.author.username" crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
       </NuxtLink>
       <div class="date bg-[white] text-gray-950 dark:bg-gray-900 dark:text-white">{{ course.createdDate }}</div>
-      <!-- HERE IS THE PRICE SECTION -->
       <div class="price-ribbon">{{ course.price ? course.price + '$' : 'Free' }}</div>
     </component>
     <div
@@ -54,18 +53,15 @@
             </div>
             <div class="flex flex-col w-full items-start justify-start px-4 py-2 space-y-3">
               <!-- Conditionally render NuxtLink or a simple div for the title -->
-              <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
-                :class="{ 'cursor-pointer': !isPreview }"
-                :to="isPreview ? undefined : `/catalog/course/${course.slug}`">
+              <component :is="titleComponent" class="text-2xl mb-2 font-medium"
+                :class="{ 'cursor-pointer': !isPreview }" :to="`/catalog/course/${course.slug}`">
                 {{ course.title }}
               </component>
               <UBadge color="primary" variant="subtle">{{ course?.createdDate }}</UBadge>
               <div class="tags">
                 <widget-tag v-for="tag in course?.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
               </div>
-              <p>
-                {{ course?.description }}
-              </p>
+              <p v-html="course?.description"></p>
             </div>
           </div>
         </template>
@@ -91,22 +87,19 @@
       <div class="tags">
         <widget-tag v-for="tag in course.tags" :key="tag.id" :link="`#${tag.name}`">{{ tag.name }}</widget-tag>
       </div>
-      <!-- Conditionally render NuxtLink or a simple div for the title -->
-      <component :is="isPreview ? 'div' : 'NuxtLink'" class="text-2xl mb-2 font-medium"
-        :class="{ 'cursor-pointer': !isPreview }" :to="isPreview ? undefined : `/catalog/course/${course.slug}`"
-        @click="uiStore.closeArticle">
+      <component :is="titleComponent" class="text-2xl mb-2 font-medium" :class="{ 'cursor-pointer': !isPreview }"
+        :to="`/catalog/course/${course.slug}`" @click="uiStore.closeArticle">
         {{ course.title }}
       </component>
-      <p>
-        {{ course.description }}
-      </p>
+      <p v-html="course?.description"></p>
     </template>
   </article>
 </template>
 <script setup lang="ts">
-import type { CourseCard } from '../../../types/ui';
+import type { CourseCard } from '~~/types/ui';
 
-defineProps<{
+
+const props = defineProps<{
   course: CourseCard;
   isPreview?: boolean;
 }>();
@@ -114,6 +107,8 @@ defineProps<{
 const { t } = useI18n();
 const localePath = useLocalePath();
 const uiStore = useSectionUIStore();
+const NuxtLink = resolveComponent('NuxtLink')
+const titleComponent = computed(() => props.isPreview ? NuxtLink : 'div')
 
 const tabs = [{
   slot: 'overview',
@@ -212,7 +207,7 @@ article .banner>.price-ribbon {
 }
 
 article .banner:hover>.price-ribbon {
-  transform: translateY(0) rotate(0);
+  transform: translateY(0) translate(-2px) rotate(0);
   opacity: 1;
 }
 

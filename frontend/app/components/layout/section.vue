@@ -9,7 +9,7 @@
       </h1>
       <UButton variant="link" :to="`/catalog/techs/${section.title.toLowerCase()}`">{{ $t('all') }}</UButton>
     </div>
-    <widget-card v-for="course in section.courses" :key="course.id" :course="course" />
+    <widget-card v-for="course in section.courses" :key="course.id" :course="course" :isPreview="uiStore.articleOpened && uiStore.currentSection === section.title" />
   </section>
 </template>
 <script lang="ts" setup>

@@ -11,6 +11,7 @@
 
 <script setup lang="ts">
 const sectionUI = useSectionUIStore();
+sectionUI.resetUI();
 </script>
 
 <style scoped>

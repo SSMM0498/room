@@ -13,7 +13,14 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
     return c < 1 ? 1 : c
   })
 
-  const openArticle = (e: MouseEvent, slug: string) => {
+  const resetUI = () => {
+    articleOpened.value = false
+    currentSection.value = ""
+    currentCourseId.value = ""
+    sections.value = []
+  }
+
+  const openCourse = (e: MouseEvent, slug: string) => {
     e.preventDefault()
     articleOpened.value = true
   }
@@ -70,7 +77,8 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
     sections,
     sectionCount,
     contentSize,
-    openArticle,
+    resetUI,
+    openCourse,
     setCurrentSection,
     setCurrentCourse,
     closeArticle,
