@@ -14,17 +14,17 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 
-const props = defineProps({
-  replyTo: {
-    type: Number,
-    default: null
-  }
-})
+const props = defineProps<{
+  replyTo?: string | null
+}>()
 
-const emit = defineEmits(['post-comment', 'cancel-reply'])
+const emit = defineEmits<{
+  'post-comment': [content: string]
+  'cancel-reply': []
+}>()
 
 const commentText = ref('')
 

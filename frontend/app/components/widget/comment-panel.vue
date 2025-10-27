@@ -2,70 +2,80 @@
   <div class="feedback-container max-w-2xl h-full overflow-y-auto p-4">
     <h2 class="text-2xl font-bold mb-2">Feedback</h2>
 
-    <widget-comment-form 
-      @post-comment="addComment" 
+    <widget-comment-form
+      @post-comment="addComment"
       :reply-to="replyingTo"
       @cancel-reply="cancelReply"
     />
 
-    <div class="comments-list space-y-4 mt-6">
+    <div v-if="pending" class="flex items-center justify-center py-8">
+      <UIcon name="i-heroicons-arrow-path" class="animate-spin w-6 h-6" />
+    </div>
+
+    <div v-else-if="error" class="text-red-500 py-4">
+      Failed to load comments. Please try again.
+    </div>
+
+    <div v-else class="comments-list space-y-4 mt-6">
       <widget-comment-item
         v-for="comment in comments"
         :key="comment.id"
         :comment="comment"
         @reply="startReply"
+        @edit="editComment"
+        @delete="deleteComment"
+        @toggle-like="toggleLike"
       />
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
 
-const comments = ref([
-  {
-    id: 1,
-    author: 'Alexander Koghuashvili',
-    avatar: '/avatar1.jpg',
-    content: "Wonderful work and creative presentation. I'll be very happy if you also see my projects 😊",
-    timestamp: '1 hour ago',
-    likes: 1,
-    hearts: 1
-  },
-  {
-    id: 2,
-    author: 'John Welsone',
-    avatar: '/avatar2.jpg',
-    content: 'Love this! Huge fan of the low opacity tiles they add such a cool dimension to the design',
-    timestamp: '1 hour ago',
-    likes: 0,
-    hearts: 0
+const props = defineProps<{
+  courseId: string
+}>()
+
+const { comments, pending, error, fetchCommentsByCourse, createComment, updateComment, deleteComment: deleteCommentApi, toggleLike: toggleLikeApi } = useComment()
+const replyingTo = ref<string | null>(null)
+
+onMounted(async () => {
+  if (props.courseId) {
+    await fetchCommentsByCourse(props.courseId)
   }
-])
+})
 
-const replyingTo = ref(null)
+const addComment = async (content: string) => {
+  if (!content.trim()) return
 
-const addComment = (content) => {
-  const newComment = {
-    id: comments.value.length + 1,
-    author: 'Current User',
-    avatar: '/current-user-avatar.jpg',
+  await createComment({
+    course: props.courseId,
     content,
-    timestamp: 'Just now',
-    likes: 0,
-    hearts: 0
-  }
+    replyTo: replyingTo.value || undefined,
+  })
 
-  comments.value.push(newComment)
   replyingTo.value = null
 }
 
-const startReply = (commentId) => {
+const startReply = (commentId: string) => {
   replyingTo.value = commentId
 }
 
 const cancelReply = () => {
   replyingTo.value = null
+}
+
+const editComment = async (commentId: string, newContent: string) => {
+  await updateComment(commentId, newContent)
+}
+
+const deleteComment = async (commentId: string) => {
+  await deleteCommentApi(commentId)
+}
+
+const toggleLike = async (commentId: string) => {
+  await toggleLikeApi(commentId)
 }
 </script>
 

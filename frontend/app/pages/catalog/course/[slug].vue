@@ -20,7 +20,9 @@
             <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-200 dark:border-gray-800 mb-2">
               <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
               <div class="flex flex-col">
-                <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
+                <NuxtLink :to.stop="localePath(`/@/${course?.author!.username}`)" @click.stop="">
+                  <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
+                </NuxtLink>
                 <p class="text-sm text-gray-600">Course Instructor</p>
               </div>
               <div class="flex gap-2 ml-auto">
@@ -58,7 +60,7 @@
           </div>
         </template>
         <template #feedback>
-          <widget-comment-panel />
+          <widget-comment-panel :course-id="course!.id" />
         </template>
       </UTabs>
     </template>

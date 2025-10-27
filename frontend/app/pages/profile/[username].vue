@@ -1,4 +1,7 @@
 <template>
+  <Head>
+    <Title>{{ profileData?.user?.username ?? 'Loading' }}</Title>
+  </Head>
   <widget-pinned-section>
     <panel-profile />
   </widget-pinned-section>
