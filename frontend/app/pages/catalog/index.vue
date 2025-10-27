@@ -10,7 +10,7 @@ definePageMeta({
 });
 
 useHead({
-  title: t('home'),
+  title: t('catalog'),
 })
 
 const { courses, fetchCourses, pending: isPending, error: hasError } = useCourses();

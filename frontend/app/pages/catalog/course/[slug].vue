@@ -18,7 +18,9 @@
         <template #overview>
           <div class="flex flex-col w-full items-start justify-start">
             <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-200 dark:border-gray-800 mb-2">
-              <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
+              <NuxtLink :to.stop="localePath(`/@/${course?.author!.username}`)" @click.stop="">
+                <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
+              </NuxtLink>
               <div class="flex flex-col">
                 <NuxtLink :to.stop="localePath(`/@/${course?.author!.username}`)" @click.stop="">
                   <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
@@ -111,7 +113,7 @@ article.full {
 }
 
 .content-grid {
-  @apply grid grid-cols-[2fr_1fr] mb-6 w-full h-full;
+  @apply grid grid-cols-[2.5fr_1fr] mb-6 w-full h-full;
 }
 
 .comments-section {

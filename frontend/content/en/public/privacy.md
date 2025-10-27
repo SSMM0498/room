@@ -9,23 +9,23 @@ tags:
 
 # Privacy Policy
 
-Effective Date: [Date]
+Effective Date: 27 October 2025
 
 ## Introduction
 
-Welcome to [Your Platform Name] ("we," "us," or "our"). This Privacy Policy outlines how we collect, use, disclose, and safeguard your information when you use our platform.
+Welcome to room_ ("we," "us," or "our"). This Privacy Policy outlines how we collect, use, disclose, and safeguard your information when you use our platform.
 
-By accessing or using [Your Platform Name], you agree to the terms outlined in this Privacy Policy. If you do not agree with the terms of this policy, please do not use our platform.
+By accessing or using room_, you agree to the terms outlined in this Privacy Policy. If you do not agree with the terms of this policy, please do not use our platform.
 
 ## Information We Collect
 
 ### 1. Account Information
 
-When you create an account on [Your Platform Name], we collect information such as your name, email address, and any other information you choose to provide during the registration process.
+When you create an account on room_, we collect information such as your name, email address, and any other information you choose to provide during the registration process.
 
 ### 2. User-Generated Content
 
-Our platform allows users to generate and upload content, including but not limited to tutorial videos, comments, and forum posts. We collect and store this content to provide the services offered by [Your Platform Name].
+Our platform allows users to generate and upload content, including but not limited to tutorial videos, comments, and forum posts. We collect and store this content to provide the services offered by room_.
 
 ### 3. Usage Data
 
@@ -33,7 +33,7 @@ We collect information about your interactions with our platform, including the 
 
 ### 4. Device Information
 
-We may collect information about the devices you use to access [Your Platform Name], including device type, operating system, browser type, and IP address. This information is used for system administration and to understand how our users access and use our platform.
+We may collect information about the devices you use to access room_, including device type, operating system, browser type, and IP address. This information is used for system administration and to understand how our users access and use our platform.
 
 ## How We Use Your Information
 
@@ -70,9 +70,14 @@ We may update this Privacy Policy from time to time. The date of the latest revi
 
 ## Contact Us
 
-If you have questions or concerns about this Privacy Policy, please contact us at [Your Contact Email].
+If you have questions or concerns about this Privacy Policy, please contact us at [contact@roomcursor.com].
 
-[Your Platform Name]
+
+room_
+
 [Your Business Address]
+
 [City, State, ZIP Code]
-[Your Contact Email]
+
+[contact@roomcursor.com]
+

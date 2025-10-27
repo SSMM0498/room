@@ -1,5 +1,10 @@
 {
   "search": "Rechercher",
+  "catalog": "Catalogue",
+  "about": "À propos",
+  "privacy-policy": "Politique de confidentialité",
+  "terms": "Termes",
+  "help": "Aide",
   "ide": {
     "run": "Exécuter",
     "preview": "Aperçu",

@@ -1,10 +1,10 @@
 # Terms and Conditions
 
-Welcome to [Your Platform Name]! Before you start using our platform, please carefully read and understand the following terms and conditions. By accessing or using our services, you agree to be bound by these terms.
+Welcome to room_! Before you start using our platform, please carefully read and understand the following terms and conditions. By accessing or using our services, you agree to be bound by these terms.
 
 ## 1. Acceptance of Terms
 
-By accessing or using [Your Platform Name], you agree to comply with and be bound by these terms and conditions. If you do not agree with any part of these terms, you may not use our platform.
+By accessing or using room_, you agree to comply with and be bound by these terms and conditions. If you do not agree with any part of these terms, you may not use our platform.
 
 ## 2. User Accounts
 
@@ -38,7 +38,7 @@ By accessing or using [Your Platform Name], you agree to comply with and be boun
 ## 5. Privacy Policy
 
 1. **Data Collection:**
-   - We collect and process user data as outlined in our [Privacy Policy](link-to-privacy-policy).
+   - We collect and process user data as outlined in our [Privacy Policy](/privacy).
 
 2. **Cookies:**
    - Our platform uses cookies. By using the platform, you consent to our use of cookies.
@@ -48,7 +48,7 @@ By accessing or using [Your Platform Name], you agree to comply with and be boun
 1. **Termination by Users:**
    - Users can terminate their account at any time by following the provided instructions.
 
-2. **Termination by [Your Platform Name]:**
+2. **Termination by room_:**
    - We reserve the right to terminate or suspend accounts for violations of these terms.
 
 ## 7. Changes to Terms
@@ -57,8 +57,8 @@ We reserve the right to update or modify these terms at any time without prior n
 
 ## 8. Contact Information
 
-If you have any questions or concerns regarding these terms, please contact us at [contact@yourplatform.com].
+If you have any questions or concerns regarding these terms, please contact us at [contact@roomcursor.com].
 
 ---
 
-**Last Updated:** [Date]
+**Last Updated:** 27 October 2025

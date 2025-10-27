@@ -1,10 +1,6 @@
 <template>
-  <article class="max-w-none prose h-full of-auto p-6">
-    <ContentRenderer
-      v-if="page"
-      :dir="localeProperties?.dir ?? 'ltr'"
-      :value="page"
-    />
+  <article class="w-full py-10 prose h-full of-auto overflow-y-scroll">
+    <ContentRenderer class="w-300 px-50" v-if="page" :prose="true" :dir="localeProperties?.dir ?? 'ltr'" :value="page" />
   </article>
 </template>
 

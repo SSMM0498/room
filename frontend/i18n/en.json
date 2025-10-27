@@ -1,5 +1,10 @@
 {
   "search": "Seach",
+  "catalog": "Catalog",
+  "about": "About",
+  "privacy-policy": "Privacy Policy",
+  "terms": "Terms",
+  "help": "Help",
   "ide": {
     "run": "Run",
     "preview": "Preview",
