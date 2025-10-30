@@ -1,9 +1,10 @@
 <template>
+
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
   <div id="ide-wrapper" class="flex w-full h-full px-2 pb-2">
-    <UModal v-model:open="isChecklistOpen" :prevent-close="!isReady" :ui="{ overlay: 'bg-gray-900/75' }">
+    <UModal v-model:open="isWorkSpaceChecklistOpen" :prevent-close="!isReady" :ui="{ overlay: 'bg-gray-900/75' }">
       <template #content>
         <UCard>
           <template #header>
@@ -62,6 +63,10 @@ definePageMeta({
   layout: "ide"
 })
 
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+
 const { currentCourse, fetchCourseBySlug } = useCourses();
 const { isReady, micVolume, setupMedia } = useRecorder();
 const { socketClient, getSocketUrl } = useSocket();
@@ -74,16 +79,16 @@ const {
   handleDirectoryDelete,
   handleRename,
 } = useIDE();
-const route = useRoute()
-const toast = useToast();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
 const sessionState = ref<SessionState>('checklist');
-const isChecklistOpen = ref(true);
+const isWorkSpaceChecklistOpen = ref(true);
 const isSettingUpMic = ref(false);
+
+const loading = ref(true);
 const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
-const loading = ref(true);
+const slug = route.params.slug as string
 
 const setupMicrophone = async () => {
   isSettingUpMic.value = true;
@@ -100,59 +105,90 @@ const setupMicrophone = async () => {
 };
 
 const startSession = async () => {
+  await fetchCourseBySlug(slug);
+
   if (!currentCourse.value) {
-    const slug = route.params.slug as string
-    await fetchCourseBySlug(slug)
-    toast.add({ title: 'Error', description: 'Course data is missing.', color: 'error' });
-    return;
-  }
-  sessionState.value = 'starting';
-
-  const workspace = await ensureWorkspaceIsRunning(currentCourse.value.id);
-
-  if (!workspace) {
-    toast.add({ title: 'Failed to Start Workspace', color: 'error' });
-    sessionState.value = 'checklist';
+    toast.add({
+      title: 'Error',
+      description: 'Course not found.',
+      color: 'error'
+    });
+    router.push('/');
     return;
   }
 
-  sessionState.value = 'connecting';
-  progressMessage.value = 'Connecting to the IDE...';
+  const lessonCourseId = currentCourse.value.id;
 
-  const k8sName = `${workspace.name}`;
-  const workspaceWsUrl = getSocketUrl(k8sName);
+  // Start the workspace for this specific lesson
+  await startWorkspace(lessonCourseId);
+}
 
-  console.log(`[Session] Connecting to WebSocket at: ${workspaceWsUrl}`);
-
+const startWorkspace = async (courseId: string) => {
   try {
+    sessionState.value = 'starting';
+
+    const workspace = await ensureWorkspaceIsRunning(courseId);
+
+    if (!workspace) {
+      toast.add({ title: 'Failed to Start Workspace', color: 'error' });
+      sessionState.value = 'checklist';
+      loading.value = false;
+      return;
+    }
+
+    sessionState.value = 'connecting';
+    progressMessage.value = 'Connecting to the IDE...';
+
+    const k8sName = `${workspace.name}`;
+    const workspaceWsUrl = getSocketUrl(k8sName);
+
+    console.log(`[Teach] Connecting to WebSocket at: ${workspaceWsUrl}`);
+
     // Initialize the socket connection
     socketClient.initialize(workspaceWsUrl);
 
     // Set up connection callback
     socketClient.connect(() => {
-      console.log('[Session] Socket connected successfully');
+      console.log('[Teach] Socket connected successfully');
       isConnected.value = true;
       loading.value = false;
+      sessionState.value = 'ready';
+      isWorkSpaceChecklistOpen.value = false;
 
       // Start file watching
       setupFileWatching();
+
+      toast.add({
+        title: 'IDE Connected!',
+        color: 'success'
+      });
     });
 
     // Monitor connection errors
     socketClient.onConnectError((err: Error) => {
-      console.error('[Session] Socket connection error:', err);
+      console.error('[Teach] Socket connection error:', err);
       socketError.value = err;
       loading.value = false;
+      toast.add({
+        title: 'Connection Error',
+        description: 'Failed to connect to workspace.',
+        color: 'error'
+      });
     });
 
     socketClient.onDisconnect(() => {
-      console.log('[Session] Socket disconnected');
+      console.log('[Teach] Socket disconnected');
       isConnected.value = false;
     });
   } catch (err: any) {
-    console.error('[Session] Failed to initialize socket:', err);
+    console.error('[Teach] Failed to start workspace:', err);
     socketError.value = err;
     loading.value = false;
+    toast.add({
+      title: 'Error',
+      description: 'Failed to start workspace.',
+      color: 'error'
+    });
   }
 };
 
@@ -192,21 +228,6 @@ const setupFileWatching = () => {
   });
 };
 
-watch(isConnected, (newVal) => {
-  if (newVal) {
-    toast.add({ title: 'IDE Connected!', color: 'success' });
-    sessionState.value = 'ready';
-    isChecklistOpen.value = false;
-  }
-});
-
-watch(socketError, (err) => {
-  if (err) {
-    toast.add({ title: 'Connection Failed', description: err.message, color: 'error' });
-    sessionState.value = 'checklist';
-  }
-});
-
 const micCheckClass = computed(() => {
   if (isReady.value) {
     return 'bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-300';
@@ -217,7 +238,7 @@ const micCheckClass = computed(() => {
 // Cleanup on component unmount
 onUnmounted(() => {
   if (socketClient.isConnected) {
-    console.log('[Session] Disconnecting socket on unmount');
+    console.log('[Teach] Disconnecting socket on unmount');
     socketClient.disconnect();
   }
 });

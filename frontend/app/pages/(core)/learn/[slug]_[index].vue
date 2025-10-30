@@ -1,35 +1,27 @@
 <template>
+
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
   <div class="flex flex-col w-full h-full">
-    <!-- Course Progress Header - only show for cursus type with playlist items -->
-    <div v-if="currentCourse && currentCourse.type === 'cursus' && activePlaylistItem" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+    <div v-if="currentCourse && currentCourse.type === 'cursus' && activePlaylistItem"
+      class="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-sm font-medium text-gray-900 dark:text-gray-100">
             {{ currentCourse.title }}
           </h2>
           <p class="text-xs text-gray-600 dark:text-gray-400">
-            Lesson {{ currentItemIndex + 1 }} of {{ currentCourse.items?.length || 0 }}: {{ activePlaylistItem.expand?.course?.title }}
+            Lesson {{ currentItemIndex + 1 }} of {{ currentCourse.items?.length || 0 }}: {{
+              activePlaylistItem.expand?.course?.title }}
           </p>
         </div>
         <div class="flex gap-2">
-          <UButton
-            v-if="currentItemIndex > 0"
-            size="sm"
-            color="neutral"
-            variant="soft"
-            @click="navigateToPrevious"
-          >
+          <UButton v-if="currentItemIndex > 0" size="sm" color="neutral" variant="soft" @click="navigateToPrevious">
             Previous
           </UButton>
-          <UButton
-            v-if="currentItemIndex < (currentCourse.items?.length || 0) - 1"
-            size="sm"
-            color="primary"
-            @click="navigateToNext"
-          >
+          <UButton v-if="currentItemIndex < (currentCourse.items?.length || 0) - 1" size="sm" color="primary"
+            @click="navigateToNext">
             Next Lesson
           </UButton>
         </div>
@@ -59,7 +51,7 @@ const toast = useToast();
 
 const { currentCourse, currentItemIndex, activePlaylistItem, fetchCourseBySlug } = useCourses();
 const { socketClient, getSocketUrl } = useSocket();
-const { ensureWorkspaceIsRunning } = useWorkspace();
+const { ensureWorkspaceIsRunning, progressMessage } = useWorkspace();
 const {
   directoryTree,
   activeTab,
@@ -68,6 +60,9 @@ const {
   handleDirectoryDelete,
   handleRename,
 } = useIDE();
+
+type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
+const sessionState = ref<SessionState>('checklist');
 
 const loading = ref(true);
 const isConnected = ref(false);
@@ -118,6 +113,8 @@ onMounted(async () => {
 // Start workspace and connect socket
 const startWorkspace = async (courseId: string) => {
   try {
+    sessionState.value = 'starting';
+
     const workspace = await ensureWorkspaceIsRunning(courseId);
 
     if (!workspace) {
@@ -125,9 +122,13 @@ const startWorkspace = async (courseId: string) => {
         title: 'Failed to Start Workspace',
         color: 'error'
       });
+      sessionState.value = 'checklist';
       loading.value = false;
       return;
     }
+
+    sessionState.value = 'connecting';
+    progressMessage.value = 'Connecting to the IDE...';
 
     // Connect to workspace via socket
     const k8sName = `${workspace.name}`;
