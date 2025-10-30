@@ -1,9 +1,9 @@
 <template>
-
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
-  <div class="flex flex-col w-full h-full">
+
+  <div class="flex flex-col w-full h-full relative">
     <div v-if="currentCourse && currentCourse.type === 'cursus' && activePlaylistItem"
       class="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
       <div class="flex items-center justify-between">
@@ -29,9 +29,46 @@
     </div>
 
     <!-- IDE Wrapper -->
-    <div class="flex-1 flex w-full h-full overflow-hidden">
+    <div class="flex-1 flex w-full h-full overflow-hidden relative">
       <ide-wrap :loading="loading" />
+
+      <!-- Fake Mouse Cursor using mouse.css classes -->
+      <div
+        v-if="isPlaying"
+        class="player-mouse"
+        :class="fakeCursorClass"
+        :style="{
+          left: `${fakeCursorPos.x}px`,
+          top: `${fakeCursorPos.y}px`,
+        }"
+      >
+        <div class="player-mouse-light"></div>
+      </div>
+
+      <!-- Playing Blocker Overlay -->
+      <div
+        v-if="isPlaying"
+        class="playing-blocker absolute inset-0 z-40 cursor-not-allowed"
+        @click.prevent
+        @mousedown.prevent
+        @mouseup.prevent
+        @keydown.prevent
+      ></div>
     </div>
+
+    <!-- Player Controller (auto-hide at bottom) -->
+    <player-controller
+      :is-playing="isPlaying"
+      :is-ready="isReady"
+      :current-time="formattedCurrentTime"
+      :duration="formattedDuration"
+      :current-time-ms="currentTime"
+      :duration-ms="duration"
+      @toggle-play-pause="togglePlayPause"
+      @seek="handleSeek"
+      @skip-forward="skipForward"
+      @skip-backward="skipBackward"
+    />
   </div>
 </template>
 
@@ -52,6 +89,7 @@ const toast = useToast();
 const { currentCourse, currentItemIndex, activePlaylistItem, fetchCourseBySlug } = useCourses();
 const { socketClient, getSocketUrl } = useSocket();
 const { ensureWorkspaceIsRunning, progressMessage } = useWorkspace();
+const { fetchCourseContent, downloadTimeline, getAudioUrl } = useCourseContent();
 const {
   directoryTree,
   activeTab,
@@ -61,6 +99,26 @@ const {
   handleRename,
 } = useIDE();
 
+// Player composable
+const {
+  initializePlayer,
+  setAudioElement,
+  loadFromEvents,
+  play,
+  pause,
+  togglePlayPause,
+  seek,
+  skipForward,
+  skipBackward,
+  isPlaying,
+  isReady,
+  currentTime,
+  duration,
+  formattedCurrentTime,
+  formattedDuration,
+  watchStateChanges,
+} = usePlayer();
+
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
 const sessionState = ref<SessionState>('checklist');
 
@@ -69,8 +127,21 @@ const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
 const slug = route.params.slug as string;
 
+// Fake cursor position and class
+const fakeCursorPos = ref({ x: 0, y: 0 });
+const fakeCursorClass = ref(''); // Can be 'pointer', 'active', 'grab', etc.
+
+// Handle seek from header
+const handleSeek = async (time: number) => {
+  await seek(time);
+};
+
 // Initialize the course and workspace on mount
 onMounted(async () => {
+  // Initialize player
+  initializePlayer();
+  watchStateChanges();
+
   const index = parseInt(route.params.index as string, 10);
 
   // Fetch course data
@@ -105,6 +176,49 @@ onMounted(async () => {
   const lessonCourseId = currentCourse.value.type === 'cursus'
     ? activePlaylistItem.value!.course
     : currentCourse.value.id;
+
+  // Load recording content
+  try {
+    const courseContent = await fetchCourseContent(lessonCourseId);
+
+    if (courseContent) {
+      console.log('[Learn] Loading recording content...');
+
+      // Download and load timeline
+      const events = await downloadTimeline(courseContent);
+      await loadFromEvents(events);
+
+      // Get audio URL and create audio element if audio exists
+      const audioUrl = getAudioUrl(courseContent);
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        setAudioElement(audio);
+        console.log('[Learn] Audio loaded');
+      }
+
+      toast.add({
+        title: 'Recording Loaded',
+        description: 'Ready to play the lesson.',
+        color: 'success',
+        icon: 'i-heroicons-play-circle',
+      });
+    } else {
+      toast.add({
+        title: 'No Recording Found',
+        description: 'This lesson has not been recorded yet.',
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+  } catch (error: any) {
+    console.error('[Learn] Failed to load recording:', error);
+    toast.add({
+      title: 'Load Failed',
+      description: 'Failed to load the recording.',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle',
+    });
+  }
 
   // Start the workspace for this specific lesson
   await startWorkspace(lessonCourseId);
@@ -235,9 +349,28 @@ const navigateToNext = () => {
 
 // Cleanup on component unmount
 onUnmounted(() => {
+  // Pause player if playing
+  if (isPlaying.value) {
+    pause();
+  }
+
   if (socketClient.isConnected) {
     console.log('[Learn] Disconnecting socket on unmount');
     socketClient.disconnect();
   }
 });
 </script>
+
+<style scoped>
+.playing-blocker {
+  background: transparent;
+}
+
+/* Prevent text selection during playback */
+.playing-blocker * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+</style>
