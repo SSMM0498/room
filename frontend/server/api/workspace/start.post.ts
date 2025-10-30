@@ -150,7 +150,7 @@ export default defineEventHandler(async (event) => {
 
         console.log(`[K8S] ✅ All resources for ${workspace.name} have been created.`);
 
-        const ingressUrl = `https://${workspace.name}.room.com`;
+        const ingressUrl = `https://${workspace.name}.roomcursor.vom`;
         console.log(`[WORKSPACE START] Updating workspace ${workspaceId} status to 'running'. Ingress URL: ${ingressUrl}`);
 
         await pb.collection('workspaces').update(workspaceId, {

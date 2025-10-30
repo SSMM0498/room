@@ -99,6 +99,13 @@ export const useCourses = () => {
         return course;
     });
 
+    const fetchCoursesByTag = async (tagName: string) => _handleRequest(async () => {
+        const response = await $fetch<{ tag: RecordModel, courses: RecordModel[] }>(`/api/courses/by-tag/${tagName}`);
+        const parsedCourses = response.courses.map(parseCourseRecordToCard);
+        courses.value = parsedCourses;
+        return response;
+    });
+
     const generateSlug = (title: string): string => {
         const randomSuffix = Math.random().toString(36).substring(2, 8);
         return title
@@ -210,6 +217,7 @@ export const useCourses = () => {
         fetchCourses,
         fetchCourseById,
         fetchCourseBySlug,
+        fetchCoursesByTag,
         fetchUserCoursesList,
         createCourse,
         updateCourse,

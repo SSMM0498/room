@@ -10,6 +10,7 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n',
     '@nuxt/eslint',
     '@pinia/nuxt',
+    '@nuxtjs/mdc',
     '@nuxt/ui'
   ],
 

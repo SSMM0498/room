@@ -19,6 +19,7 @@ const { tags } = useTags();
 await useAsyncData('home-page-data', async () => await fetchCourses());
 
 const sectionUI = useSectionUIStore();
+sectionUI.sectionType = 'tech'
 
 watch([courses, tags], () => {
   if (!courses.value || !tags.value) {

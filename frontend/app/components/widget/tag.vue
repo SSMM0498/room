@@ -10,6 +10,10 @@ defineProps({
     type: String,
     required: false
   },
+  to: {
+    type: String,
+    required: false
+  },
   size: {
     type: String as PropType<"md" | "xs" | "sm" | "lg" | "xl">,
     default: 'md'

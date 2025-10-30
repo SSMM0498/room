@@ -327,7 +327,7 @@ export const getSocketUrl = (workspaceName: string): string => {
   if (env === 'DEV') {
     return 'ws://localhost:2024/ws';
   } else {
-    return `ws://${workspaceName}.room.com/ws`;
+    return `ws://${workspaceName}.roomcursor.vom/ws`;
   }
 };
 

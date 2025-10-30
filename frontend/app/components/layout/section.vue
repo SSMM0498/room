@@ -2,18 +2,20 @@
   <section
     :class="{ 'w-[80vw] pr-5 !gap-0 pt-0': uiStore.articleOpened && uiStore.currentSection === section.title, 'overlay border-gray-700': uiStore.articleOpened && uiStore.currentSection !== section.title }"
     :id="section.title.toLowerCase()"
+    :style="{ '--section-prefix': uiStore.sectionType === 'tech' ? '\'#\'' : uiStore.sectionType === 'profile' ? '\'@\'' : '\'#\'' }"
     class="scroll-col w-[27.5vw] gap-5 relative flex items-start content-start flex-col px-4 pt-2 pb-8 border-gray-200 dark:border-gray-800 border-r overflow-x-hidden overflow-y-scroll">
     <div :class="{ '!hidden': uiStore.articleOpened && uiStore.currentSection === section.title, }"
       class="flex w-[110%] justify-between items-center sticky z-50 bg-white dark:bg-gray-900 py-3 -ml-3 px-3 -top-2">
-      <h1 class="flex font-semibold text-3xl">{{ section.title }}
+      <h1 class="flex font-semibold w-60 truncate overflow-ellipsis text-3xl">{{ section.title }}
       </h1>
-      <UButton variant="link" :to="`/catalog/techs/${section.title.toLowerCase()}`">{{ $t('all') }}</UButton>
+      <UButton variant="link" :to="uiStore.sectionType === 'tech' ? `/catalog/techs/${section.title.toLowerCase()}` : `/@/${section.title.toLowerCase()}`">{{ $t('all') }}</UButton>
     </div>
-    <widget-card v-for="course in section.courses" :key="course.id" :course="course" :isPreview="uiStore.articleOpened && uiStore.currentSection === section.title" />
+    <widget-card v-for="course in section.courses" :key="course.id" :course="course"
+      :isPreview="uiStore.articleOpened && uiStore.currentSection === section.title" />
   </section>
 </template>
 <script lang="ts" setup>
-import type { Section } from '../../../types/ui';
+import type { Section } from '~~/types/ui';
 
 defineProps<{
   section: Section;
@@ -97,7 +99,7 @@ section.overlay:hover {
 
 section h1::before {
   display: block;
-  content: "#";
+  content: var(--section-prefix, "#");
   font-weight: bold;
   @apply text-blue-600;
 }

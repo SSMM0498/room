@@ -25,6 +25,7 @@ const authUser = useAuthUser()
 const username = computed(() => route.params.username as string)
 
 const sectionUI = useSectionUIStore()
+sectionUI.sectionType = 'tech'
 
 await useAsyncData(
   () => `profile-${username.value}`,

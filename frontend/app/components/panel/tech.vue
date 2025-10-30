@@ -1,15 +1,17 @@
 <script setup lang="ts">
-const props = defineProps<{
-  tech: string;
-}>();
+import type { RecordModel } from 'pocketbase';
 
-const route = useRoute();
+defineProps<{
+  tech: string;
+  tagData?: RecordModel | null;
+}>();
 </script>
 
 <template>
   <section class="flex flex-col gap-4 overflow-y-scroll p-4">
     <div class="prose dark:prose-invert max-w-none">
-      <ContentDoc />
+      {{ tagData?.presentation }}
+      <MDC :value="tagData?.presentation" />
     </div>
   </section>
 </template>
@@ -39,8 +41,6 @@ section {
   cursor: pointer;
   font-size: 4rem;
   font-weight: 600;
-  /* -webkit-text-stroke-width: .1rem;
-  -webkit-text-stroke-color: #003865ff; */
   @apply relative flex w-full items-center justify-start px-2 z-20;
 }
 
@@ -57,8 +57,6 @@ html.dark .prose :where(h1) {
   cursor: pointer;
   font-size: 4rem;
   font-weight: 600;
-  /* -webkit-text-stroke-width: .1rem;
-  -webkit-text-stroke-color: #ffffff; */
 }
 
 .prose :where(h1)::before {

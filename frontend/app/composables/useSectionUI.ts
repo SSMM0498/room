@@ -4,6 +4,7 @@ import type { Section } from '~~/types/ui'
 export const useSectionUIStore = defineStore('section-ui-store', () => {
   const articleOpened = ref(false)
   const currentSection = ref("")
+  const sectionType = ref<'tech' | 'profile' | 'void'>("tech")
   const currentCourseId = ref("")
   const sections = ref<Section[]>([])
 
@@ -17,6 +18,7 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
     articleOpened.value = false
     currentSection.value = ""
     currentCourseId.value = ""
+    sectionType.value = "tech"
     sections.value = []
   }
 
@@ -77,6 +79,7 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
     sections,
     sectionCount,
     contentSize,
+    sectionType,
     resetUI,
     openCourse,
     setCurrentSection,
