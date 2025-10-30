@@ -46,10 +46,26 @@
       </UBreadcrumb>
     </nav>
     <nav v-if="($route.name as String).startsWith('teach')"
-      class="flex px-1 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center text-sm justify-center space-x-1">
-      <UButton size="xs" class="mr-1" :class="recording.isRecording ? 'text-red-700' : 'text-gray-700'"
-        icon="i-uim:record-audio" variant="link" @click="toggleRecording" />
-      <UButton size="xs" class="mr-1 text-gray-700" icon="i-heroicons:play-circle" variant="link"
+      class="flex px-2 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center text-sm justify-center gap-2">
+      <!-- Recording Timer -->
+      <div v-if="recording.isRecording.value" class="flex items-center gap-1.5">
+        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+        <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ formattedRecordingTime }}</span>
+      </div>
+
+      <!-- Recording Button -->
+      <UButton
+        size="xs"
+        :color="recording.isRecording.value ? 'error' : 'neutral'"
+        :icon="recording.isRecording.value ? 'i-heroicons-stop-20-solid' : 'i-heroicons-play-20-solid'"
+        variant="soft"
+        @click="toggleRecording"
+      >
+        {{ recording.isRecording.value ? 'Stop' : 'Record' }}
+      </UButton>
+
+      <!-- Go to Player -->
+      <UButton size="xs" class="text-gray-700" icon="i-heroicons:play-circle" variant="link"
         :to="localePath(`/learn/${currentCourse?.slug}_0`)" />
     </nav>
     <div>
@@ -182,6 +198,16 @@ const runProject = () => {
 };
 
 const recording = useRecorder()
+
+// Format recording time as MM:SS
+const formattedRecordingTime = computed(() => {
+  const status = recording.getRecorderStatus();
+  if (!status) return '00:00';
+  const totalSeconds = Math.floor(status.duration / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+});
 
 const toggleTerminal = () => {
   showTerminal.value = !showTerminal.value;
