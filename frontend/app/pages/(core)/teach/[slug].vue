@@ -1,8 +1,8 @@
 <template>
-
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
+
   <div id="ide-wrapper" class="flex w-full h-full px-2 pb-2">
     <UModal v-model:open="isWorkSpaceChecklistOpen" :prevent-close="!isReady" :ui="{ overlay: 'bg-gray-900/75' }">
       <template #content>
@@ -68,9 +68,21 @@ const router = useRouter();
 const toast = useToast();
 
 const { currentCourse, fetchCourseBySlug } = useCourses();
-const { isReady, micVolume, setupMedia } = useRecorder();
+const {
+  isReady,
+  isRecording,
+  micVolume,
+  setupMedia,
+  initializeRecorder,
+  startRecording,
+  stopRecording,
+  getRecorderStatus,
+  getTimelineNDJSON,
+  getAudioBlob,
+} = useRecorder();
 const { socketClient, getSocketUrl } = useSocket();
 const { ensureWorkspaceIsRunning, progressMessage } = useWorkspace();
+const { uploadRecording } = useCourseContent();
 const {
   directoryTree,
   activeTab,
@@ -88,7 +100,36 @@ const isSettingUpMic = ref(false);
 const loading = ref(true);
 const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
-const slug = route.params.slug as string
+const slug = route.params.slug as string;
+
+// Recording state
+const recordingDuration = ref(0);
+let recordingTimerInterval: number | null = null;
+
+// Initialize recorder with a placeholder state capture
+// TODO: Implement actual IDE state capture
+onMounted(() => {
+  initializeRecorder({
+    getUIState: () => ({
+      mouse: { x: 0, y: 0 },
+      scrolls: {},
+      ide: {
+        activePanel: 'editor',
+        tabs: {
+          editor: { openFiles: [], activeFile: null },
+          terminal: { openTerminals: [], activeTerminal: null },
+        },
+      },
+      fileTree: { expandedPaths: [] },
+      browser: { url: '' },
+    }),
+    getWorkspaceState: () => ({
+      files: {},
+      terminals: {},
+      processes: [],
+    }),
+  });
+});
 
 const setupMicrophone = async () => {
   isSettingUpMic.value = true;
@@ -192,6 +233,64 @@ const startWorkspace = async (courseId: string) => {
   }
 };
 
+// Toggle recording function
+const toggleRecording = async () => {
+  if (isRecording.value) {
+    // Stop recording
+    stopRecording();
+    if (recordingTimerInterval !== null) {
+      clearInterval(recordingTimerInterval);
+      recordingTimerInterval = null;
+    }
+    recordingDuration.value = 0;
+
+    // Upload the recording
+    if (currentCourse.value) {
+      toast.add({
+        title: 'Uploading Recording',
+        description: 'Please wait while we save your recording...',
+        color: 'info',
+        icon: 'i-heroicons-arrow-up-tray',
+      });
+
+      const timelineNDJSON = getTimelineNDJSON();
+      const audioBlob = getAudioBlob();
+
+      await uploadRecording(
+        currentCourse.value.id,
+        timelineNDJSON,
+        audioBlob
+      );
+    } else {
+      toast.add({
+        title: 'Recording Stopped',
+        description: 'Recording saved locally (no course selected).',
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+  } else {
+    // Start recording
+    startRecording();
+    recordingDuration.value = 0;
+
+    // Start timer to update recording duration
+    recordingTimerInterval = window.setInterval(() => {
+      const status = getRecorderStatus();
+      if (status) {
+        recordingDuration.value = status.duration;
+      }
+    }, 100); // Update every 100ms
+
+    toast.add({
+      title: 'Recording Started',
+      description: 'Everything you do is now being recorded.',
+      color: 'success',
+      icon: 'i-heroicons-video-camera',
+    });
+  }
+};
+
 // Set up file watching similar to arkad-app/pages/ide/index.vue
 const setupFileWatching = () => {
   socketClient.handleWatch(({ event, data }: WatchResponse) => {
@@ -237,6 +336,17 @@ const micCheckClass = computed(() => {
 
 // Cleanup on component unmount
 onUnmounted(() => {
+  // Stop recording timer
+  if (recordingTimerInterval !== null) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+  }
+
+  // Stop recording if active
+  if (isRecording.value) {
+    stopRecording();
+  }
+
   if (socketClient.isConnected) {
     console.log('[Teach] Disconnecting socket on unmount');
     socketClient.disconnect();
