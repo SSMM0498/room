@@ -1,4 +1,7 @@
 import { ref } from 'vue';
+import { Recorder } from '~/lib/recorder';
+import type { IDEStateCapture, RecorderConfig } from '~/lib/recorder';
+import type { UIState, WorkspaceState } from '~/types/events';
 
 const audioContext = ref<AudioContext | null>(null);
 const analyserNode = ref<AnalyserNode | null>(null);
@@ -11,6 +14,9 @@ export const useRecorder = () => {
   const mediaRecorder = ref<MediaRecorder | null>(null);
   const audioChunks = ref<Blob[]>([]);
   const micVolume = ref(0);
+
+  // Core Recorder instance
+  const recorder = ref<Recorder | null>(null);
 
   /**
    * Requests microphone access and prepares for recording.
@@ -71,7 +77,15 @@ export const useRecorder = () => {
   }
 
   /**
-   * Starts the recording process.
+   * Initialize the Recorder with state capture interface
+   */
+  const initializeRecorder = (stateCapture: IDEStateCapture, config?: RecorderConfig) => {
+    recorder.value = new Recorder(config);
+    recorder.value.setStateCapture(stateCapture);
+  };
+
+  /**
+   * Starts the recording process (both audio and action log).
    */
   const startRecording = () => {
     if (!stream.value) {
@@ -79,6 +93,12 @@ export const useRecorder = () => {
       return;
     }
 
+    if (!recorder.value) {
+      console.error("❌ Recorder not initialized. Call initializeRecorder first.");
+      return;
+    }
+
+    // Start audio recording
     audioChunks.value = []; // Clear previous chunks
     mediaRecorder.value = new MediaRecorder(stream.value);
 
@@ -94,8 +114,12 @@ export const useRecorder = () => {
     };
 
     mediaRecorder.value.start();
+
+    // Start action log recording
+    recorder.value.start();
+
     isRecording.value = true;
-    console.log("Recording started.");
+    console.log("🎬 Recording started (audio + action log).");
   };
 
   /**
@@ -108,16 +132,58 @@ export const useRecorder = () => {
       // Also stop the tracks to release the microphone
       stream.value?.getTracks().forEach(track => track.stop());
     }
+
+    if (recorder.value) {
+      recorder.value.stop();
+    }
+
+    console.log("⏹️ Recording stopped.");
+  };
+
+  /**
+   * Get the recorded timeline as NDJSON
+   */
+  const getTimelineNDJSON = (): string => {
+    if (!recorder.value) {
+      console.error("❌ Recorder not initialized.");
+      return '';
+    }
+    return recorder.value.exportAsNDJSON();
+  };
+
+  /**
+   * Get the audio blob
+   */
+  const getAudioBlob = (): Blob | null => {
+    if (audioChunks.value.length === 0) {
+      return null;
+    }
+    return new Blob(audioChunks.value, { type: 'audio/webm;codecs=opus' });
+  };
+
+  /**
+   * Get recording status
+   */
+  const getRecorderStatus = () => {
+    if (!recorder.value) {
+      return null;
+    }
+    return recorder.value.getStatus();
   };
 
   return {
     isRecording,
     isReady,
     micVolume,
+    recorder,
     setupMedia,
+    initializeRecorder,
     startRecording,
     stopRecording,
     monitorMicVolume,
     stopMonitoring,
+    getTimelineNDJSON,
+    getAudioBlob,
+    getRecorderStatus,
   };
 };
