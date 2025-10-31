@@ -26,7 +26,7 @@ export class PlayerStateMachine {
     const oldState = this.currentState;
     this.currentState = newState;
 
-    console.log(`[PlayerStateMachine] ${oldState} -> ${newState}`);
+    console.trace(`[PlayerStateMachine] ${oldState} -> ${newState}`);
 
     // Notify listeners
     const stateListeners = this.listeners.get(newState);
@@ -51,7 +51,7 @@ export class PlayerStateMachine {
   }
 
   canPlay(): boolean {
-    return this.currentState === 'ready' || this.currentState === 'paused';
+    return this.currentState === 'ready' || this.currentState === 'paused' || this.currentState === 'idle';
   }
 
   canPause(): boolean {

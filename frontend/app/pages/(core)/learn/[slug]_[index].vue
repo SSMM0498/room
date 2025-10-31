@@ -47,8 +47,7 @@
 
       <!-- Playing Blocker Overlay -->
       <div
-        v-if="isPlaying"
-        class="playing-blocker absolute inset-0 z-40 cursor-not-allowed"
+        class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
         @click.prevent
         @mousedown.prevent
         @mouseup.prevent
@@ -62,7 +61,7 @@
       :is-ready="isReady"
       :current-time="formattedCurrentTime"
       :duration="formattedDuration"
-      :current-time-ms="currentTime"
+      v-model:current-time-ms="currentTime"
       :duration-ms="duration"
       @toggle-play-pause="togglePlayPause"
       @seek="handleSeek"
@@ -365,10 +364,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.playing-blocker {
-  background: transparent;
-}
-
 /* Prevent text selection during playback */
 .playing-blocker * {
   user-select: none;

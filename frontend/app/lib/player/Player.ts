@@ -33,6 +33,14 @@ export class Player {
   }
 
   /**
+   * Set or update the audio element for synchronized playback
+   */
+  setAudioElement(element: HTMLAudioElement): void {
+    this.audioElement = element;
+    console.log('[Player] Audio element set/updated');
+  }
+
+  /**
    * Load a timeline from NDJSON string
    */
   async loadFromNDJSON(ndjson: string): Promise<void> {
@@ -49,7 +57,7 @@ export class Player {
       // Calculate duration
       const firstEvent = this.timeline[0];
       const lastEvent = this.timeline[this.timeline.length - 1];
-      this.duration = (lastEvent?.t ?? 0) - (firstEvent?.t ?? 0);
+      this.duration = lastEvent?.t! - firstEvent?.t!;
 
       console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
       console.log('[Player] Duration:', this.duration / 1000, 'seconds');
@@ -78,7 +86,7 @@ export class Player {
       // Calculate duration
       const firstEvent = this.timeline[0];
       const lastEvent = this.timeline[this.timeline.length - 1];
-      this.duration = (lastEvent?.t ?? 0) - (firstEvent?.t ?? 0);
+      this.duration = lastEvent?.t! - firstEvent?.t!;
 
       console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
       console.log('[Player] Duration:', this.duration / 1000, 'seconds');
@@ -99,11 +107,15 @@ export class Player {
       console.warn('[Player] Cannot play in current state:', this.stateMachine.getState());
       return;
     }
-
     this.stateMachine.setState('playing');
+    if (this.stateMachine.getState() === 'idle') {
+      // Resume scheduler
+      this.scheduler.start();
+    } else {
+      // Resume scheduler
+      this.scheduler.resume();
+    }
 
-    // Resume scheduler
-    this.scheduler.resume();
 
     // Schedule upcoming events
     this.scheduleUpcomingEvents();
@@ -124,6 +136,7 @@ export class Player {
    * Pause playback
    */
   pause(): void {
+    debugger
     if (!this.stateMachine.canPause()) {
       console.warn('[Player] Cannot pause in current state:', this.stateMachine.getState());
       return;
@@ -223,6 +236,7 @@ export class Player {
 
       // Check if playback has ended
       if (this.currentTime >= this.duration) {
+        console.log(">>> timing", this.currentTime, this.duration)
         this.pause();
         return;
       }

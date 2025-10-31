@@ -30,20 +30,20 @@ export default defineEventHandler(async (event) => {
         const record = records[0];
 
         // Generate file URLs
-        const baseUrl = pb.baseUrl;
+        const baseURL = pb.baseURL;
         const collectionId = record.collectionId;
         const recordId = record.id;
 
         const responseData = {
             ...record,
             room_json_url: record.room_json
-                ? `${baseUrl}/api/files/${collectionId}/${recordId}/${record.room_json}`
+                ? `${baseURL}api/files/${collectionId}/${recordId}/${record.room_json}`
                 : null,
             audio_url: record.audio
-                ? `${baseUrl}/api/files/${collectionId}/${recordId}/${record.audio}`
+                ? `${baseURL}api/files/${collectionId}/${recordId}/${record.audio}`
                 : null,
             thumbnail_url: record.thumbnail
-                ? `${baseUrl}/api/files/${collectionId}/${recordId}/${record.thumbnail}`
+                ? `${baseURL}api/files/${collectionId}/${recordId}/${record.thumbnail}`
                 : null,
         };
 

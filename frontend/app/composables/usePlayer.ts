@@ -58,9 +58,12 @@ export const usePlayer = () => {
   const setAudioElement = (element: HTMLAudioElement) => {
     audioElement.value = element;
     if (player.value) {
-      // Reinitialize player with new audio element
+      // Set audio element on existing player instance
+      player.value.setAudioElement(element);
+    } else {
+      // If player doesn't exist yet, initialize with audio element
       const config: PlayerConfig = { audioElement: element };
-      player.value = new Player(config);
+      initializePlayer(config);
     }
   };
 
