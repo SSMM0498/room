@@ -97,6 +97,7 @@ const {
   handleFileDelete,
   handleDirectoryDelete,
   handleRename,
+  setSocketConnected,
 } = useIDE();
 
 // Player composable
@@ -257,6 +258,7 @@ const startWorkspace = async (courseId: string) => {
     socketClient.connect(() => {
       console.log('[Learn] Socket connected successfully');
       isConnected.value = true;
+      setSocketConnected(true);
       loading.value = false;
 
       // Start file watching
@@ -283,6 +285,7 @@ const startWorkspace = async (courseId: string) => {
     socketClient.onDisconnect(() => {
       console.log('[Learn] Socket disconnected');
       isConnected.value = false;
+      setSocketConnected(false);
     });
   } catch (err: any) {
     console.error('[Learn] Failed to start workspace:', err);

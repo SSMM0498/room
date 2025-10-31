@@ -26,7 +26,7 @@ export const createPocketBaseInstance = (event: H3Event) => {
     setCookie(event, 'pb_auth', pb.authStore.exportToCookie({
       httpOnly: true,
       secure: true,
-      sameSite: 'lax', 
+      sameSite: 'lax',
       maxAge: 604800, // Optional: ~7 days
     }));
   });
@@ -39,6 +39,6 @@ export const createPocketBaseInstance = (event: H3Event) => {
       deleteCookie(event, 'pb_auth');
     }
   }
-  
+
   return pb;
 };

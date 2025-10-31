@@ -23,7 +23,7 @@
 			minimap: {
 				enabled: false
 			}
-		}" :language="language" :value="activeTab.fileContent" :onChange="onCodeChange">
+		}" :language="language" :value="activeTab.fileContent" :onChange="onCodeChange" :onMount="onEditorMount">
 		</Editor>
 	</div>
 </template>
@@ -33,10 +33,11 @@ import Editor from "@guolao/vue-monaco-editor";
 import map from '~/utils/lang-map';
 import { debounce, type ActiveFile } from '~~/types/file-tree';
 
-const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles } = useIDE();
+const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
 const colorMode = useColorMode()
 const { socketClient } = useSocket();
 const isSaving = ref(false);
+const editorInstance = ref<any>(null);
 
 const theme = computed(() => colorMode.value === 'dark'
 	? 'vs-dark'
@@ -67,6 +68,21 @@ const onCodeChange = (value: string | undefined) => {
 		setActiveTab(tab);
 		setTabContent(tab);
 		debouncedUpdate(activeTab.filePath, value);
+	}
+};
+
+const onEditorMount = (editor: any) => {
+	editorInstance.value = editor;
+
+	// Track cursor position changes
+	editor.onDidChangeCursorPosition((e: any) => {
+		setCursorPosition(e.position.lineNumber, e.position.column);
+	});
+
+	// Set initial cursor position
+	const position = editor.getPosition();
+	if (position) {
+		setCursorPosition(position.lineNumber, position.column);
 	}
 };
 

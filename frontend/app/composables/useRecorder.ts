@@ -3,20 +3,31 @@ import { Recorder } from '~/lib/recorder';
 import type { IDEStateCapture, RecorderConfig } from '~/lib/recorder';
 import type { UIState, WorkspaceState } from '~/types/events';
 
+// Global state - shared across all component instances
 const audioContext = ref<AudioContext | null>(null);
 const analyserNode = ref<AnalyserNode | null>(null);
 let animationFrameId: number;
 
-export const useRecorder = () => {
-  const isRecording = ref(false);
-  const isReady = ref(false);
-  const stream = ref<MediaStream | null>(null);
-  const mediaRecorder = ref<MediaRecorder | null>(null);
-  const audioChunks = ref<Blob[]>([]);
-  const micVolume = ref(0);
+const isRecording = ref(false);
+const isReady = ref(false);
+const stream = ref<MediaStream | null>(null);
+const mediaRecorder = ref<MediaRecorder | null>(null);
+const audioChunks = ref<Blob[]>([]);
+const micVolume = ref(0);
 
-  // Core Recorder instance
-  const recorder = ref<Recorder | null>(null);
+// Core Recorder instance
+const recorder = ref<Recorder | null>(null);
+
+export const useRecorder = () => {
+  // Upload callback function - can be set by components
+  const uploadCallback = ref<(audioBlob: Blob, timelineNDJSON: string) => Promise<boolean>>();
+
+  /**
+   * Sets the upload callback function
+   */
+  const setUploadCallback = (callback: (audioBlob: Blob, timelineNDJSON: string) => Promise<boolean>) => {
+    uploadCallback.value = callback;
+  };
 
   /**
    * Requests microphone access and prepares for recording.
@@ -106,11 +117,32 @@ export const useRecorder = () => {
       audioChunks.value.push(event.data);
     };
 
-    mediaRecorder.value.onstop = () => {
-      // The upload logic will be triggered here
+    mediaRecorder.value.onstop = async () => {
+      // Create final audio blob
       const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm;codecs=opus' });
       console.log("Recording stopped. Final audio blob created:", audioBlob);
-      // TODO: Call the upload function here
+
+      // Get timeline data
+      const timelineNDJSON = getTimelineNDJSON();
+
+      // Trigger upload if callback is set
+      if (uploadCallback.value) {
+        try {
+          console.log("Starting upload process...");
+          const success = await uploadCallback.value(audioBlob, timelineNDJSON);
+          if (success) {
+            console.log("✅ Upload completed successfully");
+          } else {
+            console.error("❌ Upload failed");
+          }
+        } catch (error) {
+          console.error("❌ Upload error:", error);
+        }
+      } else {
+        console.warn("⚠️ No upload callback set. Audio and timeline data available for manual upload.");
+        console.log("Audio blob size:", audioBlob.size, "bytes");
+        console.log("Timeline events:", timelineNDJSON.split('\n').length, "events");
+      }
     };
 
     mediaRecorder.value.start();
@@ -185,5 +217,6 @@ export const useRecorder = () => {
     getTimelineNDJSON,
     getAudioBlob,
     getRecorderStatus,
+    setUploadCallback,
   };
 };

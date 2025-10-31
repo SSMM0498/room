@@ -43,6 +43,8 @@ const openTabs = reactive<{ tabs: ActiveFile[] }>({ tabs: [] });
 const savingFiles = ref<Set<string>>(new Set());
 const deletingResources = ref<Set<string>>(new Set());
 const movingResources = ref<Set<string>>(new Set());
+const isSocketConnected = ref(false);
+const cursorPosition = ref({ line: 1, col: 1 });
 
 export const useIDE = () => {
   // --- Directory Tree Management ---
@@ -338,6 +340,14 @@ export const useIDE = () => {
     isDragging.value = isDrag;
   };
 
+  const setSocketConnected = (connected: boolean) => {
+    isSocketConnected.value = connected;
+  };
+
+  const setCursorPosition = (line: number, col: number) => {
+    cursorPosition.value = { line, col };
+  };
+
   return {
     // Reactive State
     url,
@@ -353,6 +363,8 @@ export const useIDE = () => {
     savingFiles,
     deletingResources,
     movingResources,
+    isSocketConnected,
+    cursorPosition,
 
     // Setters
     setIsDragging,
@@ -361,6 +373,8 @@ export const useIDE = () => {
     setOpenTabs,
     setTabContent,
     setActiveTerminal,
+    setSocketConnected,
+    setCursorPosition,
 
     // Tab Management
     addNewTab,

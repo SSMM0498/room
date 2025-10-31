@@ -46,7 +46,7 @@ export const useCourseContent = () => {
       formData.append('courseId', courseId);
 
       // Create NDJSON file blob
-      const eventsBlob = new Blob([eventsNDJSON], { type: 'application/x-ndjson' });
+      const eventsBlob = new Blob([eventsNDJSON], { type: 'application/x-json' });
       formData.append('room_json', eventsBlob, 'events.ndjson');
 
       // Add audio if available

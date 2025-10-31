@@ -1,14 +1,13 @@
 <template>
-  <header
-    class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-hightlighted p-2 border-gray-200 dark:border-gray-800">
+  <header class="fixed left-0 top-0 z-20 w-full flex items-center justify-between ui-base text-hightlighted p-2">
     <nav class="flex px-2 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center
       text-sm justify-center space-x-1">
       <NuxtLink :to="localePath('/')" class="logo -mt-1 mr-3 font-inter text-black dark:text-white ">room_</NuxtLink>
       <div v-if="pending"
         class="flex items-center gap-2 px-2 p-1 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800">
-        <USkeleton class="h-6 w-16" />
-        <USkeleton class="h-6 w-24" />
-        <USkeleton class="h-6 w-32" />
+        <USkeleton class="h-2 w-16" />
+        <USkeleton class="h-2 w-24" />
+        <USkeleton class="h-2 w-32" />
       </div>
       <UBreadcrumb v-else-if="currentCourse" :items="breadcrumbItems">
         <template #item="{ item }">
@@ -37,7 +36,7 @@
               </div>
             </template>
           </UPopover>
-          <span v-else class="px-2 py-1">{{ item.label }}</span>
+          <span v-else class="px-1">{{ item.label }}</span>
         </template>
 
         <template #separator>
@@ -54,13 +53,9 @@
       </div>
 
       <!-- Recording Button -->
-      <UButton
-        size="xs"
-        :color="recording.isRecording.value ? 'error' : 'neutral'"
-        :icon="recording.isRecording.value ? 'i-heroicons-stop-20-solid' : 'i-heroicons-play-20-solid'"
-        variant="soft"
-        @click="toggleRecording"
-      >
+      <UButton size="xs" :color="recording.isRecording.value ? 'error' : 'neutral'"
+        :icon="recording.isRecording.value ? 'i-heroicons-stop-20-solid' : 'i-uim:record-audio'" variant="link"
+        class="cursor-pointer" @click="toggleRecording">
         {{ recording.isRecording.value ? 'Stop' : 'Record' }}
       </UButton>
 
@@ -93,7 +88,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { BreadcrumbItem } from '#ui/types';
 
 const { currentCourse, currentItemIndex, activePlaylistItem, pending } = useCourses();
@@ -105,40 +99,48 @@ interface CustomBreadcrumbItem extends BreadcrumbItem {
   isPopover?: boolean;
 }
 
-const breadcrumbItems = computed<CustomBreadcrumbItem[]>(() => {
-  const baseItems: CustomBreadcrumbItem[] = [];
+const breadcrumbItems = ref<CustomBreadcrumbItem[]>([]);
 
+const initBreadcrumb = () => {
   if (!currentCourse.value || !currentCourse.value.author) {
-    return baseItems;
+    breadcrumbItems.value = [];
+    return;
   }
 
   const author = currentCourse.value.author;
   const course = currentCourse.value;
 
   const items: CustomBreadcrumbItem[] = [
-    ...baseItems,
     {
       label: `@${author.username}`,
       to: localePath(`/@/${author.username}`),
     },
     {
       label: course.title,
-      to: localePath(`/learn/${course.slug}_0`),
     },
   ];
 
-  // Only add playlist item for cursus type courses
-  if (course.type === 'cursus') {
-    if (activePlaylistItem.value) {
-      const item = activePlaylistItem.value;
-      items.push({
-        label: `${item.order + 1} - ${item.expand?.course?.title}`,
-        isPopover: true,
-      });
-    }
+  // Add playlist item for cursus type courses
+  if (course.type === 'cursus' && activePlaylistItem.value) {
+    const item = activePlaylistItem.value;
+    items.push({
+      label: `${item.order + 1} - ${item.expand?.course?.title}`,
+      isPopover: true,
+    });
   }
+  breadcrumbItems.value = items;
+};
 
-  return items;
+// Initialize breadcrumb when currentCourse changes
+watch(currentCourse, (newVal) => {
+  initBreadcrumb();
+}, { immediate: true, deep: true });
+
+// Update breadcrumb when activePlaylistItem changes (for cursus navigation)
+watch(activePlaylistItem, (newVal) => {
+  if (currentCourse.value?.type === 'cursus') {
+    initBreadcrumb();
+  }
 });
 
 watchEffect(() => {
@@ -153,7 +155,6 @@ function handleItemSelect(index: number, slug?: string) {
 
 const {
   showTerminal,
-  changeURL,
 } = useIDE();
 
 const { socketClient } = useSocket();
@@ -185,7 +186,7 @@ socketClient.handleRun((data: any) => {
   }
 });
 
-const startPreview = (event: MouseEvent) => {
+const startPreview = () => {
   // Command is now configured in workspace config.toml
   socketClient.startPreview();
   console.log('[IDE] Starting preview (command from config.toml)');
@@ -198,28 +199,128 @@ const runProject = () => {
 };
 
 const recording = useRecorder()
+const { uploadRecording } = useCourseContent();
 
-// Format recording time as MM:SS
-const formattedRecordingTime = computed(() => {
+// Format recording time as MM:SS (reactive with interval)
+const formattedRecordingTime = ref('00:00');
+let recordingTimerInterval: number | null = null;
+
+const updateRecordingTime = () => {
   const status = recording.getRecorderStatus();
-  if (!status) return '00:00';
+  if (!status) {
+    formattedRecordingTime.value = '00:00';
+    return;
+  }
   const totalSeconds = Math.floor(status.duration / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  formattedRecordingTime.value = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+// Watch for recording state changes to start/stop timer
+watch(() => recording.isRecording.value, (isRecording) => {
+  if (isRecording) {
+    // Start updating timer every second
+    updateRecordingTime();
+    recordingTimerInterval = setInterval(updateRecordingTime, 1000) as unknown as number;
+  } else {
+    // Stop timer when recording stops
+    if (recordingTimerInterval !== null) {
+      clearInterval(recordingTimerInterval);
+      recordingTimerInterval = null;
+    }
+    formattedRecordingTime.value = '00:00';
+  }
 });
 
 const toggleTerminal = () => {
   showTerminal.value = !showTerminal.value;
 }
 
-const toggleRecording = () => {
+const toast = useToast();
+
+onMounted(() => {
+  recording.setUploadCallback(async (audioBlob: Blob, timelineNDJSON: string) => {
+    if (!currentCourse.value) {
+      console.error('No current course available for upload');
+      return false;
+    }
+
+    try {
+      console.log('Starting upload process...');
+
+      const result = await uploadRecording(
+        currentCourse.value.id,
+        timelineNDJSON,
+        audioBlob
+      );
+
+      if (result) {
+        console.log('✅ Upload completed successfully');
+        return true;
+      } else {
+        console.error('❌ Upload failed - no result returned');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Upload error:', error);
+      return false;
+    }
+  });
+});
+
+const toggleRecording = async () => {
   if (recording.isRecording.value) {
-    recording.stopRecording()
+    // Stop recording - upload will be triggered automatically via the callback
+    recording.stopRecording();
+
+    toast.add({
+      title: 'Processing Recording',
+      description: 'Saving your recording...',
+      color: 'primary',
+      icon: 'i-heroicons-arrow-path'
+    });
+
   } else {
-    recording.startRecording()
+    // Check if media is ready, if not, set it up first
+    if (!recording.isReady.value) {
+      toast.add({
+        title: 'Microphone Setup Required',
+        description: 'Please allow microphone access to start recording',
+        color: 'warning',
+        icon: 'i-heroicons-microphone'
+      });
+
+      const success = await recording.setupMedia();
+      if (!success) {
+        toast.add({
+          title: 'Microphone Access Denied',
+          description: 'Please allow microphone access in your browser settings',
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle'
+        });
+        return;
+      }
+    }
+
+    // Start recording
+    recording.startRecording();
+    toast.add({
+      title: 'Recording Started',
+      description: 'Your lesson is now being recorded',
+      color: 'success',
+      icon: 'i-heroicons-video-camera'
+    });
   }
 }
+
+// Cleanup on component unmount
+onUnmounted(() => {
+  if (recordingTimerInterval !== null) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+  }
+});
 </script>
 
 <style scoped lang="css">

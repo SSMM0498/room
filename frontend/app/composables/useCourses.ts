@@ -40,24 +40,26 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
     };
 };
 
-export const useCourses = () => {
-    const courses = ref<CourseCard[]>([]);
-    const userCoursesList = ref<SimpleCourse[]>([]);
-    const currentCourse = ref<CourseCard | null>(null);
-    const currentItemIndex = ref(0);
-    const activePlaylistItem = computed(() => {
-        if (
-            currentCourse.value?.type === 'cursus' &&
-            currentCourse.value.items &&
-            currentCourse.value.items.length > currentItemIndex.value
-        ) {
-            return currentCourse.value.items[currentItemIndex.value];
-        }
-        return null;
-    });
+// Global state outside the composable to make it shared across all instances
+const courses = ref<CourseCard[]>([]);
+const userCoursesList = ref<SimpleCourse[]>([]);
+const currentCourse = ref<CourseCard | null>(null);
+const currentItemIndex = ref(0);
+const activePlaylistItem = computed(() => {
+    if (
+        currentCourse.value?.type === 'cursus' &&
+        currentCourse.value.items &&
+        currentCourse.value.items.length > currentItemIndex.value
+    ) {
+        return currentCourse.value.items[currentItemIndex.value];
+    }
+    return null;
+});
 
-    const pending = ref(false);
-    const error = ref<Error | null>(null);
+const pending = ref(false);
+const error = ref<Error | null>(null);
+
+export const useCourses = () => {
 
     const _handleRequest = async <T>(request: () => Promise<T>): Promise<T | null> => {
         pending.value = true;

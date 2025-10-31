@@ -3,7 +3,7 @@
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
 
-  <div id="ide-wrapper" class="flex w-full h-full px-2 pb-2">
+  <div id="ide-wrapper" class="flex w-full h-full">
     <UModal v-model:open="isWorkSpaceChecklistOpen" :prevent-close="!isReady" :ui="{ overlay: 'bg-gray-900/75' }">
       <template #content>
         <UCard>
@@ -74,15 +74,11 @@ const {
   micVolume,
   setupMedia,
   initializeRecorder,
-  startRecording,
   stopRecording,
-  getRecorderStatus,
-  getTimelineNDJSON,
-  getAudioBlob,
 } = useRecorder();
 const { socketClient, getSocketUrl } = useSocket();
 const { ensureWorkspaceIsRunning, progressMessage } = useWorkspace();
-const { uploadRecording } = useCourseContent();
+useCourseContent();
 const {
   directoryTree,
   activeTab,
@@ -90,6 +86,7 @@ const {
   handleFileDelete,
   handleDirectoryDelete,
   handleRename,
+  setSocketConnected,
 } = useIDE();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
@@ -103,7 +100,6 @@ const socketError = ref<Error | null>(null);
 const slug = route.params.slug as string;
 
 // Recording state
-const recordingDuration = ref(0);
 let recordingTimerInterval: number | null = null;
 
 // Initialize recorder with a placeholder state capture
@@ -192,6 +188,7 @@ const startWorkspace = async (courseId: string) => {
     socketClient.connect(() => {
       console.log('[Teach] Socket connected successfully');
       isConnected.value = true;
+      setSocketConnected(true);
       loading.value = false;
       sessionState.value = 'ready';
       isWorkSpaceChecklistOpen.value = false;
@@ -220,6 +217,7 @@ const startWorkspace = async (courseId: string) => {
     socketClient.onDisconnect(() => {
       console.log('[Teach] Socket disconnected');
       isConnected.value = false;
+      setSocketConnected(false);
     });
   } catch (err: any) {
     console.error('[Teach] Failed to start workspace:', err);
@@ -229,64 +227,6 @@ const startWorkspace = async (courseId: string) => {
       title: 'Error',
       description: 'Failed to start workspace.',
       color: 'error'
-    });
-  }
-};
-
-// Toggle recording function
-const toggleRecording = async () => {
-  if (isRecording.value) {
-    // Stop recording
-    stopRecording();
-    if (recordingTimerInterval !== null) {
-      clearInterval(recordingTimerInterval);
-      recordingTimerInterval = null;
-    }
-    recordingDuration.value = 0;
-
-    // Upload the recording
-    if (currentCourse.value) {
-      toast.add({
-        title: 'Uploading Recording',
-        description: 'Please wait while we save your recording...',
-        color: 'info',
-        icon: 'i-heroicons-arrow-up-tray',
-      });
-
-      const timelineNDJSON = getTimelineNDJSON();
-      const audioBlob = getAudioBlob();
-
-      await uploadRecording(
-        currentCourse.value.id,
-        timelineNDJSON,
-        audioBlob
-      );
-    } else {
-      toast.add({
-        title: 'Recording Stopped',
-        description: 'Recording saved locally (no course selected).',
-        color: 'warning',
-        icon: 'i-heroicons-exclamation-triangle',
-      });
-    }
-  } else {
-    // Start recording
-    startRecording();
-    recordingDuration.value = 0;
-
-    // Start timer to update recording duration
-    recordingTimerInterval = window.setInterval(() => {
-      const status = getRecorderStatus();
-      if (status) {
-        recordingDuration.value = status.duration;
-      }
-    }, 100); // Update every 100ms
-
-    toast.add({
-      title: 'Recording Started',
-      description: 'Everything you do is now being recorded.',
-      color: 'success',
-      icon: 'i-heroicons-video-camera',
     });
   }
 };
