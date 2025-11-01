@@ -1,9 +1,20 @@
 <template>
+
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
 
   <div class="flex flex-col w-full h-full relative">
+    <!-- Center Play/Pause Icon Overlay -->
+    <div v-if="centerIcon.visible" class="center-icon-overlay" :class="{ 'fade-out': centerIcon.fadingOut }">
+      <div class="center-icon border-5 bg-white dark:bg-gray-950" :class="{
+        'border-gray-950 dark:border-white text-gray-950 dark:text-white': isPlaying,
+        'border-primary text-primary': !isPlaying
+      }">
+        <UIcon :name="centerIcon.icon" class="icon" />
+      </div>
+    </div>
+
     <div v-if="currentCourse && currentCourse.type === 'cursus' && activePlaylistItem"
       class="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
       <div class="flex items-center justify-between">
@@ -33,41 +44,23 @@
       <ide-wrap :loading="loading" />
 
       <!-- Fake Mouse Cursor using mouse.css classes -->
-      <div
-        v-if="isPlaying"
-        class="player-mouse"
-        :class="fakeCursorClass"
-        :style="{
-          left: `${fakeCursorPos.x}px`,
-          top: `${fakeCursorPos.y}px`,
-        }"
-      >
+      <div v-if="isPlaying" class="player-mouse" :class="fakeCursorClass" :style="{
+        left: `${fakeCursorPos.x}px`,
+        top: `${fakeCursorPos.y}px`,
+      }">
         <div class="player-mouse-light"></div>
       </div>
 
       <!-- Playing Blocker Overlay -->
-      <div
-        class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
-        @click.prevent
-        @mousedown.prevent
-        @mouseup.prevent
-        @keydown.prevent
-      ></div>
+      <div class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
+        @click.prevent="handleTogglePlayPause" @mousedown.prevent @mouseup.prevent @keydown.prevent></div>
     </div>
 
     <!-- Player Controller (auto-hide at bottom) -->
-    <player-controller
-      v-model:current-time-ms="currentTime"
-      :is-playing="isPlaying"
-      :is-ready="isReady"
-      :current-time="formattedCurrentTime"
-      :duration="formattedDuration"
-      :duration-ms="duration"
-      @toggle-play-pause="togglePlayPause"
-      @seek="handleSeek"
-      @skip-forward="skipForward"
-      @skip-backward="skipBackward"
-    />
+    <player-controller v-model:current-time-ms="currentTime" :is-playing="isPlaying" :is-ready="isReady"
+      :current-time="formattedCurrentTime" :duration="formattedDuration" :duration-ms="duration"
+      @toggle-play-pause="handleTogglePlayPause" @seek="handleSeek" @skip-forward="skipForward"
+      @skip-backward="skipBackward" />
   </div>
 </template>
 
@@ -129,6 +122,48 @@ const slug = route.params.slug as string;
 // Fake cursor position and class
 const fakeCursorPos = ref({ x: 0, y: 0 });
 const fakeCursorClass = ref(''); // Can be 'pointer', 'active', 'grab', etc.
+
+// Center icon overlay state
+const centerIcon = reactive({
+  visible: false,
+  fadingOut: false,
+  icon: 'i-heroicons-play-20-solid'
+});
+let centerIconTimer: number | null = null;
+
+// Show center icon with animation
+const showCenterIcon = (icon: string) => {
+  centerIcon.icon = icon;
+  centerIcon.visible = true;
+  centerIcon.fadingOut = false;
+
+  // Clear any existing timer
+  if (centerIconTimer !== null) {
+    clearTimeout(centerIconTimer);
+  }
+
+  // Start fade out after a short delay
+  centerIconTimer = window.setTimeout(() => {
+    centerIcon.fadingOut = true;
+    // Hide after fade animation completes
+    centerIconTimer = window.setTimeout(() => {
+      centerIcon.visible = false;
+    }, 300); // Match CSS transition duration
+  }, 500); // Show for 500ms before fading
+};
+
+// Handle toggle play/pause with center icon
+const handleTogglePlayPause = () => {
+  if (!isReady.value) return;
+
+  // Show icon based on current state (will toggle, so show opposite)
+  const icon = isPlaying.value
+    ? 'i-heroicons-play-20-solid'
+    : 'i-heroicons-pause-20-solid';
+
+  showCenterIcon(icon);
+  togglePlayPause();
+};
 
 // Handle seek from header
 const handleSeek = async (time: number) => {
@@ -355,6 +390,11 @@ onUnmounted(() => {
     pause();
   }
 
+  // Clean up center icon timer
+  if (centerIconTimer !== null) {
+    clearTimeout(centerIconTimer);
+  }
+
   if (socketClient.isConnected) {
     console.log('[Learn] Disconnecting socket on unmount');
     socketClient.disconnect();
@@ -369,5 +409,44 @@ onUnmounted(() => {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+/* Center Play/Pause Icon Overlay */
+.center-icon-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+  opacity: 1;
+}
+
+.center-icon-overlay.fade-out {
+  opacity: 0;
+}
+
+.center-icon {
+  border-radius: 50%;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+:global(.dark) .center-icon {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.center-icon .icon {
+  width: 4rem;
+  height: 4rem;
+}
+
+:global(.dark) .center-icon .icon {
+  color: white;
 }
 </style>

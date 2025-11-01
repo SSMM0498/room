@@ -208,7 +208,6 @@ onUnmounted(() => {
   transform: translateX(-50%);
   margin-bottom: 8px;
   padding: 4px 8px;
-  color: white;
   border-radius: 4px;
   font-size: 0.75rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
