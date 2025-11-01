@@ -56,8 +56,6 @@ export class Player {
 
       // Calculate duration
       const firstEvent = this.timeline[0];
-      const offset = firstEvent?.t!;
-      this.timeline = this.timeline.map(event => ({ ...event, t: event.t - offset }));
       const lastEvent = this.timeline[this.timeline.length - 1];
       this.duration = lastEvent?.t! - firstEvent?.t!;
 

@@ -28,13 +28,19 @@ export class StateReconstructor {
    * Reconstruct the ground truth state at a specific time
    */
   async reconstructStateAtTime(timeline: AnyActionPacket[], targetTime: number): Promise<void> {
+    // Get the start time from the first event to convert relative time to absolute
+    const startTime = timeline[0]?.t ?? 0;
+    const absoluteTargetTime = startTime + targetTime;
+
+    console.log('[StateReconstructor] Converting relative time', targetTime / 1000, 'seconds to absolute', absoluteTargetTime);
+
     // Step 1: Find the most recent full snapshot before target time
     let baseSnapshot: AnyActionPacket | null = null;
     let baseSnapshotIndex = -1;
 
     for (let i = timeline.length - 1; i >= 0; i--) {
       const event = timeline[i];
-      if (event && event.t <= targetTime && isFullSnapshot(event)) {
+      if (event && event.t <= absoluteTargetTime && isFullSnapshot(event)) {
         baseSnapshot = event;
         baseSnapshotIndex = i;
         break;
@@ -45,7 +51,7 @@ export class StateReconstructor {
       throw new Error('No full snapshot found before target time');
     }
 
-    console.log('[StateReconstructor] Found base snapshot at', baseSnapshot.t / 1000, 'seconds');
+    console.log('[StateReconstructor] Found base snapshot at', (baseSnapshot.t - startTime) / 1000, 'seconds (relative)');
 
     // Step 2: Load the base snapshot as ground truth
     const snapshotPayload = baseSnapshot.p as SnapshotPayload;
@@ -59,7 +65,7 @@ export class StateReconstructor {
       const event = timeline[i];
 
       if (event) {
-        if (event.t > targetTime) {
+        if (event.t > absoluteTargetTime) {
           break;
         }
 
@@ -71,7 +77,7 @@ export class StateReconstructor {
       }
     }
 
-    console.log('[StateReconstructor] Ground truth state reconstructed at', targetTime / 1000, 'seconds');
+    console.log('[StateReconstructor] Ground truth state reconstructed at', targetTime / 1000, 'seconds (relative)');
   }
 
   /**
