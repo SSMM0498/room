@@ -14,8 +14,18 @@
       </div>
 
       <!-- Timeline Scrubber -->
-      <div class="timeline-wrapper">
+      <div class="timeline-wrapper"
+        @mousemove="handleSliderMouseMove"
+        @mouseleave="hideTooltip"
+        ref="sliderWrapper">
         <USlider :min="0" :max="durationMs" v-model="currentTimeMs" :disabled="!isReady" @update:model-value="handleSeek" size="xs" />
+
+        <!-- Time Tooltip -->
+        <div v-if="tooltip.visible"
+          class="time-tooltip border border-accented bg-white dark:bg-gray-950"
+          :style="{ left: tooltip.x + 'px' }">
+          {{ tooltip.time }}
+        </div>
       </div>
 
       <!-- Skip Controls -->
@@ -30,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   isPlaying?: boolean;
   isReady?: boolean;
   currentTime?: string;
@@ -50,6 +60,13 @@ const emit = defineEmits<{
 const isHovered = ref(false);
 const isVisible = ref(false);
 let hideTimer: number | null = null;
+
+const sliderWrapper = ref<HTMLElement | null>(null);
+const tooltip = reactive({
+  visible: false,
+  x: 0,
+  time: '0:00'
+});
 
 // Show controller when mouse moves near bottom of screen
 const handleMouseMove = (e: MouseEvent) => {
@@ -81,6 +98,38 @@ const handleSeek = (value: unknown) => {
     time = value as number;
   }
   emit('seek', time);
+};
+
+// Format milliseconds to time string (m:ss or h:mm:ss)
+const formatTime = (ms: number): string => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+// Handle mouse movement over the slider to show tooltip
+const handleSliderMouseMove = (e: MouseEvent) => {
+  if (!sliderWrapper.value || !props.durationMs || !props.isReady) return;
+
+  const rect = sliderWrapper.value.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, x / rect.width));
+  const timeMs = percentage * props.durationMs;
+
+  tooltip.visible = true;
+  tooltip.x = x;
+  tooltip.time = formatTime(timeMs);
+};
+
+// Hide tooltip when mouse leaves the slider
+const hideTooltip = () => {
+  tooltip.visible = false;
 };
 
 onMounted(() => {
@@ -150,5 +199,26 @@ onUnmounted(() => {
 .timeline-wrapper {
   flex: 1;
   min-width: 200px;
+  position: relative;
+}
+
+.time-tooltip {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+}
+
+:global(.dark) .time-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  color: rgb(17, 24, 39);
 }
 </style>
