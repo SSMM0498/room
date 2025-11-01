@@ -1,109 +1,177 @@
 /**
  * Action Timeline Scheduler
  *
- * Schedules and executes events at precise times during playback.
+ * RAF-based scheduler that executes actions at precise times.
+ * Based on the proven architecture from the old Player core.
  */
 
-import type { AnyActionPacket } from '~/types/events';
-import type { ScheduledEvent } from './types';
+export interface ActionWithDelay {
+  doAction: () => void;
+  delay: number; // Absolute time when this action should execute
+}
 
 export class ActionTimelineScheduler {
-  private scheduledEvents: ScheduledEvent[] = [];
-  private startTime: number = 0;
-  private currentPlaybackTime: number = 0;
-  private isPaused: boolean = true;
+  public timeOffset: number = 0;
 
-  constructor(private onEventExecute: (event: AnyActionPacket) => void) {}
+  private actionsBuffer: ActionWithDelay[] = [];
+  private raf: number | null = null;
+  private liveMode: boolean = false;
 
   /**
-   * Start scheduling events from a given time
+   * Add an action after the timer starts
    */
-  start(fromTime: number = 0): void {
-    this.startTime = Date.now() - fromTime;
-    this.currentPlaybackTime = fromTime;
-    this.isPaused = false;
+  public addAction(action: ActionWithDelay): void {
+    const index = this.findActionIndex(action);
+    this.actionsBuffer.splice(index, 0, action);
+  }
+
+  /**
+   * Add all actions before the timer starts
+   */
+  public addActions(actions: ActionWithDelay[]): void {
+    this.actionsBuffer.push(...actions);
+  }
+
+  /**
+   * Start the scheduler
+   */
+  public start(): void {
+    this.actionsBuffer.sort((a1, a2) => a1.delay - a2.delay);
+    this.timeOffset = 0;
+    let lastTimestamp = performance.now();
+    const { actionsBuffer: actions } = this;
+    const self = this;
+
+    function check(time: number) {
+      self.timeOffset += time - lastTimestamp;
+      lastTimestamp = time;
+
+      while (actions.length) {
+        const action = actions[0];
+        if (!action) break;
+
+        if (self.timeOffset >= action.delay) {
+          actions.shift();
+          action.doAction();
+        } else {
+          break;
+        }
+      }
+
+      if (actions.length > 0 || self.liveMode) {
+        self.raf = requestAnimationFrame(check);
+      }
+    }
+
+    this.raf = requestAnimationFrame(check);
   }
 
   /**
    * Pause the scheduler
    */
-  pause(): void {
-    this.isPaused = true;
-    this.clearScheduledEvents();
+  public pause(): void {
+    if (this.raf) {
+      cancelAnimationFrame(this.raf);
+      this.raf = null;
+    }
   }
 
   /**
    * Resume the scheduler
    */
-  resume(): void {
-    this.isPaused = false;
-    this.startTime = Date.now() - this.currentPlaybackTime;
-  }
-
-  /**
-   * Schedule an event for execution
-   */
-  scheduleEvent(event: AnyActionPacket): void {
-    if (this.isPaused) return;
-    const currentTime = this.getCurrentTime();
-    const delay = event.t - currentTime;
-
-    if (delay <= 0) {
-      // Execute immediately if the event is in the past or present
-      this.onEventExecute(event);
+  public resume(): void {
+    if (this.raf) {
+      // Already running
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      this.onEventExecute(event);
-      this.removeScheduledEvent(timeoutId);
-    }, delay);
+    let lastTimestamp = performance.now();
+    const { actionsBuffer: actions } = this;
+    const self = this;
 
-    this.scheduledEvents.push({
-      event,
-      scheduledTime: Date.now() + delay,
-      timeoutId,
-    });
-  }
+    function check(time: number) {
+      self.timeOffset += time - lastTimestamp;
+      lastTimestamp = time;
 
-  /**
-   * Schedule multiple events
-   */
-  scheduleEvents(events: AnyActionPacket[]): void {
-    events.forEach(event => this.scheduleEvent(event));
-  }
+      while (actions.length) {
+        const action = actions[0];
+        if (!action) break;
 
-  /**
-   * Update current playback time
-   */
-  updatePlaybackTime(time: number): void {
-    this.currentPlaybackTime = time;
-  }
+        if (self.timeOffset >= action.delay) {
+          actions.shift();
+          action.doAction();
+        } else {
+          break;
+        }
+      }
 
-  /**
-   * Clear all scheduled events
-   */
-  clearScheduledEvents(): void {
-    this.scheduledEvents.forEach(({ timeoutId }) => clearTimeout(timeoutId));
-    this.scheduledEvents = [];
-  }
-
-  /**
-   * Remove a scheduled event by timeout ID
-   */
-  private removeScheduledEvent(timeoutId: number): void {
-    this.scheduledEvents = this.scheduledEvents.filter(
-      event => event.timeoutId !== timeoutId
-    );
-  }
-
-  /**
-   * Get the current playback time
-   */
-  getCurrentTime(): number {
-    if (this.isPaused) {
-      return this.currentPlaybackTime;
+      if (actions.length > 0 || self.liveMode) {
+        self.raf = requestAnimationFrame(check);
+      }
     }
-    return Date.now() - this.startTime;
+
+    this.raf = requestAnimationFrame(check);
+  }
+
+  /**
+   * Clear all scheduled actions
+   */
+  public clear(): void {
+    if (this.raf) {
+      cancelAnimationFrame(this.raf);
+      this.raf = null;
+    }
+    this.actionsBuffer.length = 0;
+  }
+
+  /**
+   * Check if scheduler is active
+   */
+  public isActive(): boolean {
+    return this.raf !== null;
+  }
+
+  /**
+   * Get current playback time (same as timeOffset)
+   */
+  public getCurrentTime(): number {
+    return this.timeOffset;
+  }
+
+  /**
+   * Set the time offset (for seeking)
+   */
+  public setTimeOffset(time: number): void {
+    this.timeOffset = time;
+  }
+
+  /**
+   * Toggle live mode
+   */
+  public toggleLiveMode(mode: boolean): void {
+    this.liveMode = mode;
+  }
+
+  /**
+   * Find the correct index to insert an action (binary search)
+   */
+  private findActionIndex(action: ActionWithDelay): number {
+    let start = 0;
+    let end = this.actionsBuffer.length - 1;
+
+    while (start <= end) {
+      const mid = Math.floor((start + end) / 2);
+      const midAction = this.actionsBuffer[mid];
+      if (!midAction) break;
+
+      if (midAction.delay < action.delay) {
+        start = mid + 1;
+      } else if (midAction.delay > action.delay) {
+        end = mid - 1;
+      } else {
+        return mid;
+      }
+    }
+    return start;
   }
 }

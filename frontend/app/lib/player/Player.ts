@@ -3,32 +3,38 @@
  *
  * Reads the Action Log and audio file to replay a recorded session.
  * Manages playback state and provides seeking functionality.
+ *
+ * Based on the old proven architecture where:
+ * - Events are converted to actions on load
+ * - Scheduler has its own RAF loop
+ * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload } from '~/types/events';
+import { EventTypes } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
-import { ActionTimelineScheduler } from './ActionTimelineScheduler';
+import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
+import { CursorMovementPlayer } from './CursorMovementPlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
   private stateMachine: PlayerStateMachine;
   private scheduler: ActionTimelineScheduler;
   private stateReconstructor: StateReconstructor;
+  private cursorPlayer: CursorMovementPlayer;
   private timeline: AnyActionPacket[] = [];
-  private currentTime: number = 0;
+  private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
 
   // Audio element reference
   private audioElement: HTMLAudioElement | null = null;
 
-  // Animation frame ID for playback loop
-  private playbackLoopId: number | null = null;
-
   constructor(config: PlayerConfig = {}) {
     this.stateMachine = new PlayerStateMachine();
-    this.scheduler = new ActionTimelineScheduler(this.executeEvent.bind(this));
+    this.scheduler = new ActionTimelineScheduler();
     this.stateReconstructor = new StateReconstructor();
+    this.cursorPlayer = new CursorMovementPlayer();
     this.audioElement = config.audioElement ?? null;
   }
 
@@ -54,13 +60,24 @@ export class Player {
         throw new Error('Timeline is empty');
       }
 
-      // Calculate duration
+      // Set baseline time and duration
       const firstEvent = this.timeline[0];
       const lastEvent = this.timeline[this.timeline.length - 1];
+      this.baselineTime = firstEvent?.t!;
       this.duration = lastEvent?.t! - firstEvent?.t!;
 
       console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
       console.log('[Player] Duration:', this.duration / 1000, 'seconds');
+
+      // Count event types
+      const eventTypes = this.timeline.reduce((acc, event) => {
+        acc[event.act] = (acc[event.act] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log('[Player] Event types:', eventTypes);
+
+      // Convert all events to actions
+      this.convertEventsToActions();
 
       this.stateMachine.setState('ready');
     } catch (error) {
@@ -83,13 +100,24 @@ export class Player {
         throw new Error('Timeline is empty');
       }
 
-      // Calculate duration
+      // Set baseline time and duration
       const firstEvent = this.timeline[0];
       const lastEvent = this.timeline[this.timeline.length - 1];
+      this.baselineTime = firstEvent?.t!;
       this.duration = lastEvent?.t! - firstEvent?.t!;
 
       console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
       console.log('[Player] Duration:', this.duration / 1000, 'seconds');
+
+      // Count event types
+      const eventTypes = this.timeline.reduce((acc, event) => {
+        acc[event.act] = (acc[event.act] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log('[Player] Event types:', eventTypes);
+
+      // Convert all events to actions
+      this.convertEventsToActions();
 
       this.stateMachine.setState('ready');
     } catch (error) {
@@ -100,6 +128,76 @@ export class Player {
   }
 
   /**
+   * Convert timeline events to scheduler actions
+   * This is based on the old architecture where each event is converted up front
+   *
+   * @param fromTime - Only convert events from this absolute time onwards (optional)
+   */
+  private convertEventsToActions(fromTime?: number): void {
+    const actions: ActionWithDelay[] = [];
+
+    for (const event of this.timeline) {
+      // Skip events before the start time (for seeking)
+      if (fromTime !== undefined && event.t < fromTime) {
+        continue;
+      }
+
+      switch (event.act) {
+        case EventTypes.MOUSE_PATH:
+          // Schedule each position at its exact recorded time (no interpolation)
+          const payload = event.p as MousePathPayload;
+          if (payload && payload.positions) {
+            const positions = payload.positions;
+            if (positions.length === 0) break;
+
+            // Schedule each position at: event.t + position.timeOffset
+            positions.forEach((pos) => {
+              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
+
+              actions.push({
+                delay: actionDelay,
+                doAction: () => {
+                  this.cursorPlayer.setPosition(pos.x, pos.y);
+                  this.cursorPlayer.show();
+                },
+              });
+            });
+
+            // Add a dummy action to keep timer alive (like old architecture)
+            const lastPosition = positions[positions.length - 1];
+            if (lastPosition) {
+              actions.push({
+                delay: (event.t - this.baselineTime) - (lastPosition.timeOffset || 0),
+                doAction: () => {
+                  // Empty action to keep scheduler running
+                },
+              });
+            }
+
+            console.log(`[Player] Converted MOUSE_PATH with ${positions.length} positions using exact timeOffsets`);
+          }
+          break;
+
+        // TODO: Handle other event types
+        default:
+          // For now, just log unhandled events
+          const delay = event.t - this.baselineTime;
+          actions.push({
+            delay,
+            doAction: () => {
+              console.log('[Player] Unhandled event type:', event.act);
+            },
+          });
+          break;
+      }
+    }
+
+    const startLabel = fromTime !== undefined ? `from ${fromTime}ms` : 'all';
+    console.log(`[Player] Converted ${startLabel}: ${this.timeline.length} events to ${actions.length} actions`);
+    this.scheduler.addActions(actions);
+  }
+
+  /**
    * Start or resume playback
    */
   play(): void {
@@ -107,29 +205,31 @@ export class Player {
       console.warn('[Player] Cannot play in current state:', this.stateMachine.getState());
       return;
     }
-    const isStateIDLE = this.stateMachine.getState() === 'idle';
-    this.stateMachine.setState('playing');
-    if (isStateIDLE) {
-      // Resume scheduler
-      this.scheduler.start();
-    } else {
-      // Resume scheduler
-      this.scheduler.resume();
-    }
 
-    // Schedule upcoming events
-    this.scheduleUpcomingEvents();
+    const previousState = this.stateMachine.getState();
+    this.stateMachine.setState('playing');
+
+    // Determine if we're starting fresh or resuming
+    const isResumingFromPause = previousState === 'paused';
+
+    if (isResumingFromPause) {
+      // Resume from current timeOffset (don't reset to 0)
+      this.scheduler.resume();
+      console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
+    } else {
+      // First play - start from beginning
+      this.scheduler.start();
+      console.log('[Player] Starting playback from beginning');
+    }
 
     // Sync audio if available
     if (this.audioElement) {
-      this.audioElement.currentTime = this.currentTime / 1000;
+      this.audioElement.currentTime = this.scheduler.getCurrentTime() / 1000;
       this.audioElement.play();
     }
 
-    // Start playback loop
-    this.startPlaybackLoop();
-
-    console.log('[Player] Playback started from', this.currentTime / 1000, 'seconds');
+    // Show cursor for playback
+    this.cursorPlayer.show();
   }
 
   /**
@@ -151,14 +251,15 @@ export class Player {
       this.audioElement.pause();
     }
 
-    // Stop playback loop
-    this.stopPlaybackLoop();
+    // Hide cursor
+    this.cursorPlayer.hide();
 
-    console.log('[Player] Playback paused at', this.currentTime / 1000, 'seconds');
+    console.log('[Player] Playback paused at', this.scheduler.getCurrentTime() / 1000, 'seconds');
   }
 
   /**
    * Seek to a specific time
+   * @param time - Relative time from start (in ms)
    */
   async seek(time: number): Promise<void> {
     if (!this.stateMachine.canSeek()) {
@@ -178,12 +279,18 @@ export class Player {
     console.log('[Player] Seeking to', time / 1000, 'seconds');
 
     try {
-      // Reconstruct ground truth state at target time
-      await this.stateReconstructor.reconstructStateAtTime(this.timeline, time);
+      const absoluteTime = this.baselineTime + time;
 
-      // Update current time
-      this.currentTime = time;
-      this.scheduler.updatePlaybackTime(time);
+      // Reconstruct ground truth state at target time
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
+
+      // Clear and rebuild actions from seek point
+      this.scheduler.clear();
+      this.scheduler.setTimeOffset(time);
+
+      // Re-convert only events from the seek point forward
+      // This prevents actions before seek time from executing immediately
+      this.convertEventsToActions(absoluteTime);
 
       // Seek audio if available
       if (this.audioElement) {
@@ -206,63 +313,10 @@ export class Player {
   }
 
   /**
-   * Execute an event (called by scheduler)
-   */
-  private executeEvent(event: AnyActionPacket): void {
-    console.log('[Player] Executing event:', event.src, event.act, 'at', event.t / 1000);
-
-    // TODO: Implement event execution logic
-    // This is where the player will update the UI, send commands, etc.
-  }
-
-  /**
-   * Schedule upcoming events for playback
-   */
-  private scheduleUpcomingEvents(): void {
-    this.scheduler.updatePlaybackTime(this.currentTime);
-    const upcomingEvents = this.timeline.filter(
-      event => event.t >= this.currentTime && event.t < this.currentTime + 5000
-    );
-    this.scheduler.scheduleEvents(upcomingEvents);
-  }
-
-  /**
-   * Start the playback loop
-   */
-  private startPlaybackLoop(): void {
-    const loop = () => {
-      this.currentTime = this.scheduler.getCurrentTime();
-
-      // Check if playback has ended
-      if (this.currentTime >= this.duration) {
-        this.pause();
-        return;
-      }
-
-      // Schedule more events as we progress
-      this.scheduleUpcomingEvents();
-
-      this.playbackLoopId = requestAnimationFrame(loop);
-    };
-
-    this.playbackLoopId = requestAnimationFrame(loop);
-  }
-
-  /**
-   * Stop the playback loop
-   */
-  private stopPlaybackLoop(): void {
-    if (this.playbackLoopId !== null) {
-      cancelAnimationFrame(this.playbackLoopId);
-      this.playbackLoopId = null;
-    }
-  }
-
-  /**
    * Get the current playback time
    */
   getCurrentTime(): number {
-    return this.currentTime;
+    return this.scheduler.getCurrentTime();
   }
 
   /**

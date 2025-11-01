@@ -43,14 +43,6 @@
     <div class="flex-1 flex w-full h-full overflow-hidden relative">
       <ide-wrap :loading="loading" />
 
-      <!-- Fake Mouse Cursor using mouse.css classes -->
-      <div v-if="isPlaying" class="player-mouse" :class="fakeCursorClass" :style="{
-        left: `${fakeCursorPos.x}px`,
-        top: `${fakeCursorPos.y}px`,
-      }">
-        <div class="player-mouse-light"></div>
-      </div>
-
       <!-- Playing Blocker Overlay -->
       <div class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
         @click.prevent="handleTogglePlayPause" @mousedown.prevent @mouseup.prevent @keydown.prevent></div>
@@ -118,10 +110,6 @@ const loading = ref(true);
 const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
 const slug = route.params.slug as string;
-
-// Fake cursor position and class
-const fakeCursorPos = ref({ x: 0, y: 0 });
-const fakeCursorClass = ref(''); // Can be 'pointer', 'active', 'grab', etc.
 
 // Center icon overlay state
 const centerIcon = reactive({

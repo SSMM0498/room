@@ -144,9 +144,19 @@ export interface SnapshotPayload {
 // CATEGORY 1: UI EFFECTS (Visual Playback Only)
 // ============================================================================
 
+/**
+ * Single mouse position with timing information
+ */
+export interface MousePosition {
+  x: number;
+  y: number;
+  /** Time offset in milliseconds from event timestamp */
+  timeOffset: number;
+}
+
 export interface MousePathPayload {
-  /** Array of [x, y] coordinate pairs */
-  pts: [number, number][];
+  /** Array of mouse positions with timing information */
+  positions: MousePosition[];
 }
 
 export interface MouseClickPayload {

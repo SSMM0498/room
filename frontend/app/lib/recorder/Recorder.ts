@@ -13,6 +13,7 @@ import type {
 } from '~/types/events';
 import { createActionPacket, EventTypes } from '~/types/events';
 import { SnapshotManager } from './SnapshotManager';
+import { CursorMovementWatcher } from './CursorMovementWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -33,6 +34,9 @@ export class Recorder {
   // Snapshot manager
   private snapshotManager: SnapshotManager;
 
+  // Cursor movement watcher
+  private cursorWatcher: CursorMovementWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -41,6 +45,7 @@ export class Recorder {
     };
 
     this.snapshotManager = new SnapshotManager();
+    this.cursorWatcher = new CursorMovementWatcher(this);
   }
 
   /**
@@ -80,6 +85,9 @@ export class Recorder {
     // Start periodic snapshot intervals
     this.startSnapshotIntervals();
 
+    // Start watching cursor movements
+    this.cursorWatcher.watch();
+
     console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
   }
 
@@ -91,6 +99,9 @@ export class Recorder {
       console.warn('[Recorder] Not currently recording');
       return;
     }
+
+    // Stop cursor watcher
+    this.cursorWatcher.stop();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();
