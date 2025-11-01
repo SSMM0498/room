@@ -56,6 +56,8 @@ export class Player {
 
       // Calculate duration
       const firstEvent = this.timeline[0];
+      const offset = firstEvent?.t!;
+      this.timeline = this.timeline.map(event => ({ ...event, t: event.t - offset }));
       const lastEvent = this.timeline[this.timeline.length - 1];
       this.duration = lastEvent?.t! - firstEvent?.t!;
 
@@ -107,15 +109,15 @@ export class Player {
       console.warn('[Player] Cannot play in current state:', this.stateMachine.getState());
       return;
     }
+    const isStateIDLE = this.stateMachine.getState() === 'idle';
     this.stateMachine.setState('playing');
-    if (this.stateMachine.getState() === 'idle') {
+    if (isStateIDLE) {
       // Resume scheduler
       this.scheduler.start();
     } else {
       // Resume scheduler
       this.scheduler.resume();
     }
-
 
     // Schedule upcoming events
     this.scheduleUpcomingEvents();
@@ -136,7 +138,6 @@ export class Player {
    * Pause playback
    */
   pause(): void {
-    debugger
     if (!this.stateMachine.canPause()) {
       console.warn('[Player] Cannot pause in current state:', this.stateMachine.getState());
       return;
@@ -220,10 +221,10 @@ export class Player {
    * Schedule upcoming events for playback
    */
   private scheduleUpcomingEvents(): void {
+    this.scheduler.updatePlaybackTime(this.currentTime);
     const upcomingEvents = this.timeline.filter(
       event => event.t >= this.currentTime && event.t < this.currentTime + 5000
     );
-
     this.scheduler.scheduleEvents(upcomingEvents);
   }
 
@@ -236,7 +237,6 @@ export class Player {
 
       // Check if playback has ended
       if (this.currentTime >= this.duration) {
-        console.log(">>> timing", this.currentTime, this.duration)
         this.pause();
         return;
       }

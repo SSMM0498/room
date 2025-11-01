@@ -49,7 +49,7 @@ export const usePlayer = () => {
       unsubscribers.forEach(unsub => unsub());
     });
 
-    console.log(' Player initialized');
+    console.log(' Player initialized');
   };
 
   /**
@@ -193,30 +193,29 @@ export const usePlayer = () => {
   const formattedCurrentTime = computed(() => formatTime(currentTime.value));
   const formattedDuration = computed(() => formatTime(duration.value));
 
-  /**
-   * Update current time (called from playback loop)
-   */
-  const updateCurrentTime = () => {
-    if (player.value && isPlaying.value) {
-      currentTime.value = player.value.getCurrentTime();
-    }
-  };
+  // requestAnimationFrame timer for updating current time
+  let animationFrameId: number | null = null;
 
-  // Start a timer to update current time during playback
-  let updateTimer: number | null = null;
-  const startUpdateTimer = () => {
-    stopUpdateTimer();
-    updateTimer = window.setInterval(() => {
-      if (isPlaying.value) {
-        updateCurrentTime();
+  const loopTimer = () => {
+    stopTimer();
+
+    const update = () => {
+      if (player.value) {
+        currentTime.value = player.value.getCurrentTime();
+
+        if (currentTime.value < duration.value) {
+          animationFrameId = requestAnimationFrame(update);
+        }
       }
-    }, 100); // Update every 100ms
+    };
+
+    animationFrameId = requestAnimationFrame(update);
   };
 
-  const stopUpdateTimer = () => {
-    if (updateTimer !== null) {
-      clearInterval(updateTimer);
-      updateTimer = null;
+  const stopTimer = () => {
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
     }
   };
 
@@ -225,22 +224,21 @@ export const usePlayer = () => {
     if (!player.value) return;
 
     player.value.onStateChange('playing', () => {
-      startUpdateTimer();
+      loopTimer();
     });
 
     player.value.onStateChange('paused', () => {
-      stopUpdateTimer();
-      updateCurrentTime(); // Final update
+      stopTimer();
     });
 
     player.value.onStateChange('seeking', () => {
-      stopUpdateTimer();
+      stopTimer();
     });
   };
 
   // Cleanup on unmount
   onUnmounted(() => {
-    stopUpdateTimer();
+    stopTimer();
     if (player.value) {
       if (player.value.getState() === 'playing') {
         player.value.pause();
@@ -284,6 +282,5 @@ export const usePlayer = () => {
     getGroundTruthState,
     formatTime,
     watchStateChanges,
-    updateCurrentTime,
   };
 };

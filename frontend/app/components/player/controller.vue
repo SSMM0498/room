@@ -1,11 +1,10 @@
 <template>
-  <div class="player-controller border-t bg-white dark:bg-gray-950 border-accented" :class="{ 'is-visible': isVisible || isHovered }" @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false">
+  <div class="player-controller border-t bg-white dark:bg-gray-950 border-accented" :class="{ 'is-visible': isVisible || isHovered }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <div class="player-controls-wrapper bg-black/5 dark:bg-white/5">
       <!-- Play/Pause Button -->
       <UButton :color="isPlaying ? 'neutral' : 'primary'"
         :icon="isPlaying ? 'i-heroicons-pause-20-solid' : 'i-heroicons-play-20-solid'" @click="emit('togglePlayPause')"
-        class="rounded-full cursor-pointer" size="md" square :disabled="!isReady" variant="outline" />
+        class="rounded-full cursor-pointer" size="sm" square :disabled="!isReady" variant="outline" />
 
       <!-- Time Display -->
       <div class="time-display">
@@ -39,7 +38,7 @@ defineProps<{
   durationMs?: number;
 }>();
 
-const currentTimeMs = defineModel<number>('currentTimeMs', { default: 0 });
+const currentTimeMs = defineModel<number>('currentTimeMs', { required: true });
 
 const emit = defineEmits<{
   togglePlayPause: [];
@@ -105,7 +104,7 @@ onUnmounted(() => {
   z-index: 45;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 0.5s ease-out, opacity 0.2s ease-out;
+  transition: transform 0.25s ease-out, opacity 0.125s ease-out;
 }
 
 .player-controller.is-visible {
@@ -133,7 +132,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  min-width: 120px;
+  min-width: 100px;
 }
 
 :global(.dark) .time-display {

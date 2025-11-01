@@ -45,8 +45,8 @@ export class ActionTimelineScheduler {
    */
   scheduleEvent(event: AnyActionPacket): void {
     if (this.isPaused) return;
-
-    const delay = event.t - this.currentPlaybackTime;
+    const currentTime = this.getCurrentTime();
+    const delay = event.t - currentTime;
 
     if (delay <= 0) {
       // Execute immediately if the event is in the past or present

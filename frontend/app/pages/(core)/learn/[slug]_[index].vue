@@ -57,11 +57,11 @@
 
     <!-- Player Controller (auto-hide at bottom) -->
     <player-controller
+      v-model:current-time-ms="currentTime"
       :is-playing="isPlaying"
       :is-ready="isReady"
       :current-time="formattedCurrentTime"
       :duration="formattedDuration"
-      v-model:current-time-ms="currentTime"
       :duration-ms="duration"
       @toggle-play-pause="togglePlayPause"
       @seek="handleSeek"
@@ -104,7 +104,6 @@ const {
   initializePlayer,
   setAudioElement,
   loadFromEvents,
-  play,
   pause,
   togglePlayPause,
   seek,
