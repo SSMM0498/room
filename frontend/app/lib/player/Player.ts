@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, EditorScrollPayload, TerminalScrollPayload, BrowserScrollPayload, FileExplorerScrollPayload } from '~/types/events';
 import { EventTypes } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -18,6 +18,7 @@ import { StateReconstructor } from './StateReconstructor';
 import { CursorMovementPlayer } from './CursorMovementPlayer';
 import { CursorInteractionPlayer } from './CursorInteractionPlayer';
 import { CursorStylePlayer } from './CursorStylePlayer';
+import { ScrollPlayer } from './ScrollPlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
@@ -27,6 +28,7 @@ export class Player {
   private cursorPlayer: CursorMovementPlayer;
   private clickPlayer: CursorInteractionPlayer;
   private stylePlayer: CursorStylePlayer;
+  private scrollPlayer: ScrollPlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -41,6 +43,7 @@ export class Player {
     this.cursorPlayer = new CursorMovementPlayer();
     this.clickPlayer = new CursorInteractionPlayer();
     this.stylePlayer = new CursorStylePlayer();
+    this.scrollPlayer = new ScrollPlayer();
     this.audioElement = config.audioElement ?? null;
 
     // Link the style player to the cursor element (after it's created)
@@ -73,6 +76,13 @@ export class Player {
   setAudioElement(element: HTMLAudioElement): void {
     this.audioElement = element;
     console.log('[Player] Audio element set/updated');
+  }
+
+  /**
+   * Get the scroll player instance for registering scrollable elements
+   */
+  getScrollPlayer(): ScrollPlayer {
+    return this.scrollPlayer;
   }
 
   /**
@@ -234,6 +244,68 @@ export class Player {
               },
             });
             console.log(`[Player] Converted MOUSE_STYLE: ${stylePayload.s}`);
+          }
+          break;
+
+        case EventTypes.EDITOR_SCROLL:
+          // Schedule editor scroll
+          const editorScrollPayload = event.p as EditorScrollPayload;
+          if (editorScrollPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.scrollPlayer.scrollEditor(editorScrollPayload);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_SCROLL: ${editorScrollPayload.f} (${editorScrollPayload.top}, ${editorScrollPayload.left})`);
+          }
+          break;
+
+        case EventTypes.TERMINAL_SCROLL:
+          // Schedule terminal scroll
+          const terminalScrollPayload = event.p as TerminalScrollPayload;
+          if (terminalScrollPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.scrollPlayer.scrollTerminal(terminalScrollPayload);
+              },
+            });
+            console.log(`[Player] Converted TERMINAL_SCROLL: ${terminalScrollPayload.id} (${terminalScrollPayload.top})`);
+          }
+          break;
+
+        case EventTypes.BROWSER_SCROLL:
+          // Schedule browser scroll
+          const browserScrollPayload = event.p as BrowserScrollPayload;
+          if (browserScrollPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.scrollPlayer.scrollBrowser(browserScrollPayload);
+              },
+            });
+            const browserId = browserScrollPayload.id || 'default';
+            console.log(`[Player] Converted BROWSER_SCROLL: ${browserId} (${browserScrollPayload.top}, ${browserScrollPayload.left})`);
+          }
+          break;
+
+        case EventTypes.FILE_EXPLORER_SCROLL:
+          // Schedule file explorer scroll
+          const fileExplorerScrollPayload = event.p as FileExplorerScrollPayload;
+          if (fileExplorerScrollPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.scrollPlayer.scrollFileExplorer(fileExplorerScrollPayload);
+              },
+            });
+            const explorerId = fileExplorerScrollPayload.id || 'default';
+            console.log(`[Player] Converted FILE_EXPLORER_SCROLL: ${explorerId} (${fileExplorerScrollPayload.top})`);
           }
           break;
 
@@ -422,6 +494,9 @@ export class Player {
     this.cursorPlayer.destroy();
     this.clickPlayer.destroy();
     this.stylePlayer.destroy();
+
+    // Destroy scroll player
+    this.scrollPlayer.destroy();
 
     console.log('[Player] Destroyed');
   }

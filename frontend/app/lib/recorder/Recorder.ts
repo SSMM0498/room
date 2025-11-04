@@ -16,6 +16,7 @@ import { SnapshotManager } from './SnapshotManager';
 import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
+import { ScrollWatcher } from './ScrollWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -45,6 +46,9 @@ export class Recorder {
   // Cursor style watcher (cursor appearance changes)
   private styleWatcher: CursorStyleWatcher;
 
+  // Scroll watcher (editor and terminal scroll events)
+  private scrollWatcher: ScrollWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -56,6 +60,7 @@ export class Recorder {
     this.cursorWatcher = new CursorMovementWatcher(this);
     this.clickWatcher = new CursorInteractionWatcher(this);
     this.styleWatcher = new CursorStyleWatcher(this);
+    this.scrollWatcher = new ScrollWatcher(this);
   }
 
   /**
@@ -63,6 +68,13 @@ export class Recorder {
    */
   setStateCapture(capture: IDEStateCapture): void {
     this.stateCapture = capture;
+  }
+
+  /**
+   * Get the scroll watcher instance for registering scrollable elements
+   */
+  getScrollWatcher(): ScrollWatcher {
+    return this.scrollWatcher;
   }
 
   /**
@@ -104,6 +116,9 @@ export class Recorder {
     // Start watching cursor style changes
     this.styleWatcher.watch();
 
+    // Start watching scroll events
+    this.scrollWatcher.watch();
+
     console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
   }
 
@@ -120,6 +135,9 @@ export class Recorder {
     this.cursorWatcher.stop();
     this.clickWatcher.stop();
     this.styleWatcher.stop();
+
+    // Stop scroll watcher
+    this.scrollWatcher.stop();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();

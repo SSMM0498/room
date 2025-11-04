@@ -204,6 +204,19 @@ export interface TerminalScrollPayload {
   top: number;
 }
 
+export interface BrowserScrollPayload {
+  /** Browser instance ID (if multiple browsers supported) */
+  id?: string;
+  top: number;
+  left: number;
+}
+
+export interface FileExplorerScrollPayload {
+  /** File explorer instance ID (if multiple supported) */
+  id?: string;
+  top: number;
+}
+
 export interface IDEFocusPayload {
   target: 'editor' | 'terminal' | 'files' | 'browser';
   /** Optional ID for specific component instance */
@@ -319,6 +332,8 @@ export type AnyActionPacket =
   | ActionPacket<EditorSelectPayload>
   | ActionPacket<EditorScrollPayload>
   | ActionPacket<TerminalScrollPayload>
+  | ActionPacket<BrowserScrollPayload>
+  | ActionPacket<FileExplorerScrollPayload>
   | ActionPacket<IDEFocusPayload>
   | ActionPacket<IDETabsOpenPayload>
   | ActionPacket<IDETabsClosePayload>
@@ -354,6 +369,8 @@ export const EventTypes = {
   EDITOR_SELECT: 'editor:select',
   EDITOR_SCROLL: 'editor:scroll',
   TERMINAL_SCROLL: 'terminal:scroll',
+  BROWSER_SCROLL: 'browser:scroll',
+  FILE_EXPLORER_SCROLL: 'files:scroll',
   IDE_FOCUS: 'ide:focus',
   IDE_TABS_OPEN: 'ide:tabs:open',
   IDE_TABS_CLOSE: 'ide:tabs:close',

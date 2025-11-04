@@ -31,10 +31,19 @@ const { url: defaultUrl, changeURL } = useIDE();
 const url = ref<string>(defaultUrl.value);
 
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 
 const refresh = () => {
 	if (iframeElementRef.value) {
+		// Unregister old scroll watcher before refresh
+		unregisterIframeScrollWatcher();
+
 		iframeElementRef.value.src = url.value;
+
+		// Re-register scroll watcher after iframe loads
+		nextTick(() => {
+			registerIframeScrollWatcher();
+		});
 	} else {
 		setTimeout(() => {
 			refresh();
@@ -54,5 +63,88 @@ socketClient.handlePreview((previewData: any) => {
 
 watch(defaultUrl, () => {
 	refresh();
+});
+
+// Function to register iframe scroll watching
+const registerIframeScrollWatcher = () => {
+	if (!iframeElementRef.value || !recorder.value) {
+		return;
+	}
+
+	try {
+		// Wait for iframe to load before trying to access its content
+		const iframe = iframeElementRef.value;
+
+		// For same-origin iframes, we can access the contentWindow
+		// For cross-origin, we'll need to register the iframe itself
+		const loadHandler = () => {
+			try {
+				// Try to access iframe's document (will fail for cross-origin)
+				const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+
+				if (iframeDocument && iframeDocument.documentElement) {
+					// Same-origin: register the iframe's document element or body
+					const scrollableElement = iframeDocument.documentElement || iframeDocument.body;
+					if (scrollableElement) {
+						recorder.value!.getScrollWatcher().registerScrollable(
+							scrollableElement as HTMLElement,
+							'browser',
+							'default'
+						);
+						console.log('[Browser] Registered scroll watcher for iframe content');
+					}
+				}
+			} catch (e) {
+				// Cross-origin iframe - cannot access content
+				console.warn('[Browser] Cannot register scroll for cross-origin iframe:', e);
+			}
+		};
+
+		// Add load event listener to iframe
+		iframe.addEventListener('load', loadHandler);
+
+		// If already loaded, try immediately
+		if (iframe.contentDocument) {
+			loadHandler();
+		}
+	} catch (error) {
+		console.error('[Browser] Error registering scroll watcher:', error);
+	}
+};
+
+// Function to unregister iframe scroll watching
+const unregisterIframeScrollWatcher = () => {
+	if (!iframeElementRef.value || !recorder.value) {
+		return;
+	}
+
+	try {
+		const iframe = iframeElementRef.value;
+		const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+
+		if (iframeDocument && iframeDocument.documentElement) {
+			const scrollableElement = iframeDocument.documentElement || iframeDocument.body;
+			if (scrollableElement) {
+				recorder.value.getScrollWatcher().unregisterScrollable(scrollableElement as HTMLElement);
+				console.log('[Browser] Unregistered scroll watcher for iframe content');
+			}
+		}
+	} catch (error) {
+		// Silently fail for cross-origin or other errors during cleanup
+		console.warn('[Browser] Could not unregister scroll watcher:', error);
+	}
+};
+
+onMounted(() => {
+	// Register scroll watcher when component mounts
+	// Use nextTick to ensure iframe ref is available
+	nextTick(() => {
+		registerIframeScrollWatcher();
+	});
+});
+
+onUnmounted(() => {
+	// Unregister scroll watcher when component unmounts
+	unregisterIframeScrollWatcher();
 });
 </script>

@@ -38,6 +38,7 @@ xterm.loadAddon(fitAddon);
 
 const { isDragging } = useIDE();
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 const terminalRef = ref<HTMLDivElement | null>(null);
 
 const props = defineProps<{
@@ -50,6 +51,16 @@ watch(terminalRef, () => {
   if (terminalRef.value) {
     xterm.open(terminalRef.value);
     fitAddon.fit();
+
+    // Register the scrollable viewport element for scroll tracking
+    // The .xterm-viewport element is the scrollable container in Xterm.js
+    nextTick(() => {
+      const viewportElement = terminalRef.value?.querySelector('.xterm-viewport') as HTMLElement;
+      if (viewportElement && recorder.value) {
+        recorder.value.getScrollWatcher().registerScrollable(viewportElement, 'terminal', props.terminalId);
+        console.log(`[Terminal] Registered scroll watcher for terminal: ${props.terminalId}`);
+      }
+    });
   }
 });
 
@@ -71,6 +82,17 @@ onMounted(() => {
       input: data
     });
   });
+});
+
+onUnmounted(() => {
+  // Unregister the scrollable element when component unmounts
+  if (terminalRef.value && recorder.value) {
+    const viewportElement = terminalRef.value.querySelector('.xterm-viewport') as HTMLElement;
+    if (viewportElement) {
+      recorder.value.getScrollWatcher().unregisterScrollable(viewportElement);
+      console.log(`[Terminal] Unregistered scroll watcher for terminal: ${props.terminalId}`);
+    }
+  }
 });
 
 socketClient.handleTerminalData(({ id, content }) => {

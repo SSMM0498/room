@@ -36,8 +36,10 @@ import { debounce, type ActiveFile } from '~~/types/file-tree';
 const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
 const colorMode = useColorMode()
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 const isSaving = ref(false);
 const editorInstance = ref<any>(null);
+const scrollableElement = ref<HTMLElement | null>(null);
 
 const theme = computed(() => colorMode.value === 'dark'
 	? 'vs-dark'
@@ -84,6 +86,25 @@ const onEditorMount = (editor: any) => {
 	if (position) {
 		setCursorPosition(position.lineNumber, position.column);
 	}
+
+	// Get the scrollable DOM element from Monaco editor
+	// Monaco editor's scrollable element has the class 'monaco-scrollable-element'
+	const domNode = editor.getDomNode();
+	if (domNode) {
+		const monacoScrollable = domNode.querySelector('.monaco-scrollable-element');
+		if (monacoScrollable) {
+			scrollableElement.value = monacoScrollable as HTMLElement;
+
+			// Register the scrollable element for recording
+			if (recorder.value && activeTab.filePath) {
+				recorder.value.getScrollWatcher().registerScrollable(
+					scrollableElement.value,
+					'editor',
+					activeTab.filePath
+				);
+			}
+		}
+	}
 };
 
 // Handle update file response from server
@@ -108,6 +129,32 @@ socketClient.handleDeleteResource((data: any) => {
 			deleteTab(tab, tabIndex);
 		}
 	});
+});
+
+// Watch for active tab changes to update the scroll watcher registration
+watch(() => activeTab.filePath, (newFilePath, oldFilePath) => {
+	if (scrollableElement.value && recorder.value) {
+		// Unregister the old file path
+		if (oldFilePath) {
+			recorder.value.getScrollWatcher().unregisterScrollable(scrollableElement.value);
+		}
+
+		// Register with the new file path
+		if (newFilePath) {
+			recorder.value.getScrollWatcher().registerScrollable(
+				scrollableElement.value,
+				'editor',
+				newFilePath
+			);
+		}
+	}
+});
+
+// Cleanup: Unregister scrollable element when component unmounts
+onUnmounted(() => {
+	if (scrollableElement.value && recorder.value) {
+		recorder.value.getScrollWatcher().unregisterScrollable(scrollableElement.value);
+	}
 });
 </script>
 <style lang="css">
