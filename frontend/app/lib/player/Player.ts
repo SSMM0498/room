@@ -10,12 +10,14 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload } from '~/types/events';
 import { EventTypes } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
 import { CursorMovementPlayer } from './CursorMovementPlayer';
+import { CursorInteractionPlayer } from './CursorInteractionPlayer';
+import { CursorStylePlayer } from './CursorStylePlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
@@ -23,6 +25,8 @@ export class Player {
   private scheduler: ActionTimelineScheduler;
   private stateReconstructor: StateReconstructor;
   private cursorPlayer: CursorMovementPlayer;
+  private clickPlayer: CursorInteractionPlayer;
+  private stylePlayer: CursorStylePlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -35,7 +39,32 @@ export class Player {
     this.scheduler = new ActionTimelineScheduler();
     this.stateReconstructor = new StateReconstructor();
     this.cursorPlayer = new CursorMovementPlayer();
+    this.clickPlayer = new CursorInteractionPlayer();
+    this.stylePlayer = new CursorStylePlayer();
     this.audioElement = config.audioElement ?? null;
+
+    // Link the style player to the cursor element (after it's created)
+    this.setupStylePlayer();
+  }
+
+  /**
+   * Setup the style player with cursor element reference
+   */
+  private setupStylePlayer(): void {
+    // The cursor element is created in CursorMovementPlayer constructor
+    // We need to get a reference to it
+    const cursorElement = document.querySelector('.player-mouse') as HTMLElement;
+    if (cursorElement) {
+      this.stylePlayer.setCursorElement(cursorElement);
+    } else {
+      // Retry after a short delay if element not ready yet
+      setTimeout(() => {
+        const el = document.querySelector('.player-mouse') as HTMLElement;
+        if (el) {
+          this.stylePlayer.setCursorElement(el);
+        }
+      }, 100);
+    }
   }
 
   /**
@@ -175,6 +204,36 @@ export class Player {
             }
 
             console.log(`[Player] Converted MOUSE_PATH with ${positions.length} positions using exact timeOffsets`);
+          }
+          break;
+
+        case EventTypes.MOUSE_CLICK:
+          // Schedule click animation
+          const clickPayload = event.p as MouseClickPayload;
+          if (clickPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.clickPlayer.showClick(clickPayload.x, clickPayload.y, clickPayload.btn);
+              },
+            });
+            console.log(`[Player] Converted MOUSE_CLICK at (${clickPayload.x}, ${clickPayload.y}), button=${clickPayload.btn}`);
+          }
+          break;
+
+        case EventTypes.MOUSE_STYLE:
+          // Schedule cursor style change
+          const stylePayload = event.p as MouseStylePayload;
+          if (stylePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.stylePlayer.setCursorStyle(stylePayload.s);
+              },
+            });
+            console.log(`[Player] Converted MOUSE_STYLE: ${stylePayload.s}`);
           }
           break;
 
@@ -345,5 +404,25 @@ export class Player {
    */
   onStateChange(state: PlayerState, callback: () => void): () => void {
     return this.stateMachine.onStateChange(state, callback);
+  }
+
+  /**
+   * Clean up resources
+   */
+  destroy(): void {
+    // Stop playback
+    if (this.stateMachine.getState() === 'playing') {
+      this.pause();
+    }
+
+    // Clear scheduler
+    this.scheduler.clear();
+
+    // Destroy cursor players
+    this.cursorPlayer.destroy();
+    this.clickPlayer.destroy();
+    this.stylePlayer.destroy();
+
+    console.log('[Player] Destroyed');
   }
 }

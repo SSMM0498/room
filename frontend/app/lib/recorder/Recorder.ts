@@ -14,6 +14,8 @@ import type {
 import { createActionPacket, EventTypes } from '~/types/events';
 import { SnapshotManager } from './SnapshotManager';
 import { CursorMovementWatcher } from './CursorMovementWatcher';
+import { CursorInteractionWatcher } from './CursorInteractionWatcher';
+import { CursorStyleWatcher } from './CursorStyleWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -37,6 +39,12 @@ export class Recorder {
   // Cursor movement watcher
   private cursorWatcher: CursorMovementWatcher;
 
+  // Cursor interaction watcher (clicks)
+  private clickWatcher: CursorInteractionWatcher;
+
+  // Cursor style watcher (cursor appearance changes)
+  private styleWatcher: CursorStyleWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -46,6 +54,8 @@ export class Recorder {
 
     this.snapshotManager = new SnapshotManager();
     this.cursorWatcher = new CursorMovementWatcher(this);
+    this.clickWatcher = new CursorInteractionWatcher(this);
+    this.styleWatcher = new CursorStyleWatcher(this);
   }
 
   /**
@@ -88,6 +98,12 @@ export class Recorder {
     // Start watching cursor movements
     this.cursorWatcher.watch();
 
+    // Start watching cursor interactions (clicks)
+    this.clickWatcher.watch();
+
+    // Start watching cursor style changes
+    this.styleWatcher.watch();
+
     console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
   }
 
@@ -100,8 +116,10 @@ export class Recorder {
       return;
     }
 
-    // Stop cursor watcher
+    // Stop cursor watchers
     this.cursorWatcher.stop();
+    this.clickWatcher.stop();
+    this.styleWatcher.stop();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();

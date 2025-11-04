@@ -166,6 +166,11 @@ export interface MouseClickPayload {
   btn: number;
 }
 
+export interface MouseStylePayload {
+  /** Cursor style (e.g., 'pointer', 'text', 'grab') */
+  s: string;
+}
+
 export interface EditorTypePayload {
   /** File path */
   f: string;
@@ -308,6 +313,7 @@ export type AnyActionPacket =
   // UI Effects
   | ActionPacket<MousePathPayload>
   | ActionPacket<MouseClickPayload>
+  | ActionPacket<MouseStylePayload>
   | ActionPacket<EditorTypePayload>
   // UI State
   | ActionPacket<EditorSelectPayload>
@@ -341,6 +347,7 @@ export const EventTypes = {
   // UI Effects
   MOUSE_PATH: 'mouse:path',
   MOUSE_CLICK: 'mouse:click',
+  MOUSE_STYLE: 'mouse:style',
   EDITOR_TYPE: 'editor:type',
 
   // UI State
