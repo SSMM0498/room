@@ -178,6 +178,15 @@ export interface EditorTypePayload {
   c: string;
 }
 
+export interface EditorPastePayload {
+  /** File path */
+  f: string;
+  /** Pasted content */
+  c: string;
+  /** Position where paste occurred [line, column] */
+  pos?: [number, number];
+}
+
 // ============================================================================
 // CATEGORY 2: UI STATE (Visual State of the IDE)
 // ============================================================================
@@ -328,6 +337,7 @@ export type AnyActionPacket =
   | ActionPacket<MouseClickPayload>
   | ActionPacket<MouseStylePayload>
   | ActionPacket<EditorTypePayload>
+  | ActionPacket<EditorPastePayload>
   // UI State
   | ActionPacket<EditorSelectPayload>
   | ActionPacket<EditorScrollPayload>
@@ -364,6 +374,7 @@ export const EventTypes = {
   MOUSE_CLICK: 'mouse:click',
   MOUSE_STYLE: 'mouse:style',
   EDITOR_TYPE: 'editor:type',
+  EDITOR_PASTE: 'editor:paste',
 
   // UI State
   EDITOR_SELECT: 'editor:select',

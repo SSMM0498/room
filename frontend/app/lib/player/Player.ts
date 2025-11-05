@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, EditorScrollPayload, TerminalScrollPayload, BrowserScrollPayload, FileExplorerScrollPayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, EditorScrollPayload, TerminalScrollPayload, BrowserScrollPayload, FileExplorerScrollPayload, EditorTypePayload, EditorPastePayload } from '~/types/events';
 import { EventTypes } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -19,6 +19,7 @@ import { CursorMovementPlayer } from './CursorMovementPlayer';
 import { CursorInteractionPlayer } from './CursorInteractionPlayer';
 import { CursorStylePlayer } from './CursorStylePlayer';
 import { ScrollPlayer } from './ScrollPlayer';
+import { EditorInputPlayer } from './EditorInputPlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
@@ -29,6 +30,7 @@ export class Player {
   private clickPlayer: CursorInteractionPlayer;
   private stylePlayer: CursorStylePlayer;
   private scrollPlayer: ScrollPlayer;
+  private editorInputPlayer: EditorInputPlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -44,6 +46,7 @@ export class Player {
     this.clickPlayer = new CursorInteractionPlayer();
     this.stylePlayer = new CursorStylePlayer();
     this.scrollPlayer = new ScrollPlayer();
+    this.editorInputPlayer = new EditorInputPlayer();
     this.audioElement = config.audioElement ?? null;
 
     // Link the style player to the cursor element (after it's created)
@@ -83,6 +86,13 @@ export class Player {
    */
   getScrollPlayer(): ScrollPlayer {
     return this.scrollPlayer;
+  }
+
+  /**
+   * Get the editor input player instance for registering editors
+   */
+  getEditorInputPlayer(): EditorInputPlayer {
+    return this.editorInputPlayer;
   }
 
   /**
@@ -309,6 +319,36 @@ export class Player {
           }
           break;
 
+        case EventTypes.EDITOR_TYPE:
+          // Schedule typing animation
+          const typePayload = event.p as EditorTypePayload;
+          if (typePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: async () => {
+                await this.editorInputPlayer.playType(typePayload);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_TYPE: ${typePayload.f} (${typePayload.c.length} chars)`);
+          }
+          break;
+
+        case EventTypes.EDITOR_PASTE:
+          // Schedule paste action
+          const pastePayload = event.p as EditorPastePayload;
+          if (pastePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.editorInputPlayer.playPaste(pastePayload);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_PASTE: ${pastePayload.f} (${pastePayload.c.length} chars)`);
+          }
+          break;
+
         // TODO: Handle other event types
         default:
           // For now, just log unhandled events
@@ -497,6 +537,9 @@ export class Player {
 
     // Destroy scroll player
     this.scrollPlayer.destroy();
+
+    // Destroy editor input player
+    this.editorInputPlayer.destroy();
 
     console.log('[Player] Destroyed');
   }

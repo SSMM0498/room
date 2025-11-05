@@ -17,6 +17,7 @@ import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
 import { ScrollWatcher } from './ScrollWatcher';
+import { EditorInputWatcher } from './EditorInputWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -49,6 +50,9 @@ export class Recorder {
   // Scroll watcher (editor and terminal scroll events)
   private scrollWatcher: ScrollWatcher;
 
+  // Editor input watcher (typing and paste events)
+  private editorInputWatcher: EditorInputWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -61,6 +65,7 @@ export class Recorder {
     this.clickWatcher = new CursorInteractionWatcher(this);
     this.styleWatcher = new CursorStyleWatcher(this);
     this.scrollWatcher = new ScrollWatcher(this);
+    this.editorInputWatcher = new EditorInputWatcher(this);
   }
 
   /**
@@ -75,6 +80,13 @@ export class Recorder {
    */
   getScrollWatcher(): ScrollWatcher {
     return this.scrollWatcher;
+  }
+
+  /**
+   * Get the editor input watcher instance for registering editors
+   */
+  getEditorInputWatcher(): EditorInputWatcher {
+    return this.editorInputWatcher;
   }
 
   /**
@@ -119,6 +131,9 @@ export class Recorder {
     // Start watching scroll events
     this.scrollWatcher.watch();
 
+    // Start watching editor input (typing and paste)
+    this.editorInputWatcher.watch();
+
     console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
   }
 
@@ -138,6 +153,9 @@ export class Recorder {
 
     // Stop scroll watcher
     this.scrollWatcher.stop();
+
+    // Stop editor input watcher
+    this.editorInputWatcher.stop();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();
