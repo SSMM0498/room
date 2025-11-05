@@ -1,5 +1,6 @@
 <template>
-  <div class="player-controller border-t bg-white dark:bg-gray-950 border-accented" :class="{ 'is-visible': isVisible || isHovered }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+  <div class="player-controller border-t bg-white dark:bg-gray-950 border-accented"
+    :class="{ 'is-visible': isVisible || isHovered }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <div class="player-controls-wrapper bg-black/5 dark:bg-white/5">
       <!-- Play/Pause Button -->
       <UButton :color="isPlaying ? 'neutral' : 'primary'"
@@ -14,15 +15,12 @@
       </div>
 
       <!-- Timeline Scrubber -->
-      <div class="timeline-wrapper"
-        @mousemove="handleSliderMouseMove"
-        @mouseleave="hideTooltip"
-        ref="sliderWrapper">
-        <USlider :min="0" :max="durationMs" v-model="currentTimeMs" :disabled="!isReady" @update:model-value="handleSeek" size="xs" />
+      <div class="timeline-wrapper" @mousemove="handleSliderMouseMove" @mouseleave="hideTooltip" ref="sliderWrapper">
+        <USlider :min="0" :max="durationMs" v-model="currentTimeMs" :disabled="!isReady"
+          @update:model-value="handleSeek" size="xs" />
 
         <!-- Time Tooltip -->
-        <div v-if="tooltip.visible"
-          class="time-tooltip border border-accented bg-white dark:bg-gray-950"
+        <div v-if="tooltip.visible" class="time-tooltip border border-accented bg-white dark:bg-gray-950"
           :style="{ left: tooltip.x + 'px' }">
           {{ tooltip.time }}
         </div>
@@ -35,6 +33,15 @@
         <UButton icon="i-heroicons-forward-20-solid" @click="emit('skipForward')" size="sm" :disabled="!isReady"
           variant="ghost" color="neutral" />
       </div>
+
+      <!-- Volume Control -->
+      <div class="volume-control flex items-center gap-2">
+        <UButton :icon="volumeIcon" @click="emit('toggleMute')" size="sm" variant="ghost" color="neutral" />
+        <div class="volume-slider-wrapper" style="width: 100px">
+          <USlider :model-value="props.volume" @update:model-value="handleVolumeChange" :min="0" :max="1" :step="0.01"
+            size="xs" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -46,6 +53,8 @@ const props = defineProps<{
   currentTime?: string;
   duration?: string;
   durationMs?: number;
+  volume?: number;
+  isMuted?: boolean;
 }>();
 
 const currentTimeMs = defineModel<number>('currentTimeMs', { required: true });
@@ -55,7 +64,20 @@ const emit = defineEmits<{
   seek: [time: number];
   skipForward: [];
   skipBackward: [];
+  volumeChange: [volume: number];
+  toggleMute: [];
 }>();
+
+// Compute volume icon based on volume level and mute state
+const volumeIcon = computed(() => {
+  if (props.isMuted || props.volume === 0) {
+    return 'i-heroicons-speaker-x-mark-20-solid';
+  }
+  if (props.volume && props.volume <= 0.5) {
+    return 'i-heroicons-speaker-wave-20-solid';
+  }
+  return 'i-heroicons-speaker-wave-20-solid';
+});
 
 const isHovered = ref(false);
 const isVisible = ref(false);
@@ -130,6 +152,12 @@ const handleSliderMouseMove = (e: MouseEvent) => {
 // Hide tooltip when mouse leaves the slider
 const hideTooltip = () => {
   tooltip.visible = false;
+};
+
+const handleVolumeChange = (value: unknown) => {
+  if (typeof value === 'number') {
+    emit('volumeChange', value);
+  }
 };
 
 onMounted(() => {
@@ -219,5 +247,21 @@ onUnmounted(() => {
 :global(.dark) .time-tooltip {
   background: rgba(255, 255, 255, 0.95);
   color: rgb(17, 24, 39);
+}
+
+.volume-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.volume-slider-wrapper {
+  transition: width 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+@media (max-width: 640px) {
+  .volume-slider-wrapper {
+    display: none;
+  }
 }
 </style>

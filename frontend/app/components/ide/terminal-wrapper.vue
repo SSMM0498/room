@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col w-full h-full items-start justify-start overflow-hidden">
-    <nav class="flex items-center flex-nowrap w-full rounded-t-lg p-1 border-b border-gray-200 dark:border-gray-800 text-sm justify-start gap-1">
+    <nav class="flex items-center flex-nowrap w-full rounded-t-lg p-1 border-b border-gray-200 dark:border-gray-700 text-sm justify-start gap-1">
       <UIcon name="i-ph-terminal-window-duotone" class="size-4" />
       <h5>Terminal</h5>
       <div v-for="terminalId in terminals" :key="terminalId"

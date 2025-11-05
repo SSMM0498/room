@@ -188,6 +188,34 @@ export const usePlayer = () => {
   };
 
   /**
+   * Volume control (0-1)
+   */
+  const volume = ref(1);
+  const isMuted = ref(false);
+  const previousVolume = ref(1);
+
+  const setVolume = (value: number) => {
+    if (!audioElement.value) return;
+    volume.value = Math.max(0, Math.min(1, value));
+    audioElement.value.volume = volume.value;
+    if (volume.value > 0) {
+      isMuted.value = false;
+    }
+  };
+
+  const toggleMute = () => {
+    if (!audioElement.value) return;
+    if (isMuted.value) {
+      isMuted.value = false;
+      setVolume(previousVolume.value);
+    } else {
+      previousVolume.value = volume.value;
+      isMuted.value = true;
+      setVolume(0);
+    }
+  };
+
+  /**
    * Computed formatted times
    */
   const formattedCurrentTime = computed(() => formatTime(currentTime.value));
@@ -266,6 +294,12 @@ export const usePlayer = () => {
     progress,
     formattedCurrentTime,
     formattedDuration,
+
+    // Volume
+    volume,
+    isMuted,
+    setVolume,
+    toggleMute,
 
     // Methods
     initializePlayer,

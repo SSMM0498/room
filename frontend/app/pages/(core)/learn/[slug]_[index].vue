@@ -50,9 +50,9 @@
 
     <!-- Player Controller (auto-hide at bottom) -->
     <player-controller v-model:current-time-ms="currentTime" :is-playing="isPlaying" :is-ready="isReady"
-      :current-time="formattedCurrentTime" :duration="formattedDuration" :duration-ms="duration"
-      @toggle-play-pause="handleTogglePlayPause" @seek="handleSeek" @skip-forward="skipForward"
-      @skip-backward="skipBackward" />
+      :current-time="formattedCurrentTime" :duration="formattedDuration" :duration-ms="duration" :volume="volume"
+      :is-muted="isMuted" @toggle-play-pause="handleTogglePlayPause" @seek="handleSeek" @skip-forward="skipForward"
+      @skip-backward="skipBackward" @volume-change="setVolume" @toggle-mute="toggleMute" />
   </div>
 </template>
 
@@ -101,6 +101,10 @@ const {
   formattedCurrentTime,
   formattedDuration,
   watchStateChanges,
+  volume,
+  isMuted,
+  setVolume,
+  toggleMute,
 } = usePlayer();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';

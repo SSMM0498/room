@@ -1,6 +1,6 @@
 <template>
 	<div class="flex relative w-full justify-between items-center cursor-pointer" :title="item.path"
-		:style="{ paddingLeft: depth === 1 ? '0px' : depth * 8 + 'px' }" draggable="true" @dragstart="handleDragStart"
+		:style="{ paddingLeft: depth * 8 + 'px' }" draggable="true" @dragstart="handleDragStart"
 		@dragend="handleDragEnd" @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave"
 		@drop.prevent="handleDrop" :class="{ 'bg-primary/20': isDragTarget && item.type === 'directory' }" @click="(event: MouseEvent) => {
 			if (isRenaming || event.ctrlKey || event.metaKey) {

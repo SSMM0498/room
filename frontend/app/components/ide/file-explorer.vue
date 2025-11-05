@@ -1,6 +1,6 @@
 <template>
   <div class="relative w-full flex flex-col">
-    <div class="flex flex-col w-full">
+    <div class="flex px-3 flex-col w-full">
       <div class="flex w-full items-center justify-between mb-2">
         <div class="flex w-full items-center justify-start gap-1">
           <UIcon name="i-ci:folders" class="size-4 mr-1" />
@@ -36,14 +36,14 @@
         @keyup.prevent.escape="(event: KeyboardEvent) => resourceCreation.isCreating = false"
         @keyup.prevent.enter="handleCreateSubmit" />
     </div>
-    <USeparator class="w-full" :ui="{ border: 'border-accented' }" />
+    <USeparator class="w-full" :ui="{ border: 'border-gray-200 dark:border-gray-700' }" />
     <div ref="fileExplorerScrollContainer" class="w-full flex flex-col h-full overflow-y-auto overflow-x-hidden">
       <Suspense>
         <ide-directory-tree v-if="directoryTree.workspace" :depth="1" :directory="directoryTree.workspace"
           @open-folder="openFolder" @open-file="openFile" @delete-resource="deleteResource"
           @move-resource="moveResource" />
       </Suspense>
-      <div id="drop-zone" class="mt-4" @click.prevent="handleBackgroundClick" @dragover.prevent="handleDragOver"
+      <div id="drop-zone" class="mt-1 flex-1 mx-3" @click.prevent="handleBackgroundClick" @dragover.prevent="handleDragOver"
         @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop" :class="{ 'drag-over': isDragging }">
       </div>
     </div>

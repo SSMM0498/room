@@ -1,7 +1,7 @@
 <template>
-	<div class="browser rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+	<div class="browser rounded-lg">
 		<nav
-			class="flex items-center flex-nowrap w-full rounded-t-lg p-1 border-b border-gray-200 dark:border-gray-800 text-sm justify-between gap-2">
+			class="flex items-center flex-nowrap w-full rounded-t-lg p-1 border-b border-gray-200 dark:border-gray-700 text-sm justify-between gap-2">
 			<UIcon name="i-ph-globe" class="size-4" />
 			<h5>Browser</h5>
 			<div class="ml-1 flex gap-1">

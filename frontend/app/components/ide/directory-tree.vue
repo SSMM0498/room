@@ -1,6 +1,6 @@
 <template>
   <template v-for="item in directory.content" :key="item.path">
-    <ide-file-resource :id="'resource-' + item.path.replaceAll('/', '-')" class="p-1 hover:bg-primary/20 rounded-1"
+    <ide-file-resource :id="'resource-' + item.path.replaceAll('/', '-')" class="py-1 px-3 hover:bg-primary/20 rounded-1"
       :class="{ 'bg-primary/10': isSelected(item) }" :item="item" :depth="depth"
       @click="(event: MouseEvent) => handleItemClick(event, item)"
       @open-folder="(data: ReadFolderEventType) => emit('open-folder', data)"
