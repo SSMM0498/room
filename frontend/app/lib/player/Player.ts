@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload } from '~/types/events';
 import { EventTypes, isFullSnapshot } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -19,6 +19,7 @@ import { CursorMovementPlayer } from './CursorMovementPlayer';
 import { CursorInteractionPlayer } from './CursorInteractionPlayer';
 import { CursorStylePlayer } from './CursorStylePlayer';
 import { IdeTabPlayer } from './IdeTabPlayer';
+import { ResourcePlayer } from './ResourcePlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
@@ -29,6 +30,7 @@ export class Player {
   private clickPlayer: CursorInteractionPlayer;
   private stylePlayer: CursorStylePlayer;
   private ideTabPlayer: IdeTabPlayer;
+  private resourcePlayer: ResourcePlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -44,6 +46,7 @@ export class Player {
     this.clickPlayer = new CursorInteractionPlayer();
     this.stylePlayer = new CursorStylePlayer();
     this.ideTabPlayer = new IdeTabPlayer();
+    this.resourcePlayer = new ResourcePlayer();
     this.audioElement = config.audioElement ?? null;
 
     // Link the style player to the cursor element (after it's created)
@@ -83,6 +86,13 @@ export class Player {
    */
   getIdeTabPlayer(): IdeTabPlayer {
     return this.ideTabPlayer;
+  }
+
+  /**
+   * Get the resource player instance for components to register playback callbacks
+   */
+  getResourcePlayer(): ResourcePlayer {
+    return this.resourcePlayer;
   }
 
   /**
@@ -311,6 +321,66 @@ export class Player {
           }
           break;
 
+        case EventTypes.FILES_EXPAND:
+          // Schedule folder expand/collapse action
+          const expandPayload = event.p as FilesExpandPayload;
+          if (expandPayload && expandPayload.path !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playFolderExpand(expandPayload.path, expandPayload.expanded, expandPayload.content);
+              },
+            });
+            console.log(`[Player] Converted FILES_EXPAND: ${expandPayload.path} (${expandPayload.expanded ? 'expand' : 'collapse'})${expandPayload.content ? ` with ${expandPayload.content.length} items` : ''}`);
+          }
+          break;
+
+        case EventTypes.FILES_CREATE:
+          // Schedule file/folder creation action
+          const createPayload = event.p as FilesCreatePayload;
+          if (createPayload && createPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playCreate(createPayload.path, createPayload.type);
+              },
+            });
+            console.log(`[Player] Converted FILES_CREATE: ${createPayload.path} (${createPayload.type})`);
+          }
+          break;
+
+        case EventTypes.FILES_DELETE:
+          // Schedule file/folder deletion action
+          const deletePayload = event.p as FilesDeletePayload;
+          if (deletePayload && deletePayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playDelete(deletePayload.path);
+              },
+            });
+            console.log(`[Player] Converted FILES_DELETE: ${deletePayload.path}`);
+          }
+          break;
+
+        case EventTypes.FILES_MOVE:
+          // Schedule file/folder move action
+          const movePayload = event.p as FilesMovePayload;
+          if (movePayload && movePayload.from && movePayload.to) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playMove(movePayload.from, movePayload.to);
+              },
+            });
+            console.log(`[Player] Converted FILES_MOVE: ${movePayload.from} -> ${movePayload.to}`);
+          }
+          break;
+
         // TODO: Handle other event types
         default:
           // For now, just log unhandled events
@@ -499,6 +569,9 @@ export class Player {
 
     // Destroy IDE tab player
     this.ideTabPlayer.destroy();
+
+    // Destroy resource player
+    this.resourcePlayer.destroy();
 
     console.log('[Player] Destroyed');
   }

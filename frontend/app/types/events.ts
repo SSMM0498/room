@@ -284,6 +284,18 @@ export interface FilesMovePayload {
   to: string;
 }
 
+export interface FilesExpandPayload {
+  path: string;
+  /** true = expand, false = collapse */
+  expanded: boolean;
+  /** Folder contents at the time of expansion (only present when expanded=true) */
+  content?: Array<{
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+  }>;
+}
+
 // ============================================================================
 // CATEGORY 4: GROUND TRUTH STATE (Definitive State Changes)
 // ============================================================================
@@ -356,6 +368,7 @@ export type AnyActionPacket =
   | ActionPacket<FilesCreatePayload>
   | ActionPacket<FilesDeletePayload>
   | ActionPacket<FilesMovePayload>
+  | ActionPacket<FilesExpandPayload>
   // Ground Truth State
   | ActionPacket<SnapshotPayload>
   | ActionPacket<StateCommitPayload>
@@ -395,6 +408,7 @@ export const EventTypes = {
   FILES_CREATE: 'files:create',
   FILES_DELETE: 'files:delete',
   FILES_MOVE: 'files:move',
+  FILES_EXPAND: 'files:expand',
 
   // Ground Truth State
   STATE_SNAPSHOT_FULL: 'state:snapshot:full',

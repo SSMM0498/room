@@ -1,8 +1,10 @@
 import { reactive, ref } from 'vue';
 import { useSocket } from './useSocket';
+import { useRecorder } from './useRecorder';
 import type { DirectoryTreeType, ActiveFile, Resource, CreationContext, ReadFileResponse, ReadFolderResponse, WatchResponse, RenameData } from '~~/types/file-tree';
 
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 
 // Initialize directory tree structure
 const initDirectory: DirectoryTreeType = {
@@ -147,6 +149,11 @@ export const useIDE = () => {
     const targetPath = folder + '/' + resourceCreation.name;
 
     if (resourceCreation.type === 'file') {
+      // Record file creation for recording
+      if (recorder.value) {
+        recorder.value.getResourceWatcher().recordCreate(targetPath, 'f');
+      }
+
       socketClient.createFile({
         targetPath,
       });
@@ -156,6 +163,11 @@ export const useIDE = () => {
       };
       addNewTab(newActiveTab);
     } else {
+      // Record folder creation for recording
+      if (recorder.value) {
+        recorder.value.getResourceWatcher().recordCreate(targetPath, 'd');
+      }
+
       socketClient.createFolder({
         targetPath,
       });

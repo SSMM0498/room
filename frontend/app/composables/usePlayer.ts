@@ -3,11 +3,12 @@ import { Player } from '~/lib/player';
 import type { PlayerConfig, PlayerState } from '~/lib/player';
 import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
 import type { ActiveFile } from '../../types/file-tree';
+import objectPath from 'object-path';
 
 export const usePlayer = () => {
   // Core Player instance
   const player = ref<Player | null>(null);
-  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab } = useIDE();
+  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree } = useIDE();
   const { socketClient } = useSocket();
 
   // Reactive state
@@ -74,7 +75,84 @@ export const usePlayer = () => {
         }
       });
 
-      console.log('[Player] Tab callbacks registered');
+      // Register folder expand/collapse callback
+      newPlayer.getResourcePlayer().setOnFolderExpand((
+        path: string,
+        expanded: boolean,
+        content?: Array<{ name: string; path: string; type: 'file' | 'directory' }>
+      ) => {
+        const isCurrentlyOpen = openFolders.value.includes(path);
+
+        if (expanded && !isCurrentlyOpen) {
+          toggleOpenFolder(path);
+
+          // If we have saved content from recording, reconstruct tree directly
+          if (content && content.length > 0) {
+            const parentFoldersTillRoot = path
+              .split("/")
+              .splice(1)
+              .join(".content.");
+
+            const newDirectoryTree = JSON.parse(JSON.stringify(directoryTree));
+
+            // Get the current directory object using objectPath
+            const currentDir = objectPath.get(newDirectoryTree, parentFoldersTillRoot) as any;
+
+            // Rebuild content from saved data
+            if (currentDir && typeof currentDir === 'object') {
+              currentDir.content = {};
+              currentDir.isOpen = true;
+
+              content.forEach((item) => {
+                currentDir.content[item.name] = {
+                  type: item.type,
+                  isOpen: false,
+                  path: item.path,
+                  name: item.name,
+                  content: {},
+                };
+              });
+
+              objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDir);
+              setDirectoryTree(newDirectoryTree);
+              console.log(`[Player] Playing folder expand with saved content: ${path} (${content.length} items)`);
+            }
+          } else {
+            // No saved content, read from socket (fallback for old recordings)
+            socketClient.readFolder({ targetPath: path });
+            console.log(`[Player] Playing folder expand (reading from socket): ${path}`);
+          }
+        } else if (!expanded && isCurrentlyOpen) {
+          toggleOpenFolder(path);
+          socketClient.collapseFolder(path);
+          console.log(`[Player] Playing folder collapse: ${path}`);
+        }
+      });
+
+      // Register file/folder creation callback
+      newPlayer.getResourcePlayer().setOnCreate((path: string, type: 'f' | 'd') => {
+        if (type === 'f') {
+          socketClient.createFile({ targetPath: path });
+          console.log(`[Player] Playing file create: ${path}`);
+        } else {
+          socketClient.createFolder({ targetPath: path });
+          console.log(`[Player] Playing folder create: ${path}`);
+        }
+      });
+
+      // Register file/folder deletion callback
+      newPlayer.getResourcePlayer().setOnDelete((path: string) => {
+        socketClient.deleteResource({ targetPath: path });
+        console.log(`[Player] Playing resource delete: ${path}`);
+      });
+
+      // Register file/folder move callback
+      newPlayer.getResourcePlayer().setOnMove((from: string, to: string) => {
+        socketClient.moveResource({ targetPath: from, newPath: to });
+        console.log(`[Player] Playing resource move: ${from} -> ${to}`);
+      });
+
+      console.log('[Player] Tab and resource callbacks registered');
     }
   }, { immediate: true });
 

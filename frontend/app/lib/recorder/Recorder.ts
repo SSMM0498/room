@@ -17,6 +17,7 @@ import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
 import { IdeTabWatcher } from './IdeTabWatcher';
+import { ResourceWatcher } from './ResourceWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -49,6 +50,9 @@ export class Recorder {
   // IDE tab watcher (tab open/close/switch events)
   private ideTabWatcher: IdeTabWatcher;
 
+  // Resource watcher (file/folder operations)
+  private resourceWatcher: ResourceWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -61,6 +65,7 @@ export class Recorder {
     this.clickWatcher = new CursorInteractionWatcher(this);
     this.styleWatcher = new CursorStyleWatcher(this);
     this.ideTabWatcher = new IdeTabWatcher(this);
+    this.resourceWatcher = new ResourceWatcher(this);
   }
 
   /**
@@ -75,6 +80,13 @@ export class Recorder {
    */
   getIdeTabWatcher(): IdeTabWatcher {
     return this.ideTabWatcher;
+  }
+
+  /**
+   * Get the resource watcher instance for components to record file/folder events
+   */
+  getResourceWatcher(): ResourceWatcher {
+    return this.resourceWatcher;
   }
 
   /**

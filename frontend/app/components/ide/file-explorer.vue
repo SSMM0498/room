@@ -86,6 +86,10 @@ const isUploading = ref(false);
 const isDownloading = ref(false);
 const isDragging = ref(false);
 
+// Track the context of folder read operations
+type FolderReadContext = 'expand' | 'create' | 'hydrate' | 'move' | 'initial';
+const folderReadContexts = ref<Map<string, FolderReadContext>>(new Map());
+
 const handleUpload = () => {
   fileInput.value?.click();
 };
@@ -195,6 +199,7 @@ const handleBackgroundClick = (event: MouseEvent) => {
 
 onMounted(() => {
   socketClient.init(); // Initialize backend watcher event loop
+  folderReadContexts.value.set("/workspace", 'initial');
   socketClient.readFolder({
     targetPath: "/workspace",
   });
@@ -261,6 +266,7 @@ const updateDirectoryTreeWithFolderContents = (data: ReadFolderResponse) => {
       };
 
       if (isOpen) {
+        folderReadContexts.value.set(folderContent.path, 'expand');
         socketClient.readFolder({
           targetPath: folderContent.path
         });
@@ -269,6 +275,21 @@ const updateDirectoryTreeWithFolderContents = (data: ReadFolderResponse) => {
 
     objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDirectory);
     setDirectoryTree(newDirectoryTree);
+
+    // Check if this was triggered by folder expand and record it
+    const context = folderReadContexts.value.get(data.targetPath);
+    if (context === 'expand' && recorder.value) {
+      recorder.value.getResourceWatcher().recordFolderExpand(
+        data.targetPath,
+        true,
+        sortedContents.map(item => ({
+          name: item.name,
+          path: item.path,
+          type: item.type as 'file' | 'directory'
+        }))
+      );
+      folderReadContexts.value.delete(data.targetPath);
+    }
   }
 };
 
@@ -279,6 +300,7 @@ socketClient.handleHydrateCreateFile((data: ReadFolderResponse) => {
   console.log(`[IDE] File hydrated, updating folder: ${data.targetPath}`);
   // Only update if folder is currently open
   if (openFolders.value.includes(data.targetPath)) {
+    folderReadContexts.value.set(data.targetPath, 'hydrate');
     updateDirectoryTreeWithFolderContents(data);
   }
 });
@@ -288,6 +310,7 @@ socketClient.handleCreateFile((data: ReadFolderResponse) => {
   console.log(`[IDE] File created, updating folder: ${data.targetPath}`);
   // Only update if folder is currently open
   if (openFolders.value.includes(data.targetPath)) {
+    folderReadContexts.value.set(data.targetPath, 'create');
     updateDirectoryTreeWithFolderContents(data);
   }
 });
@@ -297,6 +320,7 @@ socketClient.handleCreateFolder((data: ReadFolderResponse) => {
   console.log(`[IDE] Folder created, updating folder: ${data.targetPath}`);
   // Only update if folder is currently open
   if (openFolders.value.includes(data.targetPath)) {
+    folderReadContexts.value.set(data.targetPath, 'create');
     updateDirectoryTreeWithFolderContents(data);
   }
 });
@@ -306,10 +330,16 @@ const openFolder = (data: ReadFolderEventType) => {
   toggleOpenFolder(data.targetPath);
 
   if (!isCurrentlyOpen) {
-    // Opening folder - read its contents
+    // Opening folder - set context and read its contents
+    folderReadContexts.value.set(data.targetPath, 'expand');
     socketClient.readFolder(data);
+    // Note: Recording happens in updateDirectoryTreeWithFolderContents after we get the content
   } else {
-    // Closing folder - notify backend to stop watching
+    // Closing folder - record immediately since there's no content
+    if (recorder.value) {
+      recorder.value.getResourceWatcher().recordFolderExpand(data.targetPath, false);
+    }
+    // Notify backend to stop watching
     socketClient.collapseFolder(data.targetPath);
   }
 };
@@ -320,6 +350,12 @@ const deleteResource = (data: DeleteEventType) => {
   deletingResources.value.add(data.targetPath);
   const deletedPath = getObjectPath(data.targetPath);
   objectPath.del(directoryTree, deletedPath);
+
+  // Record delete event for recording
+  if (recorder.value) {
+    recorder.value.getResourceWatcher().recordDelete(data.targetPath);
+  }
+
   socketClient.deleteResource(data)
 };
 
@@ -327,6 +363,12 @@ const moveResource = (data: MoveEventType) => {
   movingResources.value.add(data.targetPath);
   const deletedPath = getObjectPath(data.targetPath);
   objectPath.del(directoryTree, deletedPath);
+
+  // Record move event for recording
+  if (recorder.value) {
+    recorder.value.getResourceWatcher().recordMove(data.targetPath, data.newPath);
+  }
+
   socketClient.moveResource(data)
 };
 
@@ -365,6 +407,7 @@ socketClient.handleMoveResource((data: any) => {
 
   // Refresh the parent folder if it's open
   if (openFolders.value.includes(parentPath)) {
+    folderReadContexts.value.set(parentPath, 'move');
     socketClient.readFolder({ targetPath: parentPath });
   }
 });
