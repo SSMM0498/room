@@ -16,8 +16,6 @@ import { SnapshotManager } from './SnapshotManager';
 import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
-import { ScrollWatcher } from './ScrollWatcher';
-import { EditorInputWatcher } from './EditorInputWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -47,12 +45,6 @@ export class Recorder {
   // Cursor style watcher (cursor appearance changes)
   private styleWatcher: CursorStyleWatcher;
 
-  // Scroll watcher (editor and terminal scroll events)
-  private scrollWatcher: ScrollWatcher;
-
-  // Editor input watcher (typing and paste events)
-  private editorInputWatcher: EditorInputWatcher;
-
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -64,8 +56,6 @@ export class Recorder {
     this.cursorWatcher = new CursorMovementWatcher(this);
     this.clickWatcher = new CursorInteractionWatcher(this);
     this.styleWatcher = new CursorStyleWatcher(this);
-    this.scrollWatcher = new ScrollWatcher(this);
-    this.editorInputWatcher = new EditorInputWatcher(this);
   }
 
   /**
@@ -73,20 +63,6 @@ export class Recorder {
    */
   setStateCapture(capture: IDEStateCapture): void {
     this.stateCapture = capture;
-  }
-
-  /**
-   * Get the scroll watcher instance for registering scrollable elements
-   */
-  getScrollWatcher(): ScrollWatcher {
-    return this.scrollWatcher;
-  }
-
-  /**
-   * Get the editor input watcher instance for registering editors
-   */
-  getEditorInputWatcher(): EditorInputWatcher {
-    return this.editorInputWatcher;
   }
 
   /**
@@ -119,20 +95,10 @@ export class Recorder {
     // Start periodic snapshot intervals
     this.startSnapshotIntervals();
 
-    // Start watching cursor movements
+    // Start watchers
     this.cursorWatcher.watch();
-
-    // Start watching cursor interactions (clicks)
     this.clickWatcher.watch();
-
-    // Start watching cursor style changes
     this.styleWatcher.watch();
-
-    // Start watching scroll events
-    this.scrollWatcher.watch();
-
-    // Start watching editor input (typing and paste)
-    this.editorInputWatcher.watch();
 
     console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
   }
@@ -146,16 +112,10 @@ export class Recorder {
       return;
     }
 
-    // Stop cursor watchers
+    // Stop watchers
     this.cursorWatcher.stop();
     this.clickWatcher.stop();
     this.styleWatcher.stop();
-
-    // Stop scroll watcher
-    this.scrollWatcher.stop();
-
-    // Stop editor input watcher
-    this.editorInputWatcher.stop();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();

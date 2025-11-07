@@ -36,11 +36,8 @@ import { debounce, type ActiveFile } from '~~/types/file-tree';
 const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
 const colorMode = useColorMode()
 const { socketClient } = useSocket();
-const { recorder } = useRecorder();
-const { player } = usePlayer();
 const isSaving = ref(false);
 const editorInstance = ref<any>(null);
-const scrollableElement = ref<HTMLElement | null>(null);
 
 const theme = computed(() => colorMode.value === 'dark'
 	? 'vs-dark'
@@ -87,35 +84,6 @@ const onEditorMount = (editor: any) => {
 	if (position) {
 		setCursorPosition(position.lineNumber, position.column);
 	}
-
-	// Get the scrollable DOM element from Monaco editor
-	// Monaco editor's scrollable element has the class 'monaco-scrollable-element'
-	const domNode = editor.getDomNode();
-	if (domNode) {
-		const monacoScrollable = domNode.querySelector('.monaco-scrollable-element');
-		if (monacoScrollable) {
-			scrollableElement.value = monacoScrollable as HTMLElement;
-
-			// Register the scrollable element for recording
-			if (recorder.value && activeTab.filePath) {
-				recorder.value.getScrollWatcher().registerScrollable(
-					scrollableElement.value,
-					'editor',
-					activeTab.filePath
-				);
-			}
-		}
-	}
-
-	// Register editor for input recording (typing and paste)
-	if (recorder.value && activeTab.filePath) {
-		recorder.value.getEditorInputWatcher().registerEditor(editor, activeTab.filePath);
-	}
-
-	// Register editor for input playback
-	if (player.value && activeTab.filePath) {
-		player.value.getEditorInputPlayer().registerEditor(activeTab.filePath, editor);
-	}
 };
 
 // Handle update file response from server
@@ -140,68 +108,6 @@ socketClient.handleDeleteResource((data: any) => {
 			deleteTab(tab, tabIndex);
 		}
 	});
-});
-
-// Watch for active tab changes to update the scroll watcher and editor input watcher registrations
-watch(() => activeTab.filePath, (newFilePath, oldFilePath) => {
-	if (scrollableElement.value && recorder.value) {
-		// Unregister the old file path
-		if (oldFilePath) {
-			recorder.value.getScrollWatcher().unregisterScrollable(scrollableElement.value);
-		}
-
-		// Register with the new file path
-		if (newFilePath) {
-			recorder.value.getScrollWatcher().registerScrollable(
-				scrollableElement.value,
-				'editor',
-				newFilePath
-			);
-		}
-	}
-
-	// Update editor input watcher registration when switching tabs
-	if (editorInstance.value && recorder.value) {
-		// Unregister the old editor
-		if (oldFilePath) {
-			recorder.value.getEditorInputWatcher().unregisterEditor(editorInstance.value);
-		}
-
-		// Register with the new file path
-		if (newFilePath) {
-			recorder.value.getEditorInputWatcher().registerEditor(editorInstance.value, newFilePath);
-		}
-	}
-
-	// Update editor input player registration when switching tabs
-	if (editorInstance.value && player.value) {
-		// Unregister the old editor
-		if (oldFilePath) {
-			player.value.getEditorInputPlayer().unregisterEditor(oldFilePath);
-		}
-
-		// Register with the new file path
-		if (newFilePath) {
-			player.value.getEditorInputPlayer().registerEditor(newFilePath, editorInstance.value);
-		}
-	}
-});
-
-// Cleanup: Unregister scrollable element and editor when component unmounts
-onUnmounted(() => {
-	if (scrollableElement.value && recorder.value) {
-		recorder.value.getScrollWatcher().unregisterScrollable(scrollableElement.value);
-	}
-
-	// Unregister editor from input watcher
-	if (editorInstance.value && recorder.value) {
-		recorder.value.getEditorInputWatcher().unregisterEditor(editorInstance.value);
-	}
-
-	// Unregister editor from input player
-	if (activeTab.filePath && player.value) {
-		player.value.getEditorInputPlayer().unregisterEditor(activeTab.filePath);
-	}
 });
 </script>
 <style lang="css">

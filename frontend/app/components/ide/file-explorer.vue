@@ -37,7 +37,7 @@
         @keyup.prevent.enter="handleCreateSubmit" />
     </div>
     <USeparator class="w-full" :ui="{ border: 'border-gray-200 dark:border-gray-700' }" />
-    <div ref="fileExplorerScrollContainer" class="w-full flex flex-col h-full overflow-y-auto overflow-x-hidden">
+    <div class="w-full flex flex-col h-full overflow-y-auto overflow-x-hidden">
       <Suspense>
         <ide-directory-tree v-if="directoryTree.workspace" :depth="1" :directory="directoryTree.workspace"
           @open-folder="openFolder" @open-file="openFile" @delete-resource="deleteResource"
@@ -78,11 +78,8 @@ const {
 } = useIDE();
 
 const { socketClient } = useSocket();
-const { recorder } = useRecorder();
-const { player } = usePlayer();
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const fileExplorerScrollContainer = ref<HTMLElement | null>(null);
 const isUploading = ref(false);
 const isDownloading = ref(false);
 const isDragging = ref(false);
@@ -199,32 +196,6 @@ onMounted(() => {
   socketClient.readFolder({
     targetPath: "/workspace",
   });
-
-  // Register file explorer scroll container for recording (teach mode)
-  if (fileExplorerScrollContainer.value && recorder.value) {
-    recorder.value.getScrollWatcher().registerScrollable(
-      fileExplorerScrollContainer.value,
-      'file-explorer',
-      'default'
-    );
-  }
-
-  // Register file explorer scroll container for playback (learn mode)
-  if (fileExplorerScrollContainer.value && player.value) {
-    player.value.getScrollPlayer().registerFileExplorer('default', fileExplorerScrollContainer.value);
-  }
-});
-
-onUnmounted(() => {
-  // Unregister file explorer scroll container from recorder
-  if (fileExplorerScrollContainer.value && recorder.value) {
-    recorder.value.getScrollWatcher().unregisterScrollable(fileExplorerScrollContainer.value);
-  }
-
-  // Unregister file explorer scroll container from player
-  if (player.value) {
-    player.value.getScrollPlayer().unregisterFileExplorer('default');
-  }
 });
 
 socketClient.handleReadFile((data: ReadFileResponse) => {
