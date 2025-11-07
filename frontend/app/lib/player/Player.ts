@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload } from '~/types/events';
 import { EventTypes } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -18,6 +18,7 @@ import { StateReconstructor } from './StateReconstructor';
 import { CursorMovementPlayer } from './CursorMovementPlayer';
 import { CursorInteractionPlayer } from './CursorInteractionPlayer';
 import { CursorStylePlayer } from './CursorStylePlayer';
+import { IdeTabPlayer } from './IdeTabPlayer';
 import type { PlayerConfig, PlayerState } from './types';
 
 export class Player {
@@ -27,6 +28,7 @@ export class Player {
   private cursorPlayer: CursorMovementPlayer;
   private clickPlayer: CursorInteractionPlayer;
   private stylePlayer: CursorStylePlayer;
+  private ideTabPlayer: IdeTabPlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -41,6 +43,7 @@ export class Player {
     this.cursorPlayer = new CursorMovementPlayer();
     this.clickPlayer = new CursorInteractionPlayer();
     this.stylePlayer = new CursorStylePlayer();
+    this.ideTabPlayer = new IdeTabPlayer();
     this.audioElement = config.audioElement ?? null;
 
     // Link the style player to the cursor element (after it's created)
@@ -73,6 +76,13 @@ export class Player {
   setAudioElement(element: HTMLAudioElement): void {
     this.audioElement = element;
     console.log('[Player] Audio element set/updated');
+  }
+
+  /**
+   * Get the IDE tab player instance for components to register playback callbacks
+   */
+  getIdeTabPlayer(): IdeTabPlayer {
+    return this.ideTabPlayer;
   }
 
   /**
@@ -234,6 +244,51 @@ export class Player {
               },
             });
             console.log(`[Player] Converted MOUSE_STYLE: ${stylePayload.s}`);
+          }
+          break;
+
+        case EventTypes.IDE_TABS_OPEN:
+          // Schedule tab open action
+          const tabOpenPayload = event.p as IDETabsOpenPayload;
+          if (tabOpenPayload && tabOpenPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.ideTabPlayer.playTabOpen(tabOpenPayload.path!, tabOpenPayload.content!);
+              },
+            });
+            console.log(`[Player] Converted IDE_TABS_OPEN: ${tabOpenPayload.path}`);
+          }
+          break;
+
+        case EventTypes.IDE_TABS_CLOSE:
+          // Schedule tab close action
+          const tabClosePayload = event.p as IDETabsClosePayload;
+          if (tabClosePayload && tabClosePayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.ideTabPlayer.playTabClose(tabClosePayload.path!);
+              },
+            });
+            console.log(`[Player] Converted IDE_TABS_CLOSE: ${tabClosePayload.path}`);
+          }
+          break;
+
+        case EventTypes.IDE_TABS_SWITCH:
+          // Schedule tab switch action
+          const tabSwitchPayload = event.p as IDETabsSwitchPayload;
+          if (tabSwitchPayload && tabSwitchPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.ideTabPlayer.playTabSwitch(tabSwitchPayload.path!, tabSwitchPayload.content!);
+              },
+            });
+            console.log(`[Player] Converted IDE_TABS_SWITCH: ${tabSwitchPayload.path}`);
           }
           break;
 
@@ -422,6 +477,9 @@ export class Player {
     this.cursorPlayer.destroy();
     this.clickPlayer.destroy();
     this.stylePlayer.destroy();
+
+    // Destroy IDE tab player
+    this.ideTabPlayer.destroy();
 
     console.log('[Player] Destroyed');
   }

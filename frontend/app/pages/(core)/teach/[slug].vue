@@ -1,4 +1,5 @@
 <template>
+
   <Head>
     <Title>{{ currentCourse?.title ?? 'Loading' }}</Title>
   </Head>
@@ -82,6 +83,7 @@ useCourseContent();
 const {
   directoryTree,
   activeTab,
+  openTabs,
   openFolders,
   handleFileDelete,
   handleDirectoryDelete,
@@ -102,8 +104,7 @@ const slug = route.params.slug as string;
 // Recording state
 let recordingTimerInterval: number | null = null;
 
-// Initialize recorder with a placeholder state capture
-// TODO: Implement actual IDE state capture
+// Initialize recorder with full structure but only tab tracking active
 onMounted(() => {
   initializeRecorder({
     getUIState: () => ({
@@ -112,18 +113,34 @@ onMounted(() => {
       ide: {
         activePanel: 'editor',
         tabs: {
-          editor: { openFiles: [], activeFile: null },
-          terminal: { openTerminals: [], activeTerminal: null },
+          editor: {
+            openFiles: openTabs.tabs.map(tab => tab.filePath),
+            activeFile: activeTab.filePath || null
+          },
+          terminal: {
+            openTerminals: [],
+            activeTerminal: null
+          },
         },
       },
-      fileTree: { expandedPaths: [] },
+      fileTree: {
+        expandedPaths: [],
+        tree: null
+      },
       browser: { url: '' },
     }),
-    getWorkspaceState: () => ({
-      files: {},
-      terminals: {},
-      processes: [],
-    }),
+    getWorkspaceState: () => {
+      // Only capture file contents for open tabs
+      const files: Record<string, string> = {};
+      for (const tab of openTabs.tabs) {
+        files[tab.filePath] = tab.fileContent;
+      }
+      return {
+        files,
+        terminals: {},
+        processes: []
+      };
+    },
   });
 });
 

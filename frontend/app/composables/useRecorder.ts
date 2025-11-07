@@ -97,8 +97,10 @@ export const useRecorder = () => {
 
   /**
    * Starts the recording process (both audio and action log).
+   * @param initialTabPaths - Optional array of file paths for tabs open at recording start
+   * @param activeTabPath - Optional file path of the initially active tab
    */
-  const startRecording = () => {
+  const startRecording = (initialTabPaths?: string[], activeTabPath?: string) => {
     if (!stream.value) {
       console.error("❌ Cannot start recording, media stream is not ready.");
       return;
@@ -147,8 +149,8 @@ export const useRecorder = () => {
 
     mediaRecorder.value.start();
 
-    // Start action log recording
-    recorder.value.start();
+    // Start action log recording with initial tab state
+    recorder.value.start(initialTabPaths, activeTabPath);
 
     isRecording.value = true;
     console.log("🎬 Recording started (audio + action log).");

@@ -29,7 +29,7 @@
                     <button @click="() => handleItemSelect(playlistItem.order, currentCourse!.slug)"
                       class="text-left text-sm py-1.5 px-2 w-full flex justify-between items-center cursor-pointer">
                       <span class="truncate">{{ playlistItem.order + 1 }} - {{ playlistItem.expand?.course?.title
-                        }}</span>
+                      }}</span>
                     </button>
                   </li>
                 </ol>
@@ -63,25 +63,30 @@
       <UButton size="xs" class="text-gray-700" icon="i-heroicons:play-circle" variant="link"
         :to="localePath(`/learn/${currentCourse?.slug}_0`)" />
     </nav>
-    <div>
-      <UButton id="btn-run-code" size="xs" class="mr-1" icon="i-heroicons:play" variant="solid" @click="runProject">
-        {{ $t('ide.run') }}
-      </UButton>
-      <UButton id="btn-show-browser" size="xs" class="mr-1" @click="startPreview" icon="i-heroicons:globe-alt"
-        variant="soft">
-        {{ $t('ide.preview') }}
-      </UButton>
-      <UButton id="btn-show-console" size="xs" class="mr-1" icon="i-ph-terminal-window-duotone" @click="toggleTerminal"
-        variant="soft">
-        {{ $t('ide.terminal') }}
-      </UButton>
-      <UButton id="btn-search" size="xs" class="mr-1" icon="i-heroicons:magnifying-glass-solid" variant="soft" disabled>
-        {{ $t('search') }}
-      </UButton>
-      <UButton id="btn-invite" size="xs" class="mr-1" label="Invite" icon="i-heroicons:user-plus" variant="soft"
-        disabled>
-        {{ $t('ide.invite') }}
-      </UButton>
+    <div class="flex items-center justify-center">
+      <div class="relative">
+        <div v-if="($route.name as String).startsWith('learn')"
+          class="playing-blocker absolute bg-transparent w-full h-full inset-0 z-40 cursor-normal"></div>
+        <UButton id="btn-run-code" size="xs" class="mr-1" icon="i-heroicons:play" variant="solid" @click="runProject">
+          {{ $t('ide.run') }}
+        </UButton>
+        <UButton id="btn-show-browser" size="xs" class="mr-1" @click="startPreview" icon="i-heroicons:globe-alt"
+          variant="soft">
+          {{ $t('ide.preview') }}
+        </UButton>
+        <UButton id="btn-show-console" size="xs" class="mr-1" icon="i-ph-terminal-window-duotone"
+          @click="toggleTerminal" variant="soft">
+          {{ $t('ide.terminal') }}
+        </UButton>
+        <UButton id="btn-search" size="xs" class="mr-1" icon="i-heroicons:magnifying-glass-solid" variant="soft"
+          disabled>
+          {{ $t('search') }}
+        </UButton>
+        <UButton id="btn-invite" size="xs" class="mr-1" label="Invite" icon="i-heroicons:user-plus" variant="soft"
+          disabled>
+          {{ $t('ide.invite') }}
+        </UButton>
+      </div>
       <layout-color-switch />
     </div>
   </header>
@@ -155,6 +160,8 @@ function handleItemSelect(index: number, slug?: string) {
 
 const {
   showTerminal,
+  openTabs,
+  activeTab,
 } = useIDE();
 
 const { socketClient } = useSocket();
@@ -303,8 +310,10 @@ const toggleRecording = async () => {
       }
     }
 
-    // Start recording
-    recording.startRecording();
+    // Start recording with initial tab state
+    const initialTabPaths = openTabs.tabs.map(tab => tab.filePath);
+    const activeTabPath = activeTab.filePath;
+    recording.startRecording(initialTabPaths, activeTabPath);
     toast.add({
       title: 'Recording Started',
       description: 'Your lesson is now being recorded',

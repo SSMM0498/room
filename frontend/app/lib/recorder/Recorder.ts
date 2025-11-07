@@ -16,6 +16,7 @@ import { SnapshotManager } from './SnapshotManager';
 import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
+import { IdeTabWatcher } from './IdeTabWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -45,6 +46,9 @@ export class Recorder {
   // Cursor style watcher (cursor appearance changes)
   private styleWatcher: CursorStyleWatcher;
 
+  // IDE tab watcher (tab open/close/switch events)
+  private ideTabWatcher: IdeTabWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -56,6 +60,7 @@ export class Recorder {
     this.cursorWatcher = new CursorMovementWatcher(this);
     this.clickWatcher = new CursorInteractionWatcher(this);
     this.styleWatcher = new CursorStyleWatcher(this);
+    this.ideTabWatcher = new IdeTabWatcher(this);
   }
 
   /**
@@ -66,9 +71,18 @@ export class Recorder {
   }
 
   /**
-   * Starts the recording session
+   * Get the IDE tab watcher instance for components to record tab events
    */
-  start(): void {
+  getIdeTabWatcher(): IdeTabWatcher {
+    return this.ideTabWatcher;
+  }
+
+  /**
+   * Starts the recording session
+   * @param initialTabPaths - Optional array of file paths for tabs open at recording start
+   * @param activeTabPath - Optional file path of the initially active tab
+   */
+  start(initialTabPaths?: string[], activeTabPath?: string): void {
     if (this.isRecording) {
       console.warn('[Recorder] Already recording');
       return;

@@ -236,6 +236,7 @@ export interface IDETabsOpenPayload {
   type: 'editor' | 'terminal';
   /** File path for editor tabs */
   path?: string;
+  content?: string;
   /** Terminal ID for terminal tabs */
   id?: string;
 }
@@ -249,6 +250,7 @@ export interface IDETabsClosePayload {
 export interface IDETabsSwitchPayload {
   type: 'editor' | 'terminal';
   path?: string;
+  content?: string;
   id?: string;
 }
 

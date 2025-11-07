@@ -1,8 +1,10 @@
 <template>
 	<div class="editor w-full h-full overflow-hidden">
-		<nav class="flex items-center flex-nowrap w-full rounded-t-lg border-b border-gray-200 dark:border-gray-700 text-sm justify-start gap-1 mb-1">
+		<nav
+			class="flex items-center flex-nowrap w-full rounded-t-lg border-b border-gray-200 dark:border-gray-700 text-sm justify-start gap-1 mb-1">
 			<UIcon name="i-ph-code" class="size-4 mx-2" />
 			<h5>Editor</h5>
+			{{  }}
 			<div class="ml-1 flex items-center justify-center cursor-pointer border-r p-1 border-gray-200 dark:border-gray-800 hover:bg-black/10"
 				:class="{ active: openTab.filePath === activeTab.filePath }" v-for="(openTab, key) in openTabs.tabs"
 				:key="openTab.filePath">
@@ -11,8 +13,9 @@
 				<p class="mr-1" @click="(event) => setActiveTab(openTab)">
 					{{ openTab.filePath.split("/").splice(-1)[0] }}
 				</p>
-				<UIcon v-if="savingFiles.has(openTab.filePath)" name="i-heroicons:arrow-path" class="animate-spin mr-1 text-blue-500" />
-				<UButton @click="(event) => deleteTab(openTab, key)" icon="i-heroicons:x-mark-20-solid" size="xs"
+				<UIcon v-if="savingFiles.has(openTab.filePath)" name="i-heroicons:arrow-path"
+					class="animate-spin mr-1 text-blue-500" />
+				<UButton @click="(event) => handleTabClose(openTab, key)" icon="i-heroicons:x-mark-20-solid" size="xs"
 					variant="ghost" :padded="false" :square="true" color="neutral">
 				</UButton>
 			</div>
@@ -36,8 +39,10 @@ import { debounce, type ActiveFile } from '~~/types/file-tree';
 const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
 const colorMode = useColorMode()
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 const isSaving = ref(false);
 const editorInstance = ref<any>(null);
+const previousActiveTabPath = ref<string>(activeTab.filePath);
 
 const theme = computed(() => colorMode.value === 'dark'
 	? 'vs-dark'
@@ -109,6 +114,31 @@ socketClient.handleDeleteResource((data: any) => {
 		}
 	});
 });
+
+// Watch for active tab changes to record tab switch events
+watch(() => activeTab.filePath, (newFilePath, oldFilePath) => {
+	if (oldFilePath && newFilePath && newFilePath !== oldFilePath) {
+		// Record tab switch event with current content
+		if (recorder.value) {
+			const tab = openTabs.tabs.find(t => t.filePath === newFilePath);
+			if (tab) {
+				recorder.value.getIdeTabWatcher().recordTabSwitch(newFilePath, tab.fileContent);
+			}
+		}
+	}
+	previousActiveTabPath.value = newFilePath;
+});
+
+// Wrapper function to handle tab deletion with event recording
+const handleTabClose = (tab: ActiveFile, index: number) => {
+	// Record tab close event before actually closing
+	if (recorder.value) {
+		recorder.value.getIdeTabWatcher().recordTabClose(tab.filePath);
+	}
+	deleteTab(tab, index);
+};
+
+// Tab callbacks are now handled in usePlayer composable
 </script>
 <style lang="css">
 @reference "tailwindcss";

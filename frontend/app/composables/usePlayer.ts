@@ -1,17 +1,82 @@
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch } from 'vue';
 import { Player } from '~/lib/player';
 import type { PlayerConfig, PlayerState } from '~/lib/player';
 import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
+import type { ActiveFile } from '../../types/file-tree';
 
 export const usePlayer = () => {
   // Core Player instance
   const player = ref<Player | null>(null);
+  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab } = useIDE();
+  const { socketClient } = useSocket();
 
   // Reactive state
   const currentTime = ref(0);
   const duration = ref(0);
   const playerState = ref<PlayerState>('idle');
   const audioElement = ref<HTMLAudioElement | null>(null);
+
+  // Watch player instance and set up tab callbacks
+  watch(player, (newPlayer) => {
+    if (newPlayer) {
+      // Register tab switch callback
+      newPlayer.getIdeTabPlayer().setOnTabSwitch((filePath: string, content: string) => {
+        // Find or create tab with new content
+        let tab = openTabs.tabs.find(t => t.filePath === filePath);
+        if (!tab) {
+          // If tab doesn't exist yet, create it
+          tab = {
+            filePath,
+            fileContent: content
+          };
+          openTabs.tabs.push(tab);
+        } else {
+          // Update existing tab's content
+          tab.fileContent = content;
+        }
+        setActiveTab(tab);
+        setTabContent(tab);
+        console.log(`[Player] Playing tab switch: ${filePath}`);
+      });
+
+      // Register tab open callback
+      newPlayer.getIdeTabPlayer().setOnTabOpen((filePath: string, content: string) => {
+        // Create and open new tab with content
+        const newTab: ActiveFile = {
+          filePath,
+          fileContent: content
+        };
+        // Add to openTabs if not already there
+        if (!openTabs.tabs.some(t => t.filePath === filePath)) {
+          openTabs.tabs.push(newTab);
+        }
+        setActiveTab(newTab);
+        setTabContent(newTab);
+        console.log(`[Player] Playing tab open: ${filePath}`);
+      });
+
+      // Register tab close callback
+      newPlayer.getIdeTabPlayer().setOnTabClose((filePath: string) => {
+        // Find the tab to close
+        const tabIndex = openTabs.tabs.findIndex(t => t.filePath === filePath);
+        if (tabIndex !== -1) {
+          // If this is the active tab, switch to another tab first
+          if (activeTab && openTabs.tabs[tabIndex]!.filePath === activeTab.filePath) {
+            const nextTab = openTabs.tabs[tabIndex + 1] || openTabs.tabs[tabIndex - 1];
+            if (nextTab) {
+              setActiveTab(nextTab);
+            }
+          }
+          deleteTab(openTabs.tabs[tabIndex]!, tabIndex);
+          console.log(`[Player] Playing tab close: ${filePath}`);
+        } else {
+          console.warn(`[Player] Cannot close tab ${filePath} - tab not found`);
+        }
+      });
+
+      console.log('[Player] Tab callbacks registered');
+    }
+  }, { immediate: true });
 
   // Computed properties
   const isPlaying = computed(() => playerState.value === 'playing');

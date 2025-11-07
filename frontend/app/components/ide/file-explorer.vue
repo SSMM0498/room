@@ -43,8 +43,9 @@
           @open-folder="openFolder" @open-file="openFile" @delete-resource="deleteResource"
           @move-resource="moveResource" />
       </Suspense>
-      <div id="drop-zone" class="mt-1 flex-1 mx-3" @click.prevent="handleBackgroundClick" @dragover.prevent="handleDragOver"
-        @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop" :class="{ 'drag-over': isDragging }">
+      <div id="drop-zone" class="mt-1 flex-1 mx-3" @click.prevent="handleBackgroundClick"
+        @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop"
+        :class="{ 'drag-over': isDragging }">
       </div>
     </div>
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelected" />
@@ -78,6 +79,7 @@ const {
 } = useIDE();
 
 const { socketClient } = useSocket();
+const { recorder } = useRecorder();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const isUploading = ref(false);
@@ -196,6 +198,7 @@ onMounted(() => {
   socketClient.readFolder({
     targetPath: "/workspace",
   });
+  // Tab callbacks are now handled in usePlayer composable
 });
 
 socketClient.handleReadFile((data: ReadFileResponse) => {
@@ -205,6 +208,11 @@ socketClient.handleReadFile((data: ReadFileResponse) => {
   };
   setActiveTab(newActiveTab);
   addNewTab(newActiveTab);
+
+  // Record tab open event for recording with content
+  if (recorder.value) {
+    recorder.value.getIdeTabWatcher().recordTabOpen(data.targetPath, data.fileContent);
+  }
 });
 
 // Reusable function to update directory tree with folder contents
