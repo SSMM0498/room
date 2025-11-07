@@ -311,9 +311,7 @@ const toggleRecording = async () => {
     }
 
     // Start recording with initial tab state
-    const initialTabPaths = openTabs.tabs.map(tab => tab.filePath);
-    const activeTabPath = activeTab.filePath;
-    recording.startRecording(initialTabPaths, activeTabPath);
+    recording.startRecording();
     toast.add({
       title: 'Recording Started',
       description: 'Your lesson is now being recorded',

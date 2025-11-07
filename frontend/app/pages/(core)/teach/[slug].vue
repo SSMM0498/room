@@ -130,7 +130,6 @@ onMounted(() => {
       browser: { url: '' },
     }),
     getWorkspaceState: () => {
-      // Only capture file contents for open tabs
       const files: Record<string, string> = {};
       for (const tab of openTabs.tabs) {
         files[tab.filePath] = tab.fileContent;

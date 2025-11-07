@@ -10,8 +10,8 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload } from '~/types/events';
-import { EventTypes } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload } from '~/types/events';
+import { EventTypes, isFullSnapshot } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
@@ -178,6 +178,25 @@ export class Player {
     for (const event of this.timeline) {
       // Skip events before the start time (for seeking)
       if (fromTime !== undefined && event.t < fromTime) {
+        continue;
+      }
+
+      // For full snapshots, apply tab state immediately
+      if (isFullSnapshot(event)) {
+        const snapshotPayload = event.p as SnapshotPayload;
+        if (snapshotPayload.ui?.ide?.tabs?.editor) {
+          const actionDelay = event.t - this.baselineTime;
+          actions.push({
+            delay: actionDelay,
+            doAction: () => {
+              this.ideTabPlayer.applyTabSnapshot(
+                snapshotPayload.ui.ide.tabs.editor,
+                (snapshotPayload.workspace?.files as Record<string, string>) || {}
+              );
+            },
+          });
+          console.log(`[Player] Converted FULL_SNAPSHOT tabs state at ${actionDelay}ms`);
+        }
         continue;
       }
 
