@@ -36,6 +36,26 @@ const resourceCreation = reactive<CreationContext>({
   name: '',
 });
 
+const renameContext = reactive<{
+  isRenaming: boolean;
+  path: string;
+  currentName: string;
+  newName: string;
+}>({
+  isRenaming: false,
+  path: '',
+  currentName: '',
+  newName: '',
+});
+
+const popoverState = reactive<{
+  isOpen: boolean;
+  path: string;
+}>({
+  isOpen: false,
+  path: '',
+});
+
 const isDragging = ref(false);
 const showTerminal = ref(false);
 const url = ref('');
@@ -142,6 +162,11 @@ export const useIDE = () => {
 
   // --- Resource Creation ---
   const handleCreateSubmit = () => {
+    // Record input hide event (submitted, not cancelled)
+    if (recorder.value) {
+      recorder.value.getResourceWatcher().recordCreateInputHide(false);
+    }
+
     resourceCreation.isCreating = false;
     const folder = activeResources[0]?.type === 'directory'
       ? activeResources[0].path
@@ -178,12 +203,32 @@ export const useIDE = () => {
     resourceCreation.isCreating = true;
     resourceCreation.type = 'file';
     resourceCreation.name = 'New file';
+
+    // Record input show event
+    if (recorder.value) {
+      const parentPath = activeResources[0]?.type === 'directory'
+        ? activeResources[0].path
+        : activeResources[0]?.path.substring(0, activeResources[0].path.lastIndexOf('/')) || '/workspace';
+      recorder.value.getResourceWatcher().recordCreateInputShow('file', parentPath);
+      // Record initial text
+      recorder.value.getResourceWatcher().recordCreateInputType('New file');
+    }
   };
 
   const handleCreateFolder = () => {
     resourceCreation.isCreating = true;
     resourceCreation.type = 'folder';
     resourceCreation.name = 'New folder';
+
+    // Record input show event
+    if (recorder.value) {
+      const parentPath = activeResources[0]?.type === 'directory'
+        ? activeResources[0].path
+        : activeResources[0]?.path.substring(0, activeResources[0].path.lastIndexOf('/')) || '/workspace';
+      recorder.value.getResourceWatcher().recordCreateInputShow('folder', parentPath);
+      // Record initial text
+      recorder.value.getResourceWatcher().recordCreateInputType('New folder');
+    }
   };
 
   const addOpenFolder = (folderPath: string) => {
@@ -369,6 +414,8 @@ export const useIDE = () => {
     directoryTree,
     openTabs,
     resourceCreation,
+    renameContext,
+    popoverState,
     showTerminal,
     openFolders,
     activeTerminal,

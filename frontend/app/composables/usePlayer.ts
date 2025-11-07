@@ -8,7 +8,7 @@ import objectPath from 'object-path';
 export const usePlayer = () => {
   // Core Player instance
   const player = ref<Player | null>(null);
-  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree } = useIDE();
+  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
   const { socketClient } = useSocket();
 
   // Reactive state
@@ -150,6 +150,64 @@ export const usePlayer = () => {
       newPlayer.getResourcePlayer().setOnMove((from: string, to: string) => {
         socketClient.moveResource({ targetPath: from, newPath: to });
         console.log(`[Player] Playing resource move: ${from} -> ${to}`);
+      });
+
+      // Register create input show callback
+      newPlayer.getResourcePlayer().setOnCreateInputShow((type: 'file' | 'folder', parentPath: string) => {
+        resourceCreation.isCreating = true;
+        resourceCreation.type = type;
+        resourceCreation.name = type === 'file' ? 'New file' : 'New folder';
+        console.log(`[Player] Playing create input show: ${type} in ${parentPath}`);
+      });
+
+      // Register create input type callback
+      newPlayer.getResourcePlayer().setOnCreateInputType((text: string) => {
+        resourceCreation.name = text;
+        console.log(`[Player] Playing create input type: "${text}"`);
+      });
+
+      // Register create input hide callback
+      newPlayer.getResourcePlayer().setOnCreateInputHide((cancelled: boolean) => {
+        resourceCreation.isCreating = false;
+        console.log(`[Player] Playing create input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+      });
+
+      // Register rename input show callback
+      newPlayer.getResourcePlayer().setOnRenameInputShow((path: string, currentName: string) => {
+        renameContext.isRenaming = true;
+        renameContext.path = path;
+        renameContext.currentName = currentName;
+        renameContext.newName = currentName;
+        console.log(`[Player] Playing rename input show: ${path} (${currentName})`);
+      });
+
+      // Register rename input type callback
+      newPlayer.getResourcePlayer().setOnRenameInputType((text: string) => {
+        renameContext.newName = text;
+        console.log(`[Player] Playing rename input type: "${text}"`);
+      });
+
+      // Register rename input hide callback
+      newPlayer.getResourcePlayer().setOnRenameInputHide((cancelled: boolean) => {
+        renameContext.isRenaming = false;
+        renameContext.path = '';
+        renameContext.currentName = '';
+        renameContext.newName = '';
+        console.log(`[Player] Playing rename input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+      });
+
+      // Register popover show callback
+      newPlayer.getResourcePlayer().setOnPopoverShow((path: string) => {
+        popoverState.isOpen = true;
+        popoverState.path = path;
+        console.log(`[Player] Playing popover show: ${path}`);
+      });
+
+      // Register popover hide callback
+      newPlayer.getResourcePlayer().setOnPopoverHide((path: string) => {
+        popoverState.isOpen = false;
+        popoverState.path = '';
+        console.log(`[Player] Playing popover hide: ${path}`);
       });
 
       console.log('[Player] Tab and resource callbacks registered');

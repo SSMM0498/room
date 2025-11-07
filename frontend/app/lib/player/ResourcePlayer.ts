@@ -17,6 +17,14 @@ export class ResourcePlayer {
   private onCreateCallback: ((path: string, type: 'f' | 'd') => void) | null = null;
   private onDeleteCallback: ((path: string) => void) | null = null;
   private onMoveCallback: ((from: string, to: string) => void) | null = null;
+  private onCreateInputShowCallback: ((type: 'file' | 'folder', parentPath: string) => void) | null = null;
+  private onCreateInputTypeCallback: ((text: string) => void) | null = null;
+  private onCreateInputHideCallback: ((cancelled: boolean) => void) | null = null;
+  private onRenameInputShowCallback: ((path: string, currentName: string) => void) | null = null;
+  private onRenameInputTypeCallback: ((text: string) => void) | null = null;
+  private onRenameInputHideCallback: ((cancelled: boolean) => void) | null = null;
+  private onPopoverShowCallback: ((path: string) => void) | null = null;
+  private onPopoverHideCallback: ((path: string) => void) | null = null;
 
   /**
    * Register callback for folder expand/collapse events
@@ -58,6 +66,78 @@ export class ResourcePlayer {
   setOnMove(callback: (from: string, to: string) => void): void {
     this.onMoveCallback = callback;
     console.log('[ResourcePlayer] Move callback registered');
+  }
+
+  /**
+   * Register callback for create input show events
+   * Called by file-explorer component
+   */
+  setOnCreateInputShow(callback: (type: 'file' | 'folder', parentPath: string) => void): void {
+    this.onCreateInputShowCallback = callback;
+    console.log('[ResourcePlayer] Create input show callback registered');
+  }
+
+  /**
+   * Register callback for create input type events
+   * Called by file-explorer component
+   */
+  setOnCreateInputType(callback: (text: string) => void): void {
+    this.onCreateInputTypeCallback = callback;
+    console.log('[ResourcePlayer] Create input type callback registered');
+  }
+
+  /**
+   * Register callback for create input hide events
+   * Called by file-explorer component
+   */
+  setOnCreateInputHide(callback: (cancelled: boolean) => void): void {
+    this.onCreateInputHideCallback = callback;
+    console.log('[ResourcePlayer] Create input hide callback registered');
+  }
+
+  /**
+   * Register callback for rename input show events
+   * Called by file-explorer component
+   */
+  setOnRenameInputShow(callback: (path: string, currentName: string) => void): void {
+    this.onRenameInputShowCallback = callback;
+    console.log('[ResourcePlayer] Rename input show callback registered');
+  }
+
+  /**
+   * Register callback for rename input type events
+   * Called by file-explorer component
+   */
+  setOnRenameInputType(callback: (text: string) => void): void {
+    this.onRenameInputTypeCallback = callback;
+    console.log('[ResourcePlayer] Rename input type callback registered');
+  }
+
+  /**
+   * Register callback for rename input hide events
+   * Called by file-explorer component
+   */
+  setOnRenameInputHide(callback: (cancelled: boolean) => void): void {
+    this.onRenameInputHideCallback = callback;
+    console.log('[ResourcePlayer] Rename input hide callback registered');
+  }
+
+  /**
+   * Register callback for popover show events
+   * Called by file-explorer component
+   */
+  setOnPopoverShow(callback: (path: string) => void): void {
+    this.onPopoverShowCallback = callback;
+    console.log('[ResourcePlayer] Popover show callback registered');
+  }
+
+  /**
+   * Register callback for popover hide events
+   * Called by file-explorer component
+   */
+  setOnPopoverHide(callback: (path: string) => void): void {
+    this.onPopoverHideCallback = callback;
+    console.log('[ResourcePlayer] Popover hide callback registered');
   }
 
   /**
@@ -113,6 +193,102 @@ export class ResourcePlayer {
   }
 
   /**
+   * Trigger create input show during playback
+   */
+  playCreateInputShow(type: 'file' | 'folder', parentPath: string): void {
+    if (this.onCreateInputShowCallback) {
+      this.onCreateInputShowCallback(type, parentPath);
+      console.log(`[ResourcePlayer] Playing create input show: ${type} in ${parentPath}`);
+    } else {
+      console.warn(`[ResourcePlayer] No create input show callback registered`);
+    }
+  }
+
+  /**
+   * Trigger create input type during playback
+   */
+  playCreateInputType(text: string): void {
+    if (this.onCreateInputTypeCallback) {
+      this.onCreateInputTypeCallback(text);
+      console.log(`[ResourcePlayer] Playing create input type: "${text}"`);
+    } else {
+      console.warn(`[ResourcePlayer] No create input type callback registered`);
+    }
+  }
+
+  /**
+   * Trigger create input hide during playback
+   */
+  playCreateInputHide(cancelled: boolean): void {
+    if (this.onCreateInputHideCallback) {
+      this.onCreateInputHideCallback(cancelled);
+      console.log(`[ResourcePlayer] Playing create input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+    } else {
+      console.warn(`[ResourcePlayer] No create input hide callback registered`);
+    }
+  }
+
+  /**
+   * Trigger rename input show during playback
+   */
+  playRenameInputShow(path: string, currentName: string): void {
+    if (this.onRenameInputShowCallback) {
+      this.onRenameInputShowCallback(path, currentName);
+      console.log(`[ResourcePlayer] Playing rename input show: ${path} (${currentName})`);
+    } else {
+      console.warn(`[ResourcePlayer] No rename input show callback registered`);
+    }
+  }
+
+  /**
+   * Trigger rename input type during playback
+   */
+  playRenameInputType(text: string): void {
+    if (this.onRenameInputTypeCallback) {
+      this.onRenameInputTypeCallback(text);
+      console.log(`[ResourcePlayer] Playing rename input type: "${text}"`);
+    } else {
+      console.warn(`[ResourcePlayer] No rename input type callback registered`);
+    }
+  }
+
+  /**
+   * Trigger rename input hide during playback
+   */
+  playRenameInputHide(cancelled: boolean): void {
+    if (this.onRenameInputHideCallback) {
+      this.onRenameInputHideCallback(cancelled);
+      console.log(`[ResourcePlayer] Playing rename input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+    } else {
+      console.warn(`[ResourcePlayer] No rename input hide callback registered`);
+    }
+  }
+
+  /**
+   * Trigger popover show during playback
+   */
+  playPopoverShow(path: string): void {
+    if (this.onPopoverShowCallback) {
+      this.onPopoverShowCallback(path);
+      console.log(`[ResourcePlayer] Playing popover show: ${path}`);
+    } else {
+      console.warn(`[ResourcePlayer] No popover show callback registered`);
+    }
+  }
+
+  /**
+   * Trigger popover hide during playback
+   */
+  playPopoverHide(path: string): void {
+    if (this.onPopoverHideCallback) {
+      this.onPopoverHideCallback(path);
+      console.log(`[ResourcePlayer] Playing popover hide: ${path}`);
+    } else {
+      console.warn(`[ResourcePlayer] No popover hide callback registered`);
+    }
+  }
+
+  /**
    * Clean up resources
    */
   destroy(): void {
@@ -120,6 +296,14 @@ export class ResourcePlayer {
     this.onCreateCallback = null;
     this.onDeleteCallback = null;
     this.onMoveCallback = null;
+    this.onCreateInputShowCallback = null;
+    this.onCreateInputTypeCallback = null;
+    this.onCreateInputHideCallback = null;
+    this.onRenameInputShowCallback = null;
+    this.onRenameInputTypeCallback = null;
+    this.onRenameInputHideCallback = null;
+    this.onPopoverShowCallback = null;
+    this.onPopoverHideCallback = null;
     console.log('[ResourcePlayer] Destroyed');
   }
 }

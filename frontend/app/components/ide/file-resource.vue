@@ -3,33 +3,48 @@
 		:style="{ paddingLeft: depth * 8 + 'px' }" draggable="true" @dragstart="handleDragStart"
 		@dragend="handleDragEnd" @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave"
 		@drop.prevent="handleDrop" :class="{ 'bg-primary/20': isDragTarget && item.type === 'directory' }" @click="(event: MouseEvent) => {
-			if (isRenaming || event.ctrlKey || event.metaKey) {
+			if (isThisResourceRenaming || event.ctrlKey || event.metaKey) {
 				return;
-			}65
+			} 65
 			handleOpen(item);
 		}">
-		<UInput v-if="isRenaming" variant="subtle" type="text" v-model="newResourceName" autofocus
-			@blur.prevent="(event: FocusEvent) => isRenaming = false"
-			@keyup.prevent.enter="(ev: KeyboardEvent) => handleRenameSubmit(item.path)"
+		<UInput v-if="isThisResourceRenaming" variant="subtle" type="text" v-model="renameInputValue" autofocus @input="(event: Event) => {
+			const input = event.target as HTMLInputElement;
+			if (recorder) {
+				recorder.getResourceWatcher().recordRenameInputType(input.value);
+			}
+		}" @blur.prevent="(event: FocusEvent) => {
+				if (recorder) {
+					recorder.getResourceWatcher().recordRenameInputHide(true);
+				}
+				isRenaming = false;
+			}" @keyup.prevent.enter="(ev: KeyboardEvent) => handleRenameSubmit(item.path)"
 			@keyup.prevent.escape="handleRenameCancel" />
 		<div class="flex items-center w-full" v-else>
-			<widget-file-icon class="ml-1 mr-2 flex-none" :path="item.name" :is-directory="item.type && item.type === 'directory'"
-				:is-directory-open="item.isOpen" />
+			<widget-file-icon class="ml-1 mr-2 flex-none" :path="item.name"
+				:is-directory="item.type && item.type === 'directory'" :is-directory-open="item.isOpen" />
 			<p class="file-resource-name text-sm w-full max-w-[125px]">{{ item.name }}</p>
 		</div>
-		<UPopover absolute>
+		<UPopover absolute v-model:open="isThisPopoverOpen">
 			<UButton variant="soft" square size="xs" color="primary" icon="i-tdesign-more" @click.stop>
 			</UButton>
 			<template #content>
 				<div class="flex flex-col items-start justify-start p-1.5">
-					<UButton variant="ghost" size="xs" mr-1 v-show="!isRenaming" icon="i-tdesign:edit" @click.prevent="(event: MouseEvent) => {
-						openResource = false;
-						isRenaming = true;
-					}">
-					</UButton>
-					<UButton variant="ghost" color="error" size="xs" v-show="!isRenaming" icon="i-tdesign:delete"
+					<UButton variant="ghost" size="xs" mr-1 v-show="!isThisResourceRenaming" icon="i-tdesign:edit"
 						@click.prevent="(event: MouseEvent) => {
-							openResource = false;
+							isThisPopoverOpen = false;
+							isRenaming = true;
+							// Record rename input show
+							if (recorder) {
+								recorder.getResourceWatcher().recordRenameInputShow(item.path, item.name);
+								// Record initial text (current name)
+								recorder.getResourceWatcher().recordRenameInputType(item.name);
+							}
+						}">
+					</UButton>
+					<UButton variant="ghost" color="error" size="xs" v-show="!isThisResourceRenaming"
+						icon="i-tdesign:delete" @click.prevent="(event: MouseEvent) => {
+							isThisPopoverOpen = false;
 							emit('delete-resource', { targetPath: item.path });
 						}"></UButton>
 				</div>
@@ -60,21 +75,62 @@ const emit = defineEmits<{
 	(event: "move-resource", data: MoveEventType): void;
 }>();
 
-const { activeResources, toggleActive } = useIDE();
+const { activeResources, toggleActive, renameContext, popoverState } = useIDE();
+const { recorder } = useRecorder();
 const isRenaming = ref(false);
 const newResourceName = ref(item.name);
+const openResource = ref(false);
+
+// Computed property to check if this specific resource is being renamed (local or global state)
+const isThisResourceRenaming = computed(() => {
+	console.log('Checking if resource is renaming:', item.path, isRenaming.value, renameContext);
+	return isRenaming.value || (renameContext.isRenaming && renameContext.path === item.path);
+});
+
+// Computed property to check if this resource's popover is open (local or global state)
+const isThisPopoverOpen = computed({
+	get: () => {
+		return openResource.value || (popoverState.isOpen && popoverState.path === item.path);
+	},
+	set: (value: boolean) => {
+		openResource.value = value;
+		if (value && recorder.value) {
+			recorder.value.getResourceWatcher().recordPopoverShow(item.path);
+		} else if (!value && recorder.value) {
+			recorder.value.getResourceWatcher().recordPopoverHide(item.path);
+		}
+	}
+});
+
+// Computed property for the rename input value (use global state during playback)
+const renameInputValue = computed({
+	get: () => {
+		if (renameContext.isRenaming && renameContext.path === item.path) {
+			return renameContext.newName;
+		}
+		return newResourceName.value;
+	},
+	set: (value: string) => {
+		newResourceName.value = value;
+	}
+});
 const isDragTarget = ref(false);
 let folderOpenTimeout: NodeJS.Timeout | null = null;
 const renamingContainer = ref<HTMLElement | null>(null);
-const openResource = ref(false);
 
 onClickOutside(renamingContainer, () => {
 	if (isRenaming.value) {
+		// Don't record here - blur handler will record the hide event
 		isRenaming.value = false;
 	}
 });
 
 const handleRenameSubmit = (path: string) => {
+	// Record input hide event (submitted, not cancelled)
+	if (recorder.value) {
+		recorder.value.getResourceWatcher().recordRenameInputHide(false);
+	}
+
 	isRenaming.value = false;
 	const newPath = path.split("/").slice(0, -1).join("/") + "/" + newResourceName.value;
 	emit("move-resource", {
@@ -84,6 +140,11 @@ const handleRenameSubmit = (path: string) => {
 };
 
 const handleRenameCancel = () => {
+	// Record input hide event (cancelled)
+	if (recorder.value) {
+		recorder.value.getResourceWatcher().recordRenameInputHide(true);
+	}
+
 	newResourceName.value = item.name; // Reset to original name
 	isRenaming.value = false;
 };

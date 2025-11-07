@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload } from '~/types/events';
 import { EventTypes, isFullSnapshot } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -347,6 +347,14 @@ export class Player {
                 this.resourcePlayer.playCreate(createPayload.path, createPayload.type);
               },
             });
+            if (createPayload.type === 'f') {
+              actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.ideTabPlayer.playTabOpen(createPayload.path!, '');
+              },
+            });
+            }
             console.log(`[Player] Converted FILES_CREATE: ${createPayload.path} (${createPayload.type})`);
           }
           break;
@@ -378,6 +386,126 @@ export class Player {
               },
             });
             console.log(`[Player] Converted FILES_MOVE: ${movePayload.from} -> ${movePayload.to}`);
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_SHOW:
+          // Schedule create input show action
+          const inputShowPayload = event.p as FilesCreateInputShowPayload;
+          if (inputShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playCreateInputShow(inputShowPayload.type, inputShowPayload.parentPath);
+              },
+            });
+            console.log(`[Player] Converted FILES_CREATE_INPUT_SHOW: ${inputShowPayload.type} in ${inputShowPayload.parentPath}`);
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_TYPE:
+          // Schedule create input type action
+          const inputTypePayload = event.p as FilesCreateInputTypePayload;
+          if (inputTypePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playCreateInputType(inputTypePayload.text);
+              },
+            });
+            console.log(`[Player] Converted FILES_CREATE_INPUT_TYPE: "${inputTypePayload.text}"`);
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_HIDE:
+          // Schedule create input hide action
+          const inputHidePayload = event.p as FilesCreateInputHidePayload;
+          if (inputHidePayload !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playCreateInputHide(inputHidePayload.cancelled);
+              },
+            });
+            console.log(`[Player] Converted FILES_CREATE_INPUT_HIDE: ${inputHidePayload.cancelled ? 'cancelled' : 'submitted'}`);
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_SHOW:
+          // Schedule rename input show action
+          const renameShowPayload = event.p as FilesRenameInputShowPayload;
+          if (renameShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playRenameInputShow(renameShowPayload.path, renameShowPayload.currentName);
+              },
+            });
+            console.log(`[Player] Converted FILES_RENAME_INPUT_SHOW: ${renameShowPayload.path} (${renameShowPayload.currentName})`);
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_TYPE:
+          // Schedule rename input type action
+          const renameTypePayload = event.p as FilesRenameInputTypePayload;
+          if (renameTypePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playRenameInputType(renameTypePayload.text);
+              },
+            });
+            console.log(`[Player] Converted FILES_RENAME_INPUT_TYPE: "${renameTypePayload.text}"`);
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_HIDE:
+          // Schedule rename input hide action
+          const renameHidePayload = event.p as FilesRenameInputHidePayload;
+          if (renameHidePayload !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playRenameInputHide(renameHidePayload.cancelled);
+              },
+            });
+            console.log(`[Player] Converted FILES_RENAME_INPUT_HIDE: ${renameHidePayload.cancelled ? 'cancelled' : 'submitted'}`);
+          }
+          break;
+
+        case EventTypes.FILES_POPOVER_SHOW:
+          // Schedule popover show action
+          const popoverShowPayload = event.p as FilesPopoverShowPayload;
+          if (popoverShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playPopoverShow(popoverShowPayload.path);
+              },
+            });
+            console.log(`[Player] Converted FILES_POPOVER_SHOW: ${popoverShowPayload.path}`);
+          }
+          break;
+
+        case EventTypes.FILES_POPOVER_HIDE:
+          // Schedule popover hide action
+          const popoverHidePayload = event.p as FilesPopoverHidePayload;
+          if (popoverHidePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.resourcePlayer.playPopoverHide(popoverHidePayload.path);
+              },
+            });
+            console.log(`[Player] Converted FILES_POPOVER_HIDE: ${popoverHidePayload.path}`);
           }
           break;
 

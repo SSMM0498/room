@@ -32,8 +32,9 @@
       </div>
       <UInput id="input-create-resource" variant="subtle" v-if="resourceCreation.isCreating && (activeResources.length === 0 || activeResources[0]!!.path === '/workspace')
       " type="text" v-model="resourceCreation.name" autofocus
-        @blur.prevent="(event: FocusEvent) => resourceCreation.isCreating = false"
-        @keyup.prevent.escape="(event: KeyboardEvent) => resourceCreation.isCreating = false"
+        @input="handleCreateInputChange"
+        @blur.prevent="handleCreateInputBlur"
+        @keyup.prevent.escape="handleCreateInputEscape"
         @keyup.prevent.enter="handleCreateSubmit" />
     </div>
     <USeparator class="w-full" :ui="{ border: 'border-gray-200 dark:border-gray-700' }" />
@@ -189,6 +190,27 @@ const handleDrop = async (event: DragEvent) => {
       newPath: newPath
     });
   });
+};
+
+const handleCreateInputChange = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (recorder.value) {
+    recorder.value.getResourceWatcher().recordCreateInputType(input.value);
+  }
+};
+
+const handleCreateInputBlur = (event: FocusEvent) => {
+  if (recorder.value) {
+    recorder.value.getResourceWatcher().recordCreateInputHide(true);
+  }
+  resourceCreation.isCreating = false;
+};
+
+const handleCreateInputEscape = (event: KeyboardEvent) => {
+  if (recorder.value) {
+    recorder.value.getResourceWatcher().recordCreateInputHide(true);
+  }
+  resourceCreation.isCreating = false;
 };
 
 const handleBackgroundClick = (event: MouseEvent) => {

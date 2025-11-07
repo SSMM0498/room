@@ -187,6 +187,50 @@ export interface EditorPastePayload {
   pos?: [number, number];
 }
 
+export interface FilesCreateInputShowPayload {
+  /** Type of resource being created */
+  type: 'file' | 'folder';
+  /** Parent folder path */
+  parentPath: string;
+}
+
+export interface FilesCreateInputTypePayload {
+  /** Current text in the input */
+  text: string;
+}
+
+export interface FilesCreateInputHidePayload {
+  /** Whether creation was cancelled (true) or submitted (false) */
+  cancelled: boolean;
+}
+
+export interface FilesRenameInputShowPayload {
+  /** Path of resource being renamed */
+  path: string;
+  /** Current name of the resource */
+  currentName: string;
+}
+
+export interface FilesRenameInputTypePayload {
+  /** Current text in the input */
+  text: string;
+}
+
+export interface FilesRenameInputHidePayload {
+  /** Whether rename was cancelled (true) or submitted (false) */
+  cancelled: boolean;
+}
+
+export interface FilesPopoverShowPayload {
+  /** Path of resource whose popover is shown */
+  path: string;
+}
+
+export interface FilesPopoverHidePayload {
+  /** Path of resource whose popover is hidden */
+  path: string;
+}
+
 // ============================================================================
 // CATEGORY 2: UI STATE (Visual State of the IDE)
 // ============================================================================
@@ -352,6 +396,14 @@ export type AnyActionPacket =
   | ActionPacket<MouseStylePayload>
   | ActionPacket<EditorTypePayload>
   | ActionPacket<EditorPastePayload>
+  | ActionPacket<FilesCreateInputShowPayload>
+  | ActionPacket<FilesCreateInputTypePayload>
+  | ActionPacket<FilesCreateInputHidePayload>
+  | ActionPacket<FilesRenameInputShowPayload>
+  | ActionPacket<FilesRenameInputTypePayload>
+  | ActionPacket<FilesRenameInputHidePayload>
+  | ActionPacket<FilesPopoverShowPayload>
+  | ActionPacket<FilesPopoverHidePayload>
   // UI State
   | ActionPacket<EditorSelectPayload>
   | ActionPacket<EditorScrollPayload>
@@ -390,6 +442,14 @@ export const EventTypes = {
   MOUSE_STYLE: 'mouse:style',
   EDITOR_TYPE: 'editor:type',
   EDITOR_PASTE: 'editor:paste',
+  FILES_CREATE_INPUT_SHOW: 'files:create:input:show',
+  FILES_CREATE_INPUT_TYPE: 'files:create:input:type',
+  FILES_CREATE_INPUT_HIDE: 'files:create:input:hide',
+  FILES_RENAME_INPUT_SHOW: 'files:rename:input:show',
+  FILES_RENAME_INPUT_TYPE: 'files:rename:input:type',
+  FILES_RENAME_INPUT_HIDE: 'files:rename:input:hide',
+  FILES_POPOVER_SHOW: 'files:popover:show',
+  FILES_POPOVER_HIDE: 'files:popover:hide',
 
   // UI State
   EDITOR_SELECT: 'editor:select',
