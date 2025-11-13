@@ -104,6 +104,9 @@ const slug = route.params.slug as string;
 // Recording state
 let recordingTimerInterval: number | null = null;
 
+// Mouse position tracking using VueUse
+const { x: mouseX, y: mouseY } = useMouse();
+
 // Initialize recorder with full structure but only tab tracking active
 onMounted(() => {
   initializeRecorder({
@@ -112,8 +115,10 @@ onMounted(() => {
       const _openFolders = openFolders.value;
       const _openTabs = openTabs.tabs.map(tab => tab.filePath)
       const _activeTab = activeTab.filePath
+      const _mouseX = mouseX.value;
+      const _mouseY = mouseY.value;
       return {
-        mouse: { x: 0, y: 0 },
+        mouse: { x: _mouseX, y: _mouseY },
         scrolls: {},
         ide: {
           activePanel: 'editor',

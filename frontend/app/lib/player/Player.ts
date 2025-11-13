@@ -206,6 +206,17 @@ export class Player {
         const snapshotPayload = event.p as SnapshotPayload;
         const actionDelay = event.t - this.baselineTime;
 
+        // Apply mouse position
+        if (snapshotPayload.ui?.mouse) {
+          actions.push({
+            delay: actionDelay,
+            doAction: () => {
+              this.cursorPlayer.setPosition(snapshotPayload.ui.mouse.x, snapshotPayload.ui.mouse.y);
+            },
+          });
+          console.log(`[Player] Converted FULL_SNAPSHOT mouse position at ${actionDelay}ms (${snapshotPayload.ui.mouse.x}, ${snapshotPayload.ui.mouse.y})`);
+        }
+
         // Apply tab state
         if (snapshotPayload.ui?.ide?.tabs?.editor) {
           actions.push({
