@@ -68,6 +68,7 @@ export interface IDEState {
  */
 export interface FileTreeState {
   expandedPaths: string[];
+  tree: any | null; // Directory tree structure (using any to avoid circular dependency with file-tree types)
 }
 
 /**

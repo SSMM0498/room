@@ -38,6 +38,9 @@ export class Player {
   // Audio element reference
   private audioElement: HTMLAudioElement | null = null;
 
+  // File tree restoration callback
+  private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
+
   constructor(config: PlayerConfig = {}) {
     this.stateMachine = new PlayerStateMachine();
     this.scheduler = new ActionTimelineScheduler();
@@ -93,6 +96,13 @@ export class Player {
    */
   getResourcePlayer(): ResourcePlayer {
     return this.resourcePlayer;
+  }
+
+  /**
+   * Set callback for file tree restoration from snapshots
+   */
+  setOnFileTreeRestore(callback: (expandedPaths: string[], tree: any | null) => void): void {
+    this.onFileTreeRestoreCallback = callback;
   }
 
   /**
@@ -191,11 +201,13 @@ export class Player {
         continue;
       }
 
-      // For full snapshots, apply tab state immediately
+      // For full snapshots, apply tab state and file tree state immediately
       if (isFullSnapshot(event)) {
         const snapshotPayload = event.p as SnapshotPayload;
+        const actionDelay = event.t - this.baselineTime;
+
+        // Apply tab state
         if (snapshotPayload.ui?.ide?.tabs?.editor) {
-          const actionDelay = event.t - this.baselineTime;
           actions.push({
             delay: actionDelay,
             doAction: () => {
@@ -207,6 +219,23 @@ export class Player {
           });
           console.log(`[Player] Converted FULL_SNAPSHOT tabs state at ${actionDelay}ms`);
         }
+
+        // Apply file tree state
+        if (snapshotPayload.ui?.fileTree && this.onFileTreeRestoreCallback) {
+          actions.push({
+            delay: actionDelay,
+            doAction: () => {
+              if (this.onFileTreeRestoreCallback) {
+                this.onFileTreeRestoreCallback(
+                  snapshotPayload.ui.fileTree.expandedPaths,
+                  snapshotPayload.ui.fileTree.tree
+                );
+              }
+            },
+          });
+          console.log(`[Player] Converted FULL_SNAPSHOT file tree state at ${actionDelay}ms with ${snapshotPayload.ui.fileTree.expandedPaths.length} expanded paths`);
+        }
+
         continue;
       }
 

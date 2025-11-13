@@ -78,7 +78,7 @@ const {
   openTabs,
   activeTab,
 } = useIDE();
-
+const route = useRoute();
 const { socketClient } = useSocket();
 const { recorder } = useRecorder();
 
@@ -221,10 +221,14 @@ const handleBackgroundClick = (event: MouseEvent) => {
 
 onMounted(() => {
   socketClient.init(); // Initialize backend watcher event loop
-  folderReadContexts.value.set("/workspace", 'initial');
-  socketClient.readFolder({
-    targetPath: "/workspace",
-  });
+
+  // In playing mode, the file tree will be restored from snapshots
+  if (route.name && (route.name as string).startsWith('teach')) {
+    folderReadContexts.value.set("/workspace", 'initial');
+    socketClient.readFolder({
+      targetPath: "/workspace",
+    });
+  }
   // Tab callbacks are now handled in usePlayer composable
 });
 
@@ -357,10 +361,28 @@ const openFolder = (data: ReadFolderEventType) => {
     socketClient.readFolder(data);
     // Note: Recording happens in updateDirectoryTreeWithFolderContents after we get the content
   } else {
-    // Closing folder - record immediately since there's no content
+    // Closing folder - update tree structure and record
+    const parentFoldersTillRoot = data.targetPath
+      .split("/")
+      .splice(1)
+      .join(".content.");
+
+    const newDirectoryTree: DirectoryTreeType = JSON.parse(
+      JSON.stringify(objectPathImmutable.get(directoryTree, ""))
+    );
+    const currentDir = objectPath.get(newDirectoryTree, parentFoldersTillRoot) as any;
+
+    if (currentDir && typeof currentDir === 'object') {
+      currentDir.isOpen = false;
+      objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDir);
+      setDirectoryTree(newDirectoryTree);
+    }
+
+    // Record collapse event
     if (recorder.value) {
       recorder.value.getResourceWatcher().recordFolderExpand(data.targetPath, false);
     }
+
     // Notify backend to stop watching
     socketClient.collapseFolder(data.targetPath);
   }

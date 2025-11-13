@@ -107,28 +107,34 @@ let recordingTimerInterval: number | null = null;
 // Initialize recorder with full structure but only tab tracking active
 onMounted(() => {
   initializeRecorder({
-    getUIState: () => ({
-      mouse: { x: 0, y: 0 },
-      scrolls: {},
-      ide: {
-        activePanel: 'editor',
-        tabs: {
-          editor: {
-            openFiles: openTabs.tabs.map(tab => tab.filePath),
-            activeFile: activeTab.filePath || null
-          },
-          terminal: {
-            openTerminals: [],
-            activeTerminal: null
+    getUIState: () => {
+      const _directoryTree = { workspace: directoryTree.workspace };
+      const _openFolders = openFolders.value;
+      const _openTabs = openTabs.tabs.map(tab => tab.filePath)
+      const _activeTab = activeTab.filePath
+      return {
+        mouse: { x: 0, y: 0 },
+        scrolls: {},
+        ide: {
+          activePanel: 'editor',
+          tabs: {
+            editor: {
+              openFiles: _openTabs,
+              activeFile: _activeTab || null
+            },
+            terminal: {
+              openTerminals: [],
+              activeTerminal: null
+            },
           },
         },
-      },
-      fileTree: {
-        expandedPaths: [],
-        tree: null
-      },
-      browser: { url: '' },
-    }),
+        fileTree: {
+          expandedPaths: _openFolders,
+          tree: _directoryTree || null
+        },
+        browser: { url: '' },
+      }
+    },
     getWorkspaceState: () => {
       const files: Record<string, string> = {};
       for (const tab of openTabs.tabs) {

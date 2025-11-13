@@ -4,6 +4,7 @@ import type { PlayerConfig, PlayerState } from '~/lib/player';
 import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
 import type { ActiveFile } from '../../types/file-tree';
 import objectPath from 'object-path';
+import { debug } from 'yaml/util';
 
 export const usePlayer = () => {
   // Core Player instance
@@ -16,6 +17,47 @@ export const usePlayer = () => {
   const duration = ref(0);
   const playerState = ref<PlayerState>('idle');
   const audioElement = ref<HTMLAudioElement | null>(null);
+
+  // Callback for file tree restoration from snapshots
+  const onFileTreeRestore = (expandedPaths: string[], tree: any | null) => {
+    console.log(`[Player] Restoring file tree from snapshot with ${expandedPaths.length} expanded paths`);
+
+    // Restore directory tree if available
+    if (tree) {
+      // Deep clone the tree to avoid mutating the original
+      const restoredTree = JSON.parse(JSON.stringify(tree));
+
+      // Sync isOpen flags with expandedPaths
+      const syncIsOpenFlags = (node: any, currentPath: string) => {
+        if (!node || typeof node !== 'object') return;
+
+        // Update isOpen flag based on expandedPaths
+        if (node.type === 'directory') {
+          node.isOpen = expandedPaths.includes(currentPath);
+        }
+
+        // Recursively sync children
+        if (node.content && typeof node.content === 'object') {
+          Object.values(node.content).forEach((child: any) => {
+            if (child && child.path) {
+              syncIsOpenFlags(child, child.path);
+            }
+          });
+        }
+      };
+
+      // Start syncing from workspace root
+      if (restoredTree.workspace) {
+        syncIsOpenFlags(restoredTree.workspace, restoredTree.workspace.path);
+      }
+
+      setDirectoryTree(restoredTree);
+      console.log(`[Player] Directory tree restored and synced with expanded paths`);
+    }
+
+    // Restore expanded folders AFTER setting the tree
+    openFolders.value = [...expandedPaths];
+  };
 
   // Watch player instance and set up tab callbacks
   watch(player, (newPlayer) => {
@@ -83,10 +125,15 @@ export const usePlayer = () => {
       ) => {
         const isCurrentlyOpen = openFolders.value.includes(path);
 
-        if (expanded && !isCurrentlyOpen) {
-          toggleOpenFolder(path);
+        if (expanded) {
+          // Add to openFolders if not already there
+          if (!isCurrentlyOpen) {
+            toggleOpenFolder(path);
+          }
 
-          // If we have saved content from recording, reconstruct tree directly
+          // Always apply tree content if we have saved content from recording
+          // This is important because snapshots may restore the expanded state
+          // but not the folder contents
           if (content && content.length > 0) {
             const parentFoldersTillRoot = path
               .split("/")
@@ -117,15 +164,34 @@ export const usePlayer = () => {
               setDirectoryTree(newDirectoryTree);
               console.log(`[Player] Playing folder expand with saved content: ${path} (${content.length} items)`);
             }
-          } else {
-            // No saved content, read from socket (fallback for old recordings)
+          } else if (!isCurrentlyOpen) {
+            // No saved content and folder wasn't already open, read from socket (fallback for old recordings)
             socketClient.readFolder({ targetPath: path });
             console.log(`[Player] Playing folder expand (reading from socket): ${path}`);
           }
-        } else if (!expanded && isCurrentlyOpen) {
-          toggleOpenFolder(path);
-          socketClient.collapseFolder(path);
-          console.log(`[Player] Playing folder collapse: ${path}`);
+        } else {
+          // Collapse: remove from openFolders if currently open
+          if (isCurrentlyOpen) {
+            toggleOpenFolder(path);
+
+            // Update tree structure to set isOpen to false
+            const parentFoldersTillRoot = path
+              .split("/")
+              .splice(1)
+              .join(".content.");
+
+            const newDirectoryTree = JSON.parse(JSON.stringify(directoryTree));
+            const currentDir = objectPath.get(newDirectoryTree, parentFoldersTillRoot) as any;
+
+            if (currentDir && typeof currentDir === 'object') {
+              currentDir.isOpen = false;
+              objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDir);
+              setDirectoryTree(newDirectoryTree);
+            }
+
+            socketClient.collapseFolder(path);
+            console.log(`[Player] Playing folder collapse: ${path}`);
+          }
         }
       });
 
@@ -209,6 +275,9 @@ export const usePlayer = () => {
         popoverState.path = '';
         console.log(`[Player] Playing popover hide: ${path}`);
       });
+
+      // Register file tree restoration callback
+      newPlayer.setOnFileTreeRestore(onFileTreeRestore);
 
       console.log('[Player] Tab and resource callbacks registered');
     }
