@@ -1,7 +1,7 @@
 <template>
   <article
     v-if="!(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id)"
-    :class="{ 'py-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }"
+    :class="{ 'before:absolute before:top-0 before:left-0 hover:before:h-full hover:before:w-full before:rounded-[5px] before:bg-elevated before:transition-transform before:duration-100 hover:before:scale-106 before:-z-100': !(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id), 'py-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }" class="relative"
     :id="`${course.section.toLowerCase()}-${course.id}`">
     <UButton
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
