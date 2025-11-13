@@ -3,6 +3,7 @@
  *
  * Reconstructs the ground truth state at any point in time by finding the
  * nearest full snapshot and applying deltas forward.
+ * Also applies the reconstructed state to the UI players.
  */
 
 import type {
@@ -14,6 +15,8 @@ import type {
   DeltaFileState,
 } from '~/types/events';
 import { isFullSnapshot, isDeltaSnapshot, isStateCommit } from '~/types/events';
+import type { CursorMovementPlayer } from './CursorMovementPlayer';
+import type { IdeTabPlayer } from './IdeTabPlayer';
 
 export class StateReconstructor {
   private groundTruthState: {
@@ -23,6 +26,24 @@ export class StateReconstructor {
       ui: null,
       workspace: null,
     };
+
+  // References to UI players for applying state
+  private cursorPlayer: CursorMovementPlayer | null = null;
+  private ideTabPlayer: IdeTabPlayer | null = null;
+  private fileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
+
+  /**
+   * Set references to UI players for state application
+   */
+  setUIPlayers(
+    cursorPlayer: CursorMovementPlayer,
+    ideTabPlayer: IdeTabPlayer,
+    fileTreeRestoreCallback: (expandedPaths: string[], tree: any | null) => void
+  ): void {
+    this.cursorPlayer = cursorPlayer;
+    this.ideTabPlayer = ideTabPlayer;
+    this.fileTreeRestoreCallback = fileTreeRestoreCallback;
+  }
 
   /**
    * Reconstruct the ground truth state at a specific time
@@ -126,6 +147,42 @@ export class StateReconstructor {
       terminals: { ...state.terminals },
       processes: [...state.processes],
     };
+  }
+
+  /**
+   * Apply the reconstructed ground truth state to the UI players
+   */
+  applyReconstructedStateToUI(): void {
+    const { ui, workspace } = this.groundTruthState;
+
+    if (!ui) {
+      console.warn('[StateReconstructor] No UI state to apply');
+      return;
+    }
+
+    // Apply mouse position
+    if (ui.mouse && this.cursorPlayer) {
+      this.cursorPlayer.setPosition(ui.mouse.x, ui.mouse.y);
+      console.log(`[StateReconstructor] Applied mouse position: (${ui.mouse.x}, ${ui.mouse.y})`);
+    }
+
+    // Apply tab state
+    if (ui.ide?.tabs?.editor && workspace && this.ideTabPlayer) {
+      this.ideTabPlayer.applyTabSnapshot(
+        ui.ide.tabs.editor,
+        (workspace.files as Record<string, string>) || {}
+      );
+      console.log(`[StateReconstructor] Applied tab state: ${ui.ide.tabs.editor.openFiles.length} tabs, active: ${ui.ide.tabs.editor.activeFile}`);
+    }
+
+    // Apply file tree state
+    if (ui.fileTree && this.fileTreeRestoreCallback) {
+      this.fileTreeRestoreCallback(
+        ui.fileTree.expandedPaths,
+        ui.fileTree.tree
+      );
+      console.log(`[StateReconstructor] Applied file tree state: ${ui.fileTree.expandedPaths.length} expanded paths`);
+    }
   }
 
   /**

@@ -57,6 +57,20 @@ export class Player {
   }
 
   /**
+   * Initialize the state reconstructor with UI player references
+   * Called after file tree callback is set
+   */
+  private initializeStateReconstructor(): void {
+    if (this.onFileTreeRestoreCallback) {
+      this.stateReconstructor.setUIPlayers(
+        this.cursorPlayer,
+        this.ideTabPlayer,
+        this.onFileTreeRestoreCallback
+      );
+    }
+  }
+
+  /**
    * Setup the style player with cursor element reference
    */
   private setupStylePlayer(): void {
@@ -103,6 +117,8 @@ export class Player {
    */
   setOnFileTreeRestore(callback: (expandedPaths: string[], tree: any | null) => void): void {
     this.onFileTreeRestoreCallback = callback;
+    // Initialize the state reconstructor with UI player references
+    this.initializeStateReconstructor();
   }
 
   /**
@@ -653,7 +669,11 @@ export class Player {
       const absoluteTime = this.baselineTime + time;
 
       // Reconstruct ground truth state at target time
+      // This loads the last full snapshot + all deltas before the target time
       await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
+
+      // Apply the reconstructed state to the UI immediately
+      this.stateReconstructor.applyReconstructedStateToUI();
 
       // Clear and rebuild actions from seek point
       this.scheduler.clear();
