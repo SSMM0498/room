@@ -110,10 +110,13 @@ const {
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
 const sessionState = ref<SessionState>('checklist');
 
-const loading = ref(true);
+const loading = ref(false);
 const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
 const slug = route.params.slug as string;
+const workspaceUrl = ref<string>('');
+const workspaceInitialized = ref(false);
+const lessonCourseId = ref<string>('');
 
 // Center icon overlay state
 const centerIcon = reactive({
@@ -199,13 +202,13 @@ onMounted(async () => {
   // Get the course ID based on course type
   // For 'cursus' type, get the course ID from the playlist item
   // For 'single' type, use the current course ID directly
-  const lessonCourseId = currentCourse.value.type === 'cursus'
+  lessonCourseId.value = currentCourse.value.type === 'cursus'
     ? activePlaylistItem.value!.course
     : currentCourse.value.id;
 
   // Load recording content
   try {
-    const courseContent = await fetchCourseContent(lessonCourseId);
+    const courseContent = await fetchCourseContent(lessonCourseId.value);
 
     if (courseContent) {
       console.log('[Learn] Loading recording content...');
@@ -224,7 +227,7 @@ onMounted(async () => {
 
       toast.add({
         title: 'Recording Loaded',
-        description: 'Ready to play the lesson.',
+        description: 'Ready to play the lesson. Workspace will start when you pause.',
         color: 'success',
         icon: 'i-heroicons-play-circle',
       });
@@ -246,14 +249,22 @@ onMounted(async () => {
     });
   }
 
-  // Start the workspace for this specific lesson
-  await startWorkspace(lessonCourseId);
+  // Note: Workspace will be started on first pause, not on mount
 });
 
-// Start workspace and connect socket
+// Start workspace and connect socket (called on first pause)
 const startWorkspace = async (courseId: string) => {
   try {
+    loading.value = true;
     sessionState.value = 'starting';
+
+    toast.add({
+      title: 'Starting Workspace',
+      description: 'Initializing your development environment...',
+      color: 'primary',
+      icon: 'i-heroicons-cog-6-tooth',
+      duration: 3000
+    });
 
     const workspace = await ensureWorkspaceIsRunning(courseId);
 
@@ -274,6 +285,9 @@ const startWorkspace = async (courseId: string) => {
     const k8sName = `${workspace.name}`;
     const workspaceWsUrl = getSocketUrl(k8sName);
 
+    // Store workspace URL for reconnection
+    workspaceUrl.value = workspaceWsUrl;
+
     console.log(`[Learn] Connecting to WebSocket at: ${workspaceWsUrl}`);
 
     // Initialize the socket connection
@@ -285,12 +299,14 @@ const startWorkspace = async (courseId: string) => {
       isConnected.value = true;
       setSocketConnected(true);
       loading.value = false;
+      sessionState.value = 'ready';
 
       // Start file watching
       setupFileWatching();
 
       toast.add({
         title: 'IDE Connected!',
+        description: 'You can now interact with the workspace.',
         color: 'success'
       });
     });
@@ -359,6 +375,57 @@ const setupFileWatching = () => {
     }
   });
 };
+
+// Watch player state and manage socket connection
+// Start workspace on first pause, then disconnect when playing, reconnect when paused
+watch(isPlaying, async (playing) => {
+  console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value);
+
+  if (playing) {
+    // Disconnect socket during playback - we're using recorded events
+    if (socketClient.isConnected) {
+      console.log('[Learn] Disconnecting socket during playback');
+      socketClient.disconnect();
+      isConnected.value = false;
+      setSocketConnected(false);
+    }
+  } else if (isReady.value) {
+    // Paused - need workspace for interaction
+    if (!workspaceInitialized.value && lessonCourseId.value) {
+      // First pause - initialize workspace
+      console.log('[Learn] First pause - starting workspace');
+      workspaceInitialized.value = true;
+      await startWorkspace(lessonCourseId.value);
+    } else if (workspaceUrl.value && !socketClient.isConnected) {
+      // Subsequent pause - reconnect to existing workspace
+      console.log('[Learn] Reconnecting socket while paused');
+
+      socketClient.initialize(workspaceUrl.value);
+      socketClient.connect(() => {
+        console.log('[Learn] Socket reconnected successfully');
+        isConnected.value = true;
+        setSocketConnected(true);
+        setupFileWatching();
+
+        toast.add({
+          title: 'IDE Connected',
+          description: 'You can now interact with the workspace.',
+          color: 'success',
+          duration: 2000
+        });
+      });
+
+      socketClient.onConnectError((err: Error) => {
+        console.error('[Learn] Socket reconnection error:', err);
+        toast.add({
+          title: 'Reconnection Error',
+          description: 'Failed to reconnect to workspace.',
+          color: 'error'
+        });
+      });
+    }
+  }
+});
 
 // Navigation between lessons
 const navigateToPrevious = () => {

@@ -10,13 +10,59 @@ export const usePlayer = () => {
   // Core Player instance
   const player = ref<Player | null>(null);
   const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
-  const { socketClient } = useSocket();
 
   // Reactive state
   const currentTime = ref(0);
   const duration = ref(0);
   const playerState = ref<PlayerState>('idle');
   const audioElement = ref<HTMLAudioElement | null>(null);
+
+  // Helper functions for tree manipulation
+  const pathToObjectPath = (path: string): string => {
+    return path.split("/").splice(1).join(".content.");
+  };
+
+  const cloneTree = () => {
+    return JSON.parse(JSON.stringify(directoryTree));
+  };
+
+  const getDirectoryAtPath = (tree: any, path: string): any => {
+    const objectPathStr = pathToObjectPath(path);
+    return objectPath.get(tree, objectPathStr);
+  };
+
+  const updateTreeAtPath = (tree: any, path: string, directory: any) => {
+    const objectPathStr = pathToObjectPath(path);
+    objectPath.set(tree, objectPathStr, directory);
+    setDirectoryTree(tree);
+  };
+
+  const parseResourcePath = (path: string): { parentPath: string; resourceName: string } => {
+    const lastSlashIndex = path.lastIndexOf('/');
+    return {
+      parentPath: path.substring(0, lastSlashIndex),
+      resourceName: path.substring(lastSlashIndex + 1)
+    };
+  };
+
+  // Sort directory contents: folders first (alphabetically), then files (alphabetically)
+  const sortDirectoryContents = (directory: any) => {
+    if (!directory || !directory.content) return;
+
+    const entries = Object.entries(directory.content);
+    const sorted = entries.sort(([, a]: [string, any], [, b]: [string, any]) => {
+      if (a.type === b.type) {
+        return a.name.localeCompare(b.name);
+      }
+      return a.type === 'directory' ? -1 : 1;
+    });
+
+    // Rebuild content object in sorted order
+    directory.content = {};
+    sorted.forEach(([key, value]) => {
+      directory.content[key] = value;
+    });
+  };
 
   // Callback for file tree restoration from snapshots
   const onFileTreeRestore = (expandedPaths: string[], tree: any | null) => {
@@ -135,15 +181,8 @@ export const usePlayer = () => {
           // This is important because snapshots may restore the expanded state
           // but not the folder contents
           if (content && content.length > 0) {
-            const parentFoldersTillRoot = path
-              .split("/")
-              .splice(1)
-              .join(".content.");
-
-            const newDirectoryTree = JSON.parse(JSON.stringify(directoryTree));
-
-            // Get the current directory object using objectPath
-            const currentDir = objectPath.get(newDirectoryTree, parentFoldersTillRoot) as any;
+            const newTree = cloneTree();
+            const currentDir = getDirectoryAtPath(newTree, path);
 
             // Rebuild content from saved data
             if (currentDir && typeof currentDir === 'object') {
@@ -160,14 +199,9 @@ export const usePlayer = () => {
                 };
               });
 
-              objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDir);
-              setDirectoryTree(newDirectoryTree);
+              updateTreeAtPath(newTree, path, currentDir);
               console.log(`[Player] Playing folder expand with saved content: ${path} (${content.length} items)`);
             }
-          } else if (!isCurrentlyOpen) {
-            // No saved content and folder wasn't already open, read from socket (fallback for old recordings)
-            socketClient.readFolder({ targetPath: path });
-            console.log(`[Player] Playing folder expand (reading from socket): ${path}`);
           }
         } else {
           // Collapse: remove from openFolders if currently open
@@ -175,21 +209,14 @@ export const usePlayer = () => {
             toggleOpenFolder(path);
 
             // Update tree structure to set isOpen to false
-            const parentFoldersTillRoot = path
-              .split("/")
-              .splice(1)
-              .join(".content.");
-
-            const newDirectoryTree = JSON.parse(JSON.stringify(directoryTree));
-            const currentDir = objectPath.get(newDirectoryTree, parentFoldersTillRoot) as any;
+            const newTree = cloneTree();
+            const currentDir = getDirectoryAtPath(newTree, path);
 
             if (currentDir && typeof currentDir === 'object') {
               currentDir.isOpen = false;
-              objectPath.set(newDirectoryTree, parentFoldersTillRoot, currentDir);
-              setDirectoryTree(newDirectoryTree);
+              updateTreeAtPath(newTree, path, currentDir);
             }
 
-            socketClient.collapseFolder(path);
             console.log(`[Player] Playing folder collapse: ${path}`);
           }
         }
@@ -197,25 +224,118 @@ export const usePlayer = () => {
 
       // Register file/folder creation callback
       newPlayer.getResourcePlayer().setOnCreate((path: string, type: 'f' | 'd') => {
-        if (type === 'f') {
-          socketClient.createFile({ targetPath: path });
-          console.log(`[Player] Playing file create: ${path}`);
-        } else {
-          socketClient.createFolder({ targetPath: path });
-          console.log(`[Player] Playing folder create: ${path}`);
+        const { parentPath, resourceName } = parseResourcePath(path);
+        const newTree = cloneTree();
+        const parentDir = getDirectoryAtPath(newTree, parentPath);
+
+        if (parentDir && typeof parentDir === 'object') {
+          // Initialize content object if it doesn't exist
+          if (!parentDir.content) {
+            parentDir.content = {};
+          }
+
+          // Add new resource to parent's content
+          parentDir.content[resourceName] = {
+            type: type === 'f' ? 'file' : 'directory',
+            isOpen: false,
+            path: path,
+            name: resourceName,
+            content: {},
+          };
+
+          // Sort directory contents (folders first, then alphabetically)
+          sortDirectoryContents(parentDir);
+
+          updateTreeAtPath(newTree, parentPath, parentDir);
+          console.log(`[Player] Playing ${type === 'f' ? 'file' : 'folder'} create: ${path}`);
         }
       });
 
       // Register file/folder deletion callback
       newPlayer.getResourcePlayer().setOnDelete((path: string) => {
-        socketClient.deleteResource({ targetPath: path });
-        console.log(`[Player] Playing resource delete: ${path}`);
+        const { parentPath, resourceName } = parseResourcePath(path);
+        const newTree = cloneTree();
+        const parentDir = getDirectoryAtPath(newTree, parentPath);
+
+        if (parentDir && typeof parentDir === 'object' && parentDir.content) {
+          // Remove the resource from parent's content
+          delete parentDir.content[resourceName];
+
+          updateTreeAtPath(newTree, parentPath, parentDir);
+          console.log(`[Player] Playing resource delete: ${path}`);
+        }
       });
 
       // Register file/folder move callback
       newPlayer.getResourcePlayer().setOnMove((from: string, to: string) => {
-        socketClient.moveResource({ targetPath: from, newPath: to });
-        console.log(`[Player] Playing resource move: ${from} -> ${to}`);
+        const { parentPath: oldParentPath, resourceName: oldResourceName } = parseResourcePath(from);
+        const { parentPath: newParentPath, resourceName: newResourceName } = parseResourcePath(to);
+
+        const newTree = cloneTree();
+        const oldParentDir = getDirectoryAtPath(newTree, oldParentPath);
+
+        if (oldParentDir && typeof oldParentDir === 'object' && oldParentDir.content) {
+          // Get the resource object before removing it
+          const resourceObj = oldParentDir.content[oldResourceName];
+
+          if (resourceObj) {
+            // Remove from old location
+            delete oldParentDir.content[oldResourceName];
+
+            // Get the new parent directory (using the already updated tree)
+            const newParentDir = getDirectoryAtPath(newTree, newParentPath);
+
+            if (newParentDir && typeof newParentDir === 'object') {
+              // Initialize content object if it doesn't exist
+              if (!newParentDir.content) {
+                newParentDir.content = {};
+              }
+
+              // Update resource object with new path and name
+              resourceObj.path = to;
+              resourceObj.name = newResourceName;
+
+              // Add to new location
+              newParentDir.content[newResourceName] = resourceObj;
+
+              // Sort both old and new parent directories
+              sortDirectoryContents(oldParentDir);
+              sortDirectoryContents(newParentDir);
+
+              // Update both parent directories in the tree
+              updateTreeAtPath(newTree, oldParentPath, oldParentDir);
+              if (oldParentPath !== newParentPath) {
+                // Need to get the updated tree and set the new parent
+                const updatedNewParentDir = getDirectoryAtPath(newTree, newParentPath);
+                updateTreeAtPath(newTree, newParentPath, updatedNewParentDir);
+              }
+
+              // Update open tabs if a file or files within a directory were renamed/moved
+              const tabsToUpdate = openTabs.tabs.filter(tab =>
+                tab.filePath === from || tab.filePath.startsWith(from + '/')
+              );
+
+              tabsToUpdate.forEach((tab) => {
+                const tabIndex = openTabs.tabs.findIndex(t => t.filePath === tab.filePath);
+                if (tabIndex !== -1) {
+                  const oldPath = tab.filePath;
+                  const newPath = oldPath === from
+                    ? to
+                    : to + oldPath.slice(from.length);
+
+                  openTabs.tabs[tabIndex]!.filePath = newPath;
+
+                  // Update active tab if it's the one being renamed
+                  if (activeTab && activeTab.filePath === oldPath) {
+                    activeTab.filePath = newPath;
+                  }
+                }
+              });
+
+              console.log(`[Player] Playing resource move: ${from} -> ${to}`);
+            }
+          }
+        }
       });
 
       // Register create input show callback

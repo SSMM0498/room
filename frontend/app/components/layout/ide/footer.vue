@@ -9,6 +9,7 @@
         <span>{{ fileExtension }}</span>
         <span>Ln {{ cursorPosition.line }}, Col {{ cursorPosition.col }}</span>
       </div>
+      <div v-else class="flex"></div>
       <div class="flex items-center justify-start space-x-3">
         <!-- Mode Indicator -->
         <span class="text-muted">{{ mode }}</span>
@@ -23,7 +24,6 @@
           </span>
           <span>{{ isSocketConnected ? 'Connected' : 'Disconnected' }}</span>
         </div>
-
       </div>
     </nav>
   </footer>
