@@ -111,7 +111,7 @@ const { x: mouseX, y: mouseY } = useMouse();
 onMounted(() => {
   initializeRecorder({
     getUIState: () => {
-      const _directoryTree = { workspace: directoryTree.workspace };
+      const _directoryTree = JSON.parse(JSON.stringify(directoryTree));
       const _openFolders = openFolders.value;
       const _openTabs = openTabs.tabs.map(tab => tab.filePath)
       const _activeTab = activeTab.filePath
