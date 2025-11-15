@@ -11,7 +11,7 @@
  */
 
 import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload } from '~/types/events';
-import { EventTypes, isFullSnapshot } from '~/types/events';
+import { EventTypes, isFullSnapshot, isVcsEvent } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
@@ -21,6 +21,7 @@ import { CursorStylePlayer } from './CursorStylePlayer';
 import { IdeTabPlayer } from './IdeTabPlayer';
 import { ResourcePlayer } from './ResourcePlayer';
 import type { PlayerConfig, PlayerState } from './types';
+import type { PlayerNote } from '~/types/player-notes';
 
 export class Player {
   private stateMachine: PlayerStateMachine;
@@ -40,6 +41,14 @@ export class Player {
 
   // File tree restoration callback
   private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
+
+  // Socket client for Git checkout commands
+  private socketClient: any | null = null;
+
+  // Interactive notes - saved pause points with user changes
+  private notes: PlayerNote[] = [];
+  private activePauseBranch: string | null = null;
+  private activePauseCommitHash: string | null = null;
 
   constructor(config: PlayerConfig = {}) {
     this.stateMachine = new PlayerStateMachine();
@@ -119,6 +128,112 @@ export class Player {
     this.onFileTreeRestoreCallback = callback;
     // Initialize the state reconstructor with UI player references
     this.initializeStateReconstructor();
+  }
+
+  /**
+   * Set socket client for Git checkout operations during playback
+   */
+  setSocketClient(client: any): void {
+    this.socketClient = client;
+    console.log('[Player] Socket client set for Git operations');
+  }
+
+  /**
+   * Perform Git checkout to restore workspace to a specific commit or branch
+   * Called during pause/seek operations and note loading
+   */
+  private async performGitCheckout(target: string): Promise<void> {
+    if (!this.socketClient) {
+      console.warn('[Player] No socket client available for Git checkout');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log(`[Player] Performing Git checkout to: ${target.substring(0, 8)}`);
+
+      // Send system:checkout command to Worker
+      this.socketClient.instance?.send(JSON.stringify({
+        event: 'system:checkout',
+        data: { hash: target }
+      }));
+
+      // For now, just resolve immediately
+      // In a real implementation, you might want to wait for an acknowledgment
+      resolve();
+    });
+  }
+
+  /**
+   * Create a new Git branch from a commit and check it out
+   * Called when user pauses to interact with the code
+   */
+  private async performGitCreateBranch(commitHash: string, branchName: string): Promise<void> {
+    if (!this.socketClient) {
+      console.warn('[Player] No socket client available for Git branch creation');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log(`[Player] Creating branch ${branchName} from commit: ${commitHash.substring(0, 8)}`);
+
+      // Send system:create-branch command to Worker
+      this.socketClient.instance?.send(JSON.stringify({
+        event: 'system:create-branch',
+        data: {
+          commitHash: commitHash,
+          branchName: branchName
+        }
+      }));
+
+      // For now, just resolve immediately
+      // In a real implementation, you might want to wait for an acknowledgment
+      resolve();
+    });
+  }
+
+  /**
+   * Commit interactive changes to the current branch
+   * Returns the commit hash
+   */
+  private async performGitCommit(message: string = 'Interactive changes'): Promise<string | null> {
+    if (!this.socketClient) {
+      console.warn('[Player] No socket client available for Git commit');
+      return null;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log(`[Player] Committing interactive changes: ${message}`);
+
+      // Set up one-time listener for the response
+      const handleMessage = (event: MessageEvent) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (response.event === 'ack' && response.data?.status === 'committed') {
+            this.socketClient.instance?.removeEventListener('message', handleMessage);
+            resolve(response.data.commitHash || null);
+          }
+        } catch (error) {
+          // Ignore parse errors
+        }
+      };
+
+      this.socketClient.instance?.addEventListener('message', handleMessage);
+
+      // Send system:commit command to Worker
+      this.socketClient.instance?.send(JSON.stringify({
+        event: 'system:commit',
+        data: {
+          message: message,
+          ackID: `commit-${Date.now()}`
+        }
+      }));
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        this.socketClient.instance?.removeEventListener('message', handleMessage);
+        resolve(null);
+      }, 5000);
+    });
   }
 
   /**
@@ -240,7 +355,6 @@ export class Player {
             doAction: () => {
               this.ideTabPlayer.applyTabSnapshot(
                 snapshotPayload.ui.ide.tabs.editor,
-                (snapshotPayload.workspace?.files as Record<string, string>) || {}
               );
             },
           });
@@ -587,7 +701,7 @@ export class Player {
   /**
    * Start or resume playback
    */
-  play(): void {
+  async play(): Promise<void> {
     if (!this.stateMachine.canPlay()) {
       console.warn('[Player] Cannot play in current state:', this.stateMachine.getState());
       return;
@@ -600,11 +714,54 @@ export class Player {
     const isResumingFromPause = previousState === 'paused';
 
     if (isResumingFromPause) {
+      // Commit and save the current pause branch as a note (if user made changes)
+      if (this.activePauseBranch) {
+        // Commit any changes made during pause
+        const commitHash = await this.performGitCommit(`Interactive changes at ${this.scheduler.getCurrentTime() / 1000}s`);
+
+        // Update the commit hash if changes were committed
+        if (commitHash) {
+          this.activePauseCommitHash = commitHash;
+          console.log('[Player] Committed interactive changes:', commitHash.substring(0, 8));
+        }
+
+        // Save as note
+        this.saveCurrentBranchAsNote();
+      }
+
+      // Reconstruct state to get the commit hash from snapshot
+      const currentTime = this.scheduler.getCurrentTime();
+      const absoluteTime = this.baselineTime + currentTime;
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
+
+      // Checkout the commit from snapshot (restore main timeline)
+      const timelineCommitHash = this.stateReconstructor.getCommitHash();
+      if (timelineCommitHash) {
+        await this.performGitCheckout(timelineCommitHash);
+        console.log('[Player] Checked out timeline commit:', timelineCommitHash.substring(0, 8));
+      }
+
+      // Apply the reconstructed UI state
+      this.stateReconstructor.applyReconstructedStateToUI();
+
+      // Clear the active pause branch
+      this.activePauseBranch = null;
+      this.activePauseCommitHash = null;
+
       // Resume from current timeOffset (don't reset to 0)
       this.scheduler.resume();
       console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
     } else {
       // First play - start from beginning
+      // Reconstruct state at time 0 to get initial commit
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, this.baselineTime);
+      const initialCommitHash = this.stateReconstructor.getCommitHash();
+
+      if (initialCommitHash) {
+        await this.performGitCheckout(initialCommitHash);
+        console.log('[Player] Checked out initial commit:', initialCommitHash.substring(0, 8));
+      }
+
       this.scheduler.start();
       console.log('[Player] Starting playback from beginning');
     }
@@ -622,7 +779,7 @@ export class Player {
   /**
    * Pause playback
    */
-  pause(): void {
+  async pause(): Promise<void> {
     if (!this.stateMachine.canPause()) {
       console.warn('[Player] Cannot pause in current state:', this.stateMachine.getState());
       return;
@@ -641,7 +798,42 @@ export class Player {
     // Hide cursor
     this.cursorPlayer.hide();
 
-    console.log('[Player] Playback paused at', this.scheduler.getCurrentTime() / 1000, 'seconds');
+    const currentTime = this.scheduler.getCurrentTime();
+    console.log('[Player] Playback paused at', currentTime / 1000, 'seconds');
+
+    // Check if a note already exists at this timestamp
+    const existingNote = this.notes.find(n => Math.abs(n.timestamp - currentTime) < 100); // Within 100ms
+
+    if (existingNote) {
+      // Load existing note's branch
+      console.log('[Player] Found existing note at this timestamp, loading branch:', existingNote.branchName);
+      await this.performGitCheckout(existingNote.branchName);
+      this.activePauseBranch = existingNote.branchName;
+      this.activePauseCommitHash = existingNote.commitHash;
+    } else {
+      // Get commit hash from snapshot at pause point
+      const absoluteTime = this.baselineTime + currentTime;
+
+      // Reconstruct state to get the commit hash from snapshot
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
+      const commitHash = this.stateReconstructor.getCommitHash();
+
+      if (commitHash && commitHash !== '') {
+        // Generate unique branch name based on timestamp
+        const branchName = `interactive-${Date.now()}`;
+
+        // Create and checkout the branch from the snapshot's commit
+        await this.performGitCreateBranch(commitHash, branchName);
+
+        // Store the active pause branch info for later note saving
+        this.activePauseBranch = branchName;
+        this.activePauseCommitHash = commitHash;
+
+        console.log('[Player] Created interactive branch:', branchName, 'from commit:', commitHash.substring(0, 8));
+      } else {
+        console.warn('[Player] No commit hash in snapshot at pause time', currentTime / 1000, 'seconds - cannot create interactive branch');
+      }
+    }
   }
 
   /**
@@ -672,7 +864,16 @@ export class Player {
       // This loads the last full snapshot + all deltas before the target time
       await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
 
-      // Apply the reconstructed state to the UI immediately
+      // Perform Git checkout to restore workspace state from snapshot's commit hash
+      const commitHash = this.stateReconstructor.getCommitHash();
+      if (commitHash && commitHash !== '') {
+        await this.performGitCheckout(commitHash);
+        console.log('[Player] Checked out commit from snapshot:', commitHash.substring(0, 8));
+      } else {
+        console.warn('[Player] No commit hash in snapshot at time', time / 1000, 'seconds - skipping checkout');
+      }
+
+      // Apply the reconstructed UI state
       this.stateReconstructor.applyReconstructedStateToUI();
 
       // Clear and rebuild actions from seek point
@@ -728,7 +929,10 @@ export class Player {
    * Get the ground truth state (only valid after seek or pause)
    */
   getGroundTruthState(): { ui: UIState | null; workspace: WorkspaceState | null } {
-    return this.stateReconstructor.getGroundTruthState();
+    return {
+      ui: this.stateReconstructor.getUIState(),
+      workspace: null // Workspace state is now managed by Git
+    };
   }
 
   /**
@@ -736,6 +940,97 @@ export class Player {
    */
   onStateChange(state: PlayerState, callback: () => void): () => void {
     return this.stateMachine.onStateChange(state, callback);
+  }
+
+  /**
+   * Get all saved notes
+   */
+  getNotes(): PlayerNote[] {
+    return this.notes;
+  }
+
+  /**
+   * Save the current pause branch as a note
+   * Called when user resumes playback after pausing and making changes
+   */
+  saveCurrentBranchAsNote(description?: string): void {
+    if (!this.activePauseBranch || !this.activePauseCommitHash) {
+      console.warn('[Player] No active pause branch to save');
+      return;
+    }
+
+    const note: PlayerNote = {
+      id: `note-${Date.now()}`,
+      timestamp: this.getCurrentTime(),
+      branchName: this.activePauseBranch,
+      commitHash: this.activePauseCommitHash,
+      description,
+      createdAt: Date.now()
+    };
+
+    this.notes.push(note);
+    this.persistNotes();
+
+    console.log('[Player] Saved note:', note);
+  }
+
+  /**
+   * Load a saved note by checking out its branch and pausing at the timestamp
+   * This allows the user to return to their saved interactive changes
+   */
+  async loadNote(noteId: string): Promise<void> {
+    const note = this.notes.find(n => n.id === noteId);
+    if (!note) {
+      console.error('[Player] Note not found:', noteId);
+      return;
+    }
+
+    console.log('[Player] Loading note:', note);
+
+    // Pause playback if playing
+    if (this.stateMachine.getState() === 'playing') {
+      this.pause();
+    }
+
+    // Checkout the note's branch
+    await this.performGitCheckout(note.branchName);
+
+    // Seek to the note's timestamp
+    await this.seek(note.timestamp);
+
+    // Set the active pause branch so user can continue working
+    this.activePauseBranch = note.branchName;
+    this.activePauseCommitHash = note.commitHash;
+
+    console.log('[Player] Note loaded successfully');
+  }
+
+  /**
+   * Persist notes to localStorage
+   */
+  private persistNotes(): void {
+    try {
+      localStorage.setItem('player-notes', JSON.stringify(this.notes));
+    } catch (error) {
+      console.error('[Player] Failed to persist notes:', error);
+    }
+  }
+
+  /**
+   * Load persisted notes from localStorage
+   * Should be called during player initialization
+   */
+  loadPersistedNotes(): void {
+    try {
+      const stored = localStorage.getItem('player-notes');
+      if (stored) {
+        this.notes = JSON.parse(stored);
+        console.log('[Player] Loaded', this.notes.length, 'persisted notes');
+      }
+    } catch (error) {
+      console.error('[Player] Failed to load persisted notes:', error);
+      this.notes = [];
+    }
   }
 
   /**

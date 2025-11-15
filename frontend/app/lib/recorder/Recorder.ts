@@ -18,6 +18,7 @@ import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
 import { IdeTabWatcher } from './IdeTabWatcher';
 import { ResourceWatcher } from './ResourceWatcher';
+import { VcsWatcher } from './VcsWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -53,6 +54,9 @@ export class Recorder {
   // Resource watcher (file/folder operations)
   private resourceWatcher: ResourceWatcher;
 
+  // VCS watcher (Git commit events)
+  private vcsWatcher: VcsWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
@@ -66,6 +70,7 @@ export class Recorder {
     this.styleWatcher = new CursorStyleWatcher(this);
     this.ideTabWatcher = new IdeTabWatcher(this);
     this.resourceWatcher = new ResourceWatcher(this);
+    this.vcsWatcher = new VcsWatcher(this);
   }
 
   /**
@@ -87,6 +92,13 @@ export class Recorder {
    */
   getResourceWatcher(): ResourceWatcher {
     return this.resourceWatcher;
+  }
+
+  /**
+   * Get the VCS watcher instance for components to record Git commit events
+   */
+  getVcsWatcher(): VcsWatcher {
+    return this.vcsWatcher;
   }
 
   /**
@@ -188,9 +200,9 @@ export class Recorder {
     }
 
     const uiState = this.stateCapture.getUIState();
-    const workspaceState = this.stateCapture.getWorkspaceState();
+    const commitHash = this.vcsWatcher.getLatestCommitHash();
 
-    const snapshotPayload = this.snapshotManager.createFullSnapshot(uiState, workspaceState);
+    const snapshotPayload = this.snapshotManager.createFullSnapshot(uiState, commitHash);
 
     this.addNewEvent<SnapshotPayload>(
       'state',
@@ -198,7 +210,7 @@ export class Recorder {
       snapshotPayload
     );
 
-    console.log('[Recorder] Full snapshot taken at', Date.now());
+    console.log('[Recorder] Full snapshot taken at', Date.now(), 'with commit:', commitHash.substring(0, 8));
   }
 
   /**
@@ -211,11 +223,11 @@ export class Recorder {
     }
 
     const currentUIState = this.stateCapture.getUIState();
-    const currentWorkspaceState = this.stateCapture.getWorkspaceState();
+    const commitHash = this.vcsWatcher.getLatestCommitHash();
 
     const deltaPayload = this.snapshotManager.createDeltaSnapshot(
       currentUIState,
-      currentWorkspaceState
+      commitHash
     );
 
     // Only emit delta snapshot if there are actual changes
@@ -226,7 +238,7 @@ export class Recorder {
         deltaPayload
       );
 
-      console.log('[Recorder] Delta snapshot taken at', Date.now());
+      console.log('[Recorder] Delta snapshot taken at', Date.now(), 'with commit:', commitHash.substring(0, 8));
     }
   }
 

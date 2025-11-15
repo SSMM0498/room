@@ -77,13 +77,17 @@ export class IdeTabPlayer {
 
   /**
    * Apply a full snapshot of tab state
-   * 
-   * This uses playTabOpen/Close/Switch to maintain same event flow,
-   * but ensures the state exactly matches the snapshot
+   *
+   * NOTE: With Git-based state management, file contents are NOT stored in snapshots.
+   * Files are restored via Git checkout in the Worker filesystem. This method opens
+   * tabs with empty content initially, and the UI components should request actual
+   * content from the Worker via WebSocket.
+   *
+   * @param editorTabs - Tab state from snapshot (which files are open, which is active)
+   * @param workspaceFiles - Legacy parameter, kept for backwards compatibility but typically empty
    */
   applyTabSnapshot(
-    editorTabs: { openFiles: string[]; activeFile: string | null },
-    workspaceFiles: Record<string, string>
+    editorTabs: { openFiles: string[]; activeFile: string | null }
   ): void {
     // Close all open tabs that aren't in snapshot
     if (this.onTabCloseCallback) {
@@ -92,20 +96,16 @@ export class IdeTabPlayer {
       console.log('[IdeTabPlayer] Tab state will be reset by UI component');
     }
 
-    // Open all files in snapshot with their content from workspace
-    for (const filePath of editorTabs.openFiles) {
-      if (this.onTabOpenCallback) {
-        const content = workspaceFiles[filePath] || '';
-        this.onTabOpenCallback(filePath, content);
-        console.log(`[IdeTabPlayer] Opening tab from snapshot: ${filePath} (${content.length} chars)`);
-      }
-    }
-
-    // Switch to active file if specified, using content from workspace
+    // Switch to active file if specified
     if (editorTabs.activeFile && this.onTabSwitchCallback) {
-      const content = workspaceFiles[editorTabs.activeFile] || '';
+      // Check if content is provided (legacy), otherwise use empty string
+      const content = '';
       this.onTabSwitchCallback(editorTabs.activeFile, content);
-      console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile}`);
+      if (content) {
+        console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile}`);
+      } else {
+        console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile} (content will be read from Worker)`);
+      }
     }
   }
 

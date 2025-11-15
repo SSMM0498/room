@@ -84,18 +84,8 @@ func (c *Client) supervisor() {
 		// Start the readPump for this connection.
 		go c.readPump(readPumpDone)
 
-		// Send init message and start hydration.
-		c.send <- &types.Message{Event: "init"}
-
-		// Skip hydration in development mode
-		env := os.Getenv("ENV")
-		if env != "DEV" {
-			go c.hydrateWorkspace()
-		} else {
-			log.Println("[BRIDGE] DEV mode detected - skipping workspace hydration")
-		}
-
 		// Signal that the connection is now ready for use.
+		// NOTE: Init message will be sent by frontend, not automatically by Bridge
 		close(c.isReady)
 
 		// --- THIS IS THE FIX ---
@@ -202,6 +192,16 @@ func (c *Client) SendFireAndForget(msg *types.Message) {
 		return
 	}
 	c.send <- msg
+}
+
+func (c *Client) TriggerHydration() {
+	// Skip hydration in development mode
+	env := os.Getenv("ENV")
+	if env != "DEV" {
+		c.hydrateWorkspace()
+	} else {
+		log.Println("[BRIDGE] DEV mode detected - skipping workspace hydration")
+	}
 }
 
 func (c *Client) hydrateWorkspace() {

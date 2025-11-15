@@ -44,15 +44,17 @@
       <ide-wrap :loading="loading" />
 
       <!-- Playing Blocker Overlay -->
-      <div class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
+      <div v-show="!isPaused"
+        class="playing-blocker absolute bg-transparent w-screen h-screen inset-0 z-40 cursor-normal"
         @click.prevent="handleTogglePlayPause" @mousedown.prevent @mouseup.prevent @keydown.prevent></div>
     </div>
 
     <!-- Player Controller (auto-hide at bottom) -->
     <player-controller v-model:current-time-ms="currentTime" :is-playing="isPlaying" :is-ready="isReady"
       :current-time="formattedCurrentTime" :duration="formattedDuration" :duration-ms="duration" :volume="volume"
-      :is-muted="isMuted" @toggle-play-pause="handleTogglePlayPause" @seek="handleSeek" @skip-forward="skipForward"
-      @skip-backward="skipBackward" @volume-change="setVolume" @toggle-mute="toggleMute" />
+      :is-muted="isMuted" :notes="notes" @toggle-play-pause="handleTogglePlayPause" @seek="handleSeek"
+      @skip-forward="skipForward" @skip-backward="skipBackward" @volume-change="setVolume" @toggle-mute="toggleMute"
+      @note-click="loadNote" />
   </div>
 </template>
 
@@ -94,6 +96,7 @@ const {
   seek,
   skipForward,
   skipBackward,
+  isPaused,
   isPlaying,
   isReady,
   currentTime,
@@ -105,6 +108,8 @@ const {
   isMuted,
   setVolume,
   toggleMute,
+  notes,
+  loadNote,
 } = usePlayer();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
@@ -301,6 +306,9 @@ const startWorkspace = async (courseId: string) => {
       loading.value = false;
       sessionState.value = 'ready';
 
+      // Initialize playback mode
+      socketClient.init('PLAYBACK');
+
       // Start file watching
       setupFileWatching();
 
@@ -405,6 +413,10 @@ watch(isPlaying, async (playing) => {
         console.log('[Learn] Socket reconnected successfully');
         isConnected.value = true;
         setSocketConnected(true);
+
+        // Reinitialize playback mode after reconnection
+        socketClient.init('PLAYBACK');
+
         setupFileWatching();
 
         toast.add({

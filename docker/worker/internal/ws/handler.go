@@ -50,6 +50,7 @@ type Client struct {
 	hub  *Hub
 	Conn *websocket.Conn
 	Send chan *types.Message
+	Mode string // "RECORDING" or "PLAYBACK"
 }
 
 func (c *Client) readPump(h *Handler) {
@@ -101,6 +102,41 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 
 	switch msg.Event {
 	case "init":
+		// Extract mode from init message
+		var initData map[string]interface{}
+		if json.Unmarshal(dataBytes, &initData) == nil {
+			if mode, ok := initData["mode"].(string); ok {
+				client.Mode = mode
+				log.Printf("[WORKER] Client initialized in %s mode", mode)
+			} else {
+				client.Mode = "PLAYBACK" // Safe default
+				log.Println("[WORKER] No mode specified, defaulting to PLAYBACK mode")
+			}
+		} else {
+			client.Mode = "PLAYBACK" // Safe default
+			log.Println("[WORKER] Failed to parse init data, defaulting to PLAYBACK mode")
+		}
+
+		// Initialize Git repository based on mode
+		err := h.fsSvc.InitializeGit(client.Mode)
+		if err != nil {
+			log.Printf("[WORKER] Git initialization failed: %v", err)
+			ack.Error = err.Error()
+		} else {
+			// Get initial commit hash in RECORDING mode
+			if client.Mode == "RECORDING" {
+				hash, err := h.fsSvc.GetCurrentCommitHash()
+				if err == nil && hash != "" {
+					// Update ack.Data map to include initial commit hash
+					ack.Data = map[string]interface{}{
+						"ackID":             reqAckID,
+						"initialCommitHash": hash,
+					}
+					log.Printf("[WORKER] Initial commit hash: %s", hash[:8])
+				}
+			}
+		}
+
 		log.Println("[WORKER] Bridge initialized.")
 		go h.watchSvc.StartEventLoop(func(event fsnotify.Event) {
 			log.Printf("WORKER: Watch event detected %s", event.Op)
@@ -148,10 +184,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Hydrating file.")
 		var req types.HydrateFileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.CreateFileBase64(req.TargetPath, req.ContentBase64)
+		commitHash, err := h.fsSvc.CreateFileBase64(req.TargetPath, req.ContentBase64)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_HYDRATE_FILE: " + req.TargetPath,
+					},
+				})
+			}
 			// Extract parent folder path
 			parts := strings.Split(req.TargetPath, "/")
 			parentPath := "/"
@@ -218,10 +264,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Updating file.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.UpdateFile(req.TargetPath, req.FileContent)
+		commitHash, err := h.fsSvc.UpdateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_UPDATE_FILE: " + req.TargetPath,
+					},
+				})
+			}
 			ack.Data = map[string]interface{}{
 				"ackID":      reqAckID,
 				"targetPath": req.TargetPath,
@@ -232,10 +288,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Creating file.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.CreateFile(req.TargetPath, req.FileContent)
+		commitHash, err := h.fsSvc.CreateFile(req.TargetPath, req.FileContent)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_CREATE_FILE: " + req.TargetPath,
+					},
+				})
+			}
 			// Extract parent folder path
 			parts := strings.Split(req.TargetPath, "/")
 			parentPath := "/"
@@ -263,10 +329,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Creating folder.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.CreateFolder(req.TargetPath)
+		commitHash, err := h.fsSvc.CreateFolder(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_CREATE_FOLDER: " + req.TargetPath,
+					},
+				})
+			}
 			// Extract parent folder path
 			parts := strings.Split(req.TargetPath, "/")
 			parentPath := "/"
@@ -294,10 +370,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Deleting resource.")
 		var req types.FileRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.DeleteResource(req.TargetPath)
+		commitHash, err := h.fsSvc.DeleteResource(req.TargetPath)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_DELETE_RESOURCE: " + req.TargetPath,
+					},
+				})
+			}
 			ack.Data = map[string]interface{}{
 				"ackID":      reqAckID,
 				"targetPath": req.TargetPath,
@@ -308,10 +394,20 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		log.Println("[WORKER] Moving resource.")
 		var req types.MoveRequest
 		json.Unmarshal(dataBytes, &req)
-		err := h.fsSvc.MoveResource(req.TargetPath, req.NewPath)
+		commitHash, err := h.fsSvc.MoveResource(req.TargetPath, req.NewPath)
 		if err != nil {
 			ack.Error = err.Error()
 		} else {
+			// Broadcast commit event if hash is non-empty (RECORDING mode)
+			if commitHash != "" {
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "FS_MOVE_RESOURCE: " + req.TargetPath + " -> " + req.NewPath,
+					},
+				})
+			}
 			// Extract parent folder path from the new location
 			parts := strings.Split(req.NewPath, "/")
 			parentPath := "/"
@@ -528,6 +624,58 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 			},
 		}
 		return
+	case "system:checkout":
+		log.Println("[WORKER] Git checkout command.")
+		var req struct {
+			Hash  string `json:"hash"`
+			AckID string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		if req.Hash == "" {
+			ack.Error = "commit hash is required"
+		} else {
+			err := h.fsSvc.CheckoutCommit(req.Hash)
+			if err != nil {
+				ack.Error = err.Error()
+				log.Printf("[WORKER] Git checkout failed: %v", err)
+			} else {
+				ack.Data = map[string]interface{}{
+					"ackID":  reqAckID,
+					"hash":   req.Hash,
+					"status": "checked-out",
+				}
+				log.Printf("[WORKER] ✅ Successfully checked out commit: %s", req.Hash[:8])
+			}
+		}
+	case "system:create-branch":
+		log.Println("[WORKER] Git create branch command.")
+		var req struct {
+			CommitHash string `json:"commitHash"`
+			BranchName string `json:"branchName"`
+			AckID      string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		if req.CommitHash == "" {
+			ack.Error = "commit hash is required"
+		} else if req.BranchName == "" {
+			ack.Error = "branch name is required"
+		} else {
+			err := h.fsSvc.CreateBranchAndCheckout(req.CommitHash, req.BranchName)
+			if err != nil {
+				ack.Error = err.Error()
+				log.Printf("[WORKER] Git create branch failed: %v", err)
+			} else {
+				ack.Data = map[string]interface{}{
+					"ackID":      reqAckID,
+					"commitHash": req.CommitHash,
+					"branchName": req.BranchName,
+					"status":     "created",
+				}
+				log.Printf("[WORKER] ✅ Successfully created and checked out branch: %s", req.BranchName)
+			}
+		}
 	default:
 		log.Printf("[WORKER] Unknown event type: %s", msg.Event)
 		return

@@ -277,8 +277,8 @@ class SocketClient {
     this.on('download-workspace', handle);
   }
 
-  init() {
-    this.emit('init', {});
+  init(mode: 'RECORDING' | 'PLAYBACK' = 'PLAYBACK', callback?: (response: any) => void) {
+    this.emit('init', { mode }, callback);
   }
 
   hydrateCreateFile(targetPath: string, contentBase64: string) {
@@ -295,6 +295,10 @@ class SocketClient {
 
   closeFile(targetPath: string) {
     this.emit('crud-close-file', { targetPath });
+  }
+
+  handleWorkspaceCommit(handle: (data: { hash: string; message: string }) => void) {
+    this.on('workspace:commit', handle);
   }
 
   disconnect() {

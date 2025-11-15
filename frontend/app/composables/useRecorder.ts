@@ -1,7 +1,6 @@
 import { ref } from 'vue';
 import { Recorder } from '~/lib/recorder';
 import type { IDEStateCapture, RecorderConfig } from '~/lib/recorder';
-import type { UIState, WorkspaceState } from '~/types/events';
 
 // Global state - shared across all component instances
 const audioContext = ref<AudioContext | null>(null);
@@ -205,6 +204,26 @@ export const useRecorder = () => {
     return recorder.value.getStatus();
   };
 
+  /**
+   * Setup VCS watcher to listen for Git commit events from WebSocket
+   * Call this after initializing the recorder and connecting to WebSocket
+   */
+  const setupVcsWatcher = (socketClient: any) => {
+    if (!recorder.value) {
+      console.error('❌ Recorder not initialized. Call initializeRecorder first.');
+      return;
+    }
+
+    const vcsWatcher = recorder.value.getVcsWatcher();
+
+    // Listen for workspace:commit events from the Worker
+    socketClient.handleWorkspaceCommit((data: { hash: string; message: string }) => {
+      vcsWatcher.recordCommit(data.hash, data.message);
+    });
+
+    console.log('✅ VCS watcher setup complete');
+  };
+
   return {
     isRecording,
     isReady,
@@ -220,5 +239,6 @@ export const useRecorder = () => {
     getAudioBlob,
     getRecorderStatus,
     setUploadCallback,
+    setupVcsWatcher,
   };
 };

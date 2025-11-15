@@ -1,31 +1,25 @@
 /**
  * State Reconstructor
  *
- * Reconstructs the ground truth state at any point in time by finding the
+ * Reconstructs the UI state at any point in time by finding the
  * nearest full snapshot and applying deltas forward.
- * Also applies the reconstructed state to the UI players.
+ *
+ * NOTE: After Git-based state management, workspace state (files/folders) is
+ * reconstructed by Git checkout, not by snapshots. This class only handles UI state.
  */
 
 import type {
   AnyActionPacket,
   SnapshotPayload,
   UIState,
-  WorkspaceState,
-  FullFileState,
-  DeltaFileState,
 } from '~/types/events';
-import { isFullSnapshot, isDeltaSnapshot, isStateCommit } from '~/types/events';
+import { isFullSnapshot, isDeltaSnapshot } from '~/types/events';
 import type { CursorMovementPlayer } from './CursorMovementPlayer';
 import type { IdeTabPlayer } from './IdeTabPlayer';
 
 export class StateReconstructor {
-  private groundTruthState: {
-    ui: UIState | null;
-    workspace: WorkspaceState | null;
-  } = {
-      ui: null,
-      workspace: null,
-    };
+  private uiState: UIState | null = null;
+  private commitHash: string | null = null; // Current commit hash from snapshot
 
   // References to UI players for applying state
   private cursorPlayer: CursorMovementPlayer | null = null;
@@ -46,7 +40,8 @@ export class StateReconstructor {
   }
 
   /**
-   * Reconstruct the ground truth state at a specific time
+   * Reconstruct the UI state at a specific time
+   * NOTE: Workspace state (files/folders) is reconstructed separately via Git checkout
    */
   async reconstructStateAtTime(timeline: AnyActionPacket[], targetTime: number): Promise<void> {
     // Get the start time from the first event to convert relative time to absolute
@@ -74,14 +69,12 @@ export class StateReconstructor {
 
     console.log('[StateReconstructor] Found base snapshot at', (baseSnapshot.t - startTime) / 1000, 'seconds (relative)');
 
-    // Step 2: Load the base snapshot as ground truth
+    // Step 2: Load the base snapshot as UI state and commit hash
     const snapshotPayload = baseSnapshot.p as SnapshotPayload;
-    this.groundTruthState = {
-      ui: snapshotPayload.ui,
-      workspace: this.cloneWorkspaceState(snapshotPayload.workspace),
-    };
+    this.uiState = snapshotPayload.ui;
+    this.commitHash = snapshotPayload.workspace.commitHash;
 
-    // Step 3: Apply all delta snapshots and state commits from base to target
+    // Step 3: Apply all delta snapshots from base to target
     for (let i = baseSnapshotIndex + 1; i < timeline.length; i++) {
       const event = timeline[i];
 
@@ -92,113 +85,78 @@ export class StateReconstructor {
 
         if (isDeltaSnapshot(event)) {
           this.applyDeltaSnapshot(event.p as SnapshotPayload);
-        } else if (isStateCommit(event)) {
-          this.applyStateCommit(event.p as { file: string; content: string });
         }
       }
     }
 
-    console.log('[StateReconstructor] Ground truth state reconstructed at', targetTime / 1000, 'seconds (relative)');
+    console.log('[StateReconstructor] UI state reconstructed at', targetTime / 1000, 'seconds (relative) with commit:', this.commitHash?.substring(0, 8));
   }
 
   /**
-   * Apply a delta snapshot to the ground truth state
+   * Apply a delta snapshot to the UI state
+   * NOTE: Workspace state is no longer updated via snapshots (handled by Git)
    */
   private applyDeltaSnapshot(delta: SnapshotPayload): void {
-    if (!this.groundTruthState.workspace) return;
-
-    const fileDelta = delta.workspace.files as DeltaFileState;
-    const currentFiles = this.groundTruthState.workspace.files as FullFileState;
-
-    // Apply updated files
-    for (const [path, content] of Object.entries(fileDelta.updated)) {
-      currentFiles[path] = content;
-    }
-
-    // Apply deleted files
-    for (const path of fileDelta.deleted) {
-      delete currentFiles[path];
-    }
-
-    // Update terminals and processes
-    this.groundTruthState.workspace.terminals = delta.workspace.terminals;
-    this.groundTruthState.workspace.processes = delta.workspace.processes;
-
-    // Update UI state
-    this.groundTruthState.ui = delta.ui;
+    // Update UI state and commit hash
+    this.uiState = delta.ui;
+    this.commitHash = delta.workspace.commitHash;
   }
 
   /**
-   * Apply a state commit to the ground truth state
-   */
-  private applyStateCommit(commit: { file: string; content: string }): void {
-    if (!this.groundTruthState.workspace) return;
-
-    const files = this.groundTruthState.workspace.files as FullFileState;
-    files[commit.file] = commit.content;
-  }
-
-  /**
-   * Clone workspace state for immutability
-   */
-  private cloneWorkspaceState(state: WorkspaceState): WorkspaceState {
-    return {
-      files: { ...(state.files as FullFileState) },
-      terminals: { ...state.terminals },
-      processes: [...state.processes],
-    };
-  }
-
-  /**
-   * Apply the reconstructed ground truth state to the UI players
+   * Apply the reconstructed UI state to the UI players
+   * NOTE: File contents for tabs are read from the Worker filesystem (restored via Git),
+   * not from snapshots
    */
   applyReconstructedStateToUI(): void {
-    const { ui, workspace } = this.groundTruthState;
-
-    if (!ui) {
+    if (!this.uiState) {
       console.warn('[StateReconstructor] No UI state to apply');
       return;
     }
 
     // Apply mouse position
-    if (ui.mouse && this.cursorPlayer) {
-      this.cursorPlayer.setPosition(ui.mouse.x, ui.mouse.y);
-      console.log(`[StateReconstructor] Applied mouse position: (${ui.mouse.x}, ${ui.mouse.y})`);
+    if (this.uiState.mouse && this.cursorPlayer) {
+      this.cursorPlayer.setPosition(this.uiState.mouse.x, this.uiState.mouse.y);
+      console.log(`[StateReconstructor] Applied mouse position: (${this.uiState.mouse.x}, ${this.uiState.mouse.y})`);
     }
 
     // Apply tab state
-    if (ui.ide?.tabs?.editor && workspace && this.ideTabPlayer) {
+    // NOTE: File contents will be read from Worker filesystem (restored via Git checkout)
+    if (this.uiState.ide?.tabs?.editor && this.ideTabPlayer) {
       this.ideTabPlayer.applyTabSnapshot(
-        ui.ide.tabs.editor,
-        (workspace.files as Record<string, string>) || {}
+        this.uiState.ide.tabs.editor,
       );
-      console.log(`[StateReconstructor] Applied tab state: ${ui.ide.tabs.editor.openFiles.length} tabs, active: ${ui.ide.tabs.editor.activeFile}`);
+      console.log(`[StateReconstructor] Applied tab state: ${this.uiState.ide.tabs.editor.openFiles.length} tabs, active: ${this.uiState.ide.tabs.editor.activeFile}`);
     }
 
     // Apply file tree state
-    if (ui.fileTree && this.fileTreeRestoreCallback) {
+    if (this.uiState.fileTree && this.fileTreeRestoreCallback) {
       this.fileTreeRestoreCallback(
-        ui.fileTree.expandedPaths,
-        ui.fileTree.tree
+        this.uiState.fileTree.expandedPaths,
+        this.uiState.fileTree.tree
       );
-      console.log(`[StateReconstructor] Applied file tree state: ${ui.fileTree.expandedPaths.length} expanded paths`);
+      console.log(`[StateReconstructor] Applied file tree state: ${this.uiState.fileTree.expandedPaths.length} expanded paths`);
     }
   }
 
   /**
-   * Get the current ground truth state
+   * Get the current UI state
    */
-  getGroundTruthState(): { ui: UIState | null; workspace: WorkspaceState | null } {
-    return this.groundTruthState;
+  getUIState(): UIState | null {
+    return this.uiState;
+  }
+
+  /**
+   * Get the current commit hash from the reconstructed snapshot
+   */
+  getCommitHash(): string | null {
+    return this.commitHash;
   }
 
   /**
    * Reset the state
    */
   reset(): void {
-    this.groundTruthState = {
-      ui: null,
-      workspace: null,
-    };
+    this.uiState = null;
+    this.commitHash = null;
   }
 }

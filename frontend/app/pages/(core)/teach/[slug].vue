@@ -76,6 +76,8 @@ const {
   setupMedia,
   initializeRecorder,
   stopRecording,
+  setupVcsWatcher,
+  recorder,
 } = useRecorder();
 const { socketClient, getSocketUrl } = useSocket();
 const { ensureWorkspaceIsRunning, progressMessage } = useWorkspace();
@@ -219,6 +221,16 @@ const startWorkspace = async (courseId: string) => {
       loading.value = false;
       sessionState.value = 'ready';
       isWorkSpaceChecklistOpen.value = false;
+
+      // Initialize recording mode and VCS watcher
+      socketClient.init('RECORDING', (response: any) => {
+        // Set initial commit hash in VcsWatcher if provided
+        if (response.initialCommitHash && recorder.value) {
+          recorder.value.getVcsWatcher().setInitialCommitHash(response.initialCommitHash);
+          console.log('[Teach] Initial commit hash set:', response.initialCommitHash.substring(0, 8));
+        }
+      });
+      setupVcsWatcher(socketClient);
 
       // Start file watching
       setupFileWatching();

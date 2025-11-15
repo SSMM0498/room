@@ -21,6 +21,13 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/worker-server ./cmd/worker
 # Final Production Image
 FROM alpine:latest
 
+# Install Git for version control
+RUN apk add --no-cache git
+
+# Configure Git with default user for commits
+RUN git config --global user.name "Room Recorder" && \
+    git config --global user.email "recorder@room.dev"
+
 # It's a good practice to run as a non-root user.
 # We create a user and group specifically for our application.
 RUN addgroup -S roomgroup && adduser -S roomuser -G roomgroup

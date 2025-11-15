@@ -220,15 +220,18 @@ const handleBackgroundClick = (event: MouseEvent) => {
 };
 
 onMounted(() => {
-  socketClient.init(); // Initialize backend watcher event loop
+  // Determine mode based on route
+  const mode = route.name && (route.name as string).startsWith('teach') ? 'RECORDING' : 'PLAYBACK';
+  socketClient.init(mode); // Initialize backend watcher event loop with mode
 
-  // In playing mode, the file tree will be restored from snapshots
-  if (route.name && (route.name as string).startsWith('teach')) {
+  // In recording mode, read the initial file tree
+  if (mode === 'RECORDING') {
     folderReadContexts.value.set("/workspace", 'initial');
     socketClient.readFolder({
       targetPath: "/workspace",
     });
   }
+  // In playback mode, the file tree will be restored from snapshots
   // Tab callbacks are now handled in usePlayer composable
 });
 

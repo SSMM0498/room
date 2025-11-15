@@ -3,8 +3,8 @@ import { Player } from '~/lib/player';
 import type { PlayerConfig, PlayerState } from '~/lib/player';
 import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
 import type { ActiveFile } from '../../types/file-tree';
+import type { PlayerNote } from '~/types/player-notes';
 import objectPath from 'object-path';
-import { debug } from 'yaml/util';
 
 export const usePlayer = () => {
   // Core Player instance
@@ -16,6 +16,7 @@ export const usePlayer = () => {
   const duration = ref(0);
   const playerState = ref<PlayerState>('idle');
   const audioElement = ref<HTMLAudioElement | null>(null);
+  const notes = ref<PlayerNote[]>([]);
 
   // Helper functions for tree manipulation
   const pathToObjectPath = (path: string): string => {
@@ -423,12 +424,20 @@ export const usePlayer = () => {
   const initializePlayer = (config?: PlayerConfig) => {
     player.value = new Player(config);
 
+    // Load persisted notes
+    player.value.loadPersistedNotes();
+    notes.value = player.value.getNotes();
+
     // Set up state change listeners
     const unsubscribers = [
       player.value.onStateChange('idle', () => { playerState.value = 'idle'; }),
       player.value.onStateChange('loading', () => { playerState.value = 'loading'; }),
       player.value.onStateChange('ready', () => { playerState.value = 'ready'; }),
-      player.value.onStateChange('playing', () => { playerState.value = 'playing'; }),
+      player.value.onStateChange('playing', () => {
+        playerState.value = 'playing';
+        // Sync notes after state changes (user might have saved a note)
+        notes.value = player.value?.getNotes() || [];
+      }),
       player.value.onStateChange('paused', () => { playerState.value = 'paused'; }),
       player.value.onStateChange('seeking', () => { playerState.value = 'seeking'; }),
       player.value.onStateChange('error', () => { playerState.value = 'error'; }),
@@ -439,7 +448,7 @@ export const usePlayer = () => {
       unsubscribers.forEach(unsub => unsub());
     });
 
-    console.log(' Player initialized');
+    console.log('[usePlayer] Player initialized');
   };
 
   /**
@@ -555,6 +564,18 @@ export const usePlayer = () => {
   const skipBackward = async (ms: number = 10000) => {
     const newTime = Math.max(currentTime.value - ms, 0);
     await seek(newTime);
+  };
+
+  /**
+   * Load a saved note by ID
+   * Checks out the note's branch and seeks to the timestamp
+   */
+  const loadNote = async (noteId: string) => {
+    if (!player.value) {
+      console.error('[usePlayer] Cannot load note: Player not initialized');
+      return;
+    }
+    await player.value.loadNote(noteId);
   };
 
   /**
@@ -690,6 +711,10 @@ export const usePlayer = () => {
     isMuted,
     setVolume,
     toggleMute,
+
+    // Notes
+    notes,
+    loadNote,
 
     // Methods
     initializePlayer,

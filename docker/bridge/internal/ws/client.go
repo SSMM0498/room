@@ -34,6 +34,14 @@ func (c *Client) ReadPump() {
 		}
 
 		switch msg.Event {
+		// Special handling for init - forward to worker and trigger hydration
+		case "init":
+			log.Printf("[BRIDGE] Frontend → Worker (init): event=%s, data=%v", msg.Event, msg.Data)
+			// Forward init message to worker (contains mode from frontend)
+			c.Worker.SendFireAndForget(&msg)
+			// Trigger hydration after sending init
+			go c.Worker.TriggerHydration()
+
 		// Events that require request-response pattern
 		case "crud-read-file", "crud-read-folder", "create-terminal", "close-terminal", "crud-download-workspace",
 			"hydrate-create-file", "crud-create-file", "crud-create-folder", "command-preview", "command-run",
@@ -42,8 +50,7 @@ func (c *Client) ReadPump() {
 			go c.handleRequestResponse(msg)
 
 		// Fire-and-forget events (no response expected from worker)
-		case "terminal-input", "crud-collapse-folder", "crud-close-file",
-			"watch", "init":
+		case "terminal-input", "crud-collapse-folder", "crud-close-file", "watch":
 			log.Printf("[BRIDGE] Frontend → Worker (fire-and-forget): event=%s", msg.Event)
 			// No response needed, just forward to the worker.
 			c.Worker.SendFireAndForget(&msg)
