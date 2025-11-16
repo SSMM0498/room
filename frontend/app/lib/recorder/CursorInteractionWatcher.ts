@@ -5,15 +5,16 @@
  * Records the click position and button type.
  */
 
-import type { Recorder } from './Recorder';
 import { EventTypes } from '~/types/events';
 
+type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
+
 export class CursorInteractionWatcher {
-  private recorder: Recorder;
+  private addEvent: AddEventCallback;
   private isWatching: boolean = false;
 
-  constructor(recorder: Recorder) {
-    this.recorder = recorder;
+  constructor(addEvent: AddEventCallback) {
+    this.addEvent = addEvent;
   }
 
   /**
@@ -48,7 +49,7 @@ export class CursorInteractionWatcher {
    */
   private handleMouseDown = (event: MouseEvent): void => {
     // Record the click event immediately
-    this.recorder.addNewEvent('ui', EventTypes.MOUSE_CLICK, {
+    this.addEvent('ui', EventTypes.MOUSE_CLICK, {
       x: event.clientX,
       y: event.clientY,
       btn: event.button, // 0=left, 1=middle, 2=right

@@ -65,9 +65,9 @@ export class Recorder {
     };
 
     this.snapshotManager = new SnapshotManager();
-    this.cursorWatcher = new CursorMovementWatcher(this);
-    this.clickWatcher = new CursorInteractionWatcher(this);
-    this.styleWatcher = new CursorStyleWatcher(this);
+    this.cursorWatcher = new CursorMovementWatcher(this.addNewEvent.bind(this));
+    this.clickWatcher = new CursorInteractionWatcher(this.addNewEvent.bind(this));
+    this.styleWatcher = new CursorStyleWatcher(this.addNewEvent.bind(this));
     this.ideTabWatcher = new IdeTabWatcher(this);
     this.resourceWatcher = new ResourceWatcher(this);
     this.vcsWatcher = new VcsWatcher(this);

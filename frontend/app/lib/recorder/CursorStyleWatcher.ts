@@ -6,18 +6,19 @@
  * excessive event recording.
  */
 
-import type { Recorder } from './Recorder';
 import { EventTypes } from '~/types/events';
 
+type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
+
 export class CursorStyleWatcher {
-  private recorder: Recorder;
+  private addEvent: AddEventCallback;
   private isWatching: boolean = false;
   private previousStyle: string = 'default';
   private throttleTimer: number | null = null;
   private throttleDelay: number = 100; // ms - throttle cursor style checks
 
-  constructor(recorder: Recorder) {
-    this.recorder = recorder;
+  constructor(addEvent: AddEventCallback) {
+    this.addEvent = addEvent;
   }
 
   /**
@@ -91,7 +92,7 @@ export class CursorStyleWatcher {
     // Compare with previous style
     if (currentStyle !== this.previousStyle) {
       // Style changed - record the event
-      this.recorder.addNewEvent('ui', EventTypes.MOUSE_STYLE, {
+      this.addEvent('ui', EventTypes.MOUSE_STYLE, {
         s: currentStyle,
       });
 

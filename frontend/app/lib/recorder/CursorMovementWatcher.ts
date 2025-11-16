@@ -6,7 +6,6 @@
  * Each point is timestamped relative to the batch start for accurate replay.
  */
 
-import type { Recorder } from './Recorder';
 import { EventTypes } from '~/types/events';
 
 interface MousePoint {
@@ -15,8 +14,10 @@ interface MousePoint {
   timeOffset: number; // Time since batch started (ms)
 }
 
+type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
+
 export class CursorMovementWatcher {
-  private recorder: Recorder;
+  private addEvent: AddEventCallback;
   private isWatching: boolean = false;
 
   // Batching state
@@ -25,12 +26,12 @@ export class CursorMovementWatcher {
   private lastCaptureTime: number = 0;
 
   // Timing configuration
-  private captureThrottle: number = 50; // ms - capture point every 50ms
+  private captureThrottle: number = 15; // ms - capture point every 15ms
   private flushInterval: number = 500; // ms - emit batch every 500ms
   private flushTimer: number | null = null;
 
-  constructor(recorder: Recorder) {
-    this.recorder = recorder;
+  constructor(addEvent: AddEventCallback) {
+    this.addEvent = addEvent;
   }
 
   /**
@@ -45,7 +46,6 @@ export class CursorMovementWatcher {
     this.isWatching = true;
     const options = { capture: true, passive: true };
     document.addEventListener('mousemove', this.handleMouseMove, options);
-    console.log('[CursorMovementWatcher] Started watching mouse movements');
   }
 
   /**
@@ -68,8 +68,6 @@ export class CursorMovementWatcher {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
-
-    console.log('[CursorMovementWatcher] Stopped watching mouse movements');
   }
 
   /**
@@ -126,7 +124,7 @@ export class CursorMovementWatcher {
     }));
 
     // Emit a single mouse:path event with all positions including timing
-    this.recorder.addNewEvent('ui', EventTypes.MOUSE_PATH, {
+    this.addEvent('ui', EventTypes.MOUSE_PATH, {
       positions,
     });
 
