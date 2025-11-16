@@ -48,15 +48,23 @@
       class="flex px-2 p-0 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-100 dark:bg-gray-800 items-center text-sm justify-center gap-2">
       <!-- Recording Timer -->
       <div v-if="recording.isRecording.value" class="flex items-center gap-1.5">
-        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+        <div class="w-2 h-2 bg-red-500 rounded-full" :class="{ 'animate-pulse': !recording.isPaused.value }"></div>
         <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ formattedRecordingTime }}</span>
       </div>
+
+      <!-- Pause/Resume Button (only visible when recording) -->
+      <UButton v-if="recording.isRecording.value" size="xs" color="neutral"
+        :icon="recording.isPaused.value ? 'i-heroicons-play-20-solid' : 'i-heroicons-pause-20-solid'" variant="link"
+        class="cursor-pointer" @click="togglePause">
+        {{ recording.isPaused.value ? 'Resume' : 'Pause' }}
+      </UButton>
 
       <!-- Recording Button -->
       <UButton size="xs" :color="recording.isRecording.value ? 'error' : 'neutral'"
         :icon="recording.isRecording.value ? 'i-heroicons-stop-20-solid' : 'i-uim:record-audio'" variant="link"
-        class="cursor-pointer" @click="toggleRecording">
-        {{ recording.isRecording.value ? 'Stop' : 'Record' }}
+        class="cursor-pointer" @click="toggleRecording"
+        :loading="recording.isWaitingForInitialCommit.value">
+        {{ recording.isRecording.value ? 'Stop' : (recording.isWaitingForInitialCommit.value ? 'Initializing...' : 'Record') }}
       </UButton>
 
       <!-- Go to Player -->
@@ -224,9 +232,23 @@ const updateRecordingTime = () => {
   formattedRecordingTime.value = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
+// Track previous waiting state to detect when initialization completes
+let wasWaitingForCommit = false;
+
 // Watch for recording state changes to start/stop timer
 watch(() => recording.isRecording.value, (isRecording) => {
   if (isRecording) {
+    // If we were waiting for initial commit and now recording started, show success toast
+    if (wasWaitingForCommit) {
+      toast.add({
+        title: 'Recording Started',
+        description: 'Your lesson is now being recorded',
+        color: 'success',
+        icon: 'i-heroicons-video-camera'
+      });
+      wasWaitingForCommit = false;
+    }
+
     // Start updating timer every second
     updateRecordingTime();
     recordingTimerInterval = setInterval(updateRecordingTime, 1000) as unknown as number;
@@ -240,9 +262,36 @@ watch(() => recording.isRecording.value, (isRecording) => {
   }
 });
 
+// Track when we enter waiting state
+watch(() => recording.isWaitingForInitialCommit.value, (isWaiting) => {
+  if (isWaiting) {
+    wasWaitingForCommit = true;
+  }
+});
+
 const toggleTerminal = () => {
   showTerminal.value = !showTerminal.value;
 }
+
+const togglePause = () => {
+  if (recording.isPaused.value) {
+    recording.resumeRecording();
+    toast.add({
+      title: 'Recording Resumed',
+      description: 'Your lesson recording has resumed',
+      color: 'success',
+      icon: 'i-heroicons-play'
+    });
+  } else {
+    recording.pauseRecording();
+    toast.add({
+      title: 'Recording Paused',
+      description: 'Socket connection maintained',
+      color: 'primary',
+      icon: 'i-heroicons-pause'
+    });
+  }
+};
 
 const toast = useToast();
 
@@ -310,14 +359,25 @@ const toggleRecording = async () => {
       }
     }
 
-    // Start recording with initial tab state
-    recording.startRecording();
-    toast.add({
-      title: 'Recording Started',
-      description: 'Your lesson is now being recorded',
-      color: 'success',
-      icon: 'i-heroicons-video-camera'
-    });
+    // Request recording - will wait for initial commit if needed
+    recording.requestRecording(socketClient);
+
+    // Show appropriate toast based on state
+    if (recording.isWaitingForInitialCommit.value) {
+      toast.add({
+        title: 'Initializing Workspace',
+        description: 'Preparing workspace for recording...',
+        color: 'primary',
+        icon: 'i-heroicons-arrow-path'
+      });
+    } else {
+      toast.add({
+        title: 'Recording Started',
+        description: 'Your lesson is now being recorded',
+        color: 'success',
+        icon: 'i-heroicons-video-camera'
+      });
+    }
   }
 }
 

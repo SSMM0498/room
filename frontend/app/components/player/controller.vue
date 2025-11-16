@@ -1,5 +1,5 @@
 <template>
-  <div class="player-controller border-t bg-white dark:bg-gray-950 border-accented"
+  <div class="player-controller border-y bg-white dark:bg-gray-950 border-accented"
     :class="{ 'is-visible': isVisible || isHovered }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <div class="player-controls-wrapper bg-black/5 dark:bg-white/5">
       <!-- Play/Pause Button -->
@@ -132,7 +132,7 @@ onUnmounted(() => {
 <style scoped>
 .player-controller {
   position: fixed;
-  bottom: 0;
+  bottom: 3%;
   left: 0;
   right: 0;
   z-index: 45;

@@ -180,17 +180,20 @@ onUnmounted(() => {
 .timeline-slider {
   position: relative;
   width: 100%;
-  padding: 8px 0;
+  /* padding: 8px 0; */
   cursor: pointer;
 }
 
 .timeline-track {
   position: relative;
   width: 100%;
-  height: 6px;
+  height: 2.5px;
   background: rgb(229, 231, 235);
   border-radius: 3px;
   overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: start;
 }
 
 :global(.dark) .timeline-track {
@@ -199,7 +202,6 @@ onUnmounted(() => {
 
 .timeline-progress {
   position: absolute;
-  top: 0;
   left: 0;
   height: 100%;
   background: rgb(59, 130, 246);
@@ -214,12 +216,11 @@ onUnmounted(() => {
 
 .timeline-scrubber {
   position: absolute;
-  top: 25%;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
+  transform: translate(-50%, 0);
+  width: 10px;
+  height: 10px;
   background: white;
-  border: 2px solid rgb(59, 130, 246);
+  border: 1px solid rgb(59, 130, 246);
   border-radius: 50%;
   cursor: grab;
   pointer-events: none;
@@ -238,17 +239,15 @@ onUnmounted(() => {
 
 .note-marker {
   position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
   z-index: 3;
   cursor: pointer;
 }
 
 .note-dot {
-  width: 10px;
-  height: 10px;
-  background: rgb(234, 179, 8);
-  border: 2px solid white;
+  width: 7px;
+  height: 7px;
+  background: rgb(234, 8, 8);
+  border: 1px solid white;
   border-radius: 50%;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -265,8 +264,7 @@ onUnmounted(() => {
 
 .timeline-tooltip {
   position: absolute;
-  bottom: 100%;
-  transform: translateX(-50%);
+  bottom: 50%;
   margin-bottom: 12px;
   padding: 6px 10px;
   background: white;

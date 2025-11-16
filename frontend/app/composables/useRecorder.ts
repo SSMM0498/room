@@ -8,7 +8,10 @@ const analyserNode = ref<AnalyserNode | null>(null);
 let animationFrameId: number;
 
 const isRecording = ref(false);
+const isPaused = ref(false); // Track if recording is paused (socket stays connected)
 const isReady = ref(false);
+const isInitialCommitReady = ref(false); // Track if initial commit hash is available
+const isWaitingForInitialCommit = ref(false); // Track if we're waiting for initial commit after clicking Record
 const stream = ref<MediaStream | null>(null);
 const mediaRecorder = ref<MediaRecorder | null>(null);
 const audioChunks = ref<Blob[]>([]);
@@ -156,12 +159,35 @@ export const useRecorder = () => {
   };
 
   /**
+   * Pauses the recording process (keeps socket connection alive).
+   */
+  const pauseRecording = () => {
+    if (mediaRecorder.value && isRecording.value && !isPaused.value) {
+      mediaRecorder.value.pause();
+      isPaused.value = true;
+      console.log("⏸️ Recording paused (socket connection maintained).");
+    }
+  };
+
+  /**
+   * Resumes the recording process.
+   */
+  const resumeRecording = () => {
+    if (mediaRecorder.value && isRecording.value && isPaused.value) {
+      mediaRecorder.value.resume();
+      isPaused.value = false;
+      console.log("▶️ Recording resumed.");
+    }
+  };
+
+  /**
    * Stops the recording process.
    */
   const stopRecording = () => {
     if (mediaRecorder.value && isRecording.value) {
       mediaRecorder.value.stop();
       isRecording.value = false;
+      isPaused.value = false;
       // Also stop the tracks to release the microphone
       stream.value?.getTracks().forEach(track => track.stop());
     }
@@ -219,19 +245,74 @@ export const useRecorder = () => {
     // Listen for workspace:commit events from the Worker
     socketClient.handleWorkspaceCommit((data: { hash: string; message: string }) => {
       vcsWatcher.recordCommit(data.hash, data.message);
+
+      // Mark initial commit as ready when first commit arrives
+      // (since no initial commit is created during init)
+      if (!isInitialCommitReady.value) {
+        setInitialCommitReady(true);
+      }
     });
 
     console.log('✅ VCS watcher setup complete');
   };
 
+  /**
+   * Set the initial commit ready state
+   * Call this after receiving the initial commit hash from the worker
+   */
+  const setInitialCommitReady = (ready: boolean) => {
+    isInitialCommitReady.value = ready;
+    if (ready) {
+      console.log('✅ Initial commit hash ready - recording can start');
+
+      // If we were waiting for the initial commit, auto-start recording now
+      if (isWaitingForInitialCommit.value) {
+        isWaitingForInitialCommit.value = false;
+        console.log('🎬 Auto-starting recording after initial commit received');
+        startRecording();
+      }
+    }
+  };
+
+  /**
+   * Request to start recording, will wait for initial commit if needed
+   * @param socketClient - The socket client instance to trigger initial commit
+   */
+  const requestRecording = (socketClient?: any) => {
+    if (!isInitialCommitReady.value) {
+      console.log('⏳ No initial commit yet - creating initial workspace snapshot...');
+      isWaitingForInitialCommit.value = true;
+
+      // Trigger creation of initial commit on the worker
+      if (socketClient && socketClient.createInitialCommit) {
+        socketClient.createInitialCommit((response: any) => {
+          if (response.error) {
+            console.error('[Recorder] Failed to create initial commit:', response.error);
+            isWaitingForInitialCommit.value = false;
+          }
+          // The workspace:commit event will trigger auto-start via setInitialCommitReady
+        });
+      } else {
+        console.warn('[Recorder] Socket client not provided - cannot trigger initial commit');
+      }
+    } else {
+      startRecording();
+    }
+  };
+
   return {
     isRecording,
+    isPaused,
     isReady,
+    isInitialCommitReady,
+    isWaitingForInitialCommit,
     micVolume,
     recorder,
     setupMedia,
     initializeRecorder,
     startRecording,
+    pauseRecording,
+    resumeRecording,
     stopRecording,
     monitorMicVolume,
     stopMonitoring,
@@ -240,5 +321,7 @@ export const useRecorder = () => {
     getRecorderStatus,
     setUploadCallback,
     setupVcsWatcher,
+    setInitialCommitReady,
+    requestRecording,
   };
 };

@@ -14,7 +14,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	//   /hello
 	//   /hello/{name}
 	if path == "/hello" {
-		fmt.Fprintf(w, `{"message": "Hello, World!"}`)
+		fmt.Fprintf(w, `{"message": "Hi, World Friend!"}`)
 		return
 	}
 

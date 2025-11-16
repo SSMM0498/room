@@ -50,6 +50,11 @@ export class Player {
   private activePauseBranch: string | null = null;
   private activePauseCommitHash: string | null = null;
 
+  // Workspace hydration tracking
+  private workspaceHydrated: boolean = false;
+  private hydrationResolve: (() => void) | null = null;
+  private hydrationPromise: Promise<void> | null = null;
+
   constructor(config: PlayerConfig = {}) {
     this.stateMachine = new PlayerStateMachine();
     this.scheduler = new ActionTimelineScheduler();
@@ -136,6 +141,48 @@ export class Player {
   setSocketClient(client: any): void {
     this.socketClient = client;
     console.log('[Player] Socket client set for Git operations');
+
+    // Set up hydration promise if not already hydrated
+    if (!this.workspaceHydrated && client) {
+      this.hydrationPromise = new Promise((resolve) => {
+        this.hydrationResolve = resolve;
+      });
+
+      // Listen for hydration-complete event
+      const handleHydrationComplete = (event: MessageEvent) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (response.event === 'hydration-complete') {
+            console.log('[Player] Workspace hydration complete');
+            this.workspaceHydrated = true;
+            if (this.hydrationResolve) {
+              this.hydrationResolve();
+              this.hydrationResolve = null;
+            }
+            client.instance?.removeEventListener('message', handleHydrationComplete);
+          }
+        } catch (error) {
+          // Ignore parse errors
+        }
+      };
+
+      client.instance?.addEventListener('message', handleHydrationComplete);
+    }
+  }
+
+  /**
+   * Wait for workspace hydration to complete (only on first pause)
+   */
+  private async waitForHydration(): Promise<void> {
+    if (this.workspaceHydrated) {
+      return; // Already hydrated
+    }
+
+    if (this.hydrationPromise) {
+      console.log('[Player] Waiting for workspace hydration...');
+      await this.hydrationPromise;
+      console.log('[Player] Hydration complete, proceeding with pause');
+    }
   }
 
   /**
@@ -714,21 +761,29 @@ export class Player {
     const isResumingFromPause = previousState === 'paused';
 
     if (isResumingFromPause) {
-      // Commit and save the current pause branch as a note (if user made changes)
+      // Fire commit and save in background (non-blocking)
       if (this.activePauseBranch) {
-        // Commit any changes made during pause
-        const commitHash = await this.performGitCommit(`Interactive changes at ${this.scheduler.getCurrentTime() / 1000}s`);
+        // Start commit and save operations asynchronously without waiting
+        (async () => {
+          try {
+            // Commit any changes made during pause
+            const commitHash = await this.performGitCommit(`Interactive changes at ${this.scheduler.getCurrentTime() / 1000}s`);
 
-        // Update the commit hash if changes were committed
-        if (commitHash) {
-          this.activePauseCommitHash = commitHash;
-          console.log('[Player] Committed interactive changes:', commitHash.substring(0, 8));
-        }
+            // Update the commit hash if changes were committed
+            if (commitHash) {
+              this.activePauseCommitHash = commitHash;
+              console.log('[Player] Committed interactive changes:', commitHash.substring(0, 8));
+            }
 
-        // Save as note
-        this.saveCurrentBranchAsNote();
+            // Save as note
+            this.saveCurrentBranchAsNote();
+          } catch (error) {
+            console.error('[Player] Failed to commit/save during resume:', error);
+          }
+        })();
       }
 
+      // Immediately proceed with checkout and resume (don't wait for commit/save)
       // Reconstruct state to get the commit hash from snapshot
       const currentTime = this.scheduler.getCurrentTime();
       const absoluteTime = this.baselineTime + currentTime;
@@ -801,6 +856,9 @@ export class Player {
     const currentTime = this.scheduler.getCurrentTime();
     console.log('[Player] Playback paused at', currentTime / 1000, 'seconds');
 
+    // Wait for workspace hydration to complete (only on first pause)
+    await this.waitForHydration();
+
     // Check if a note already exists at this timestamp
     const existingNote = this.notes.find(n => Math.abs(n.timestamp - currentTime) < 100); // Within 100ms
 
@@ -819,10 +877,16 @@ export class Player {
       const commitHash = this.stateReconstructor.getCommitHash();
 
       if (commitHash && commitHash !== '') {
-        // Generate unique branch name based on timestamp
-        const branchName = `interactive-${Date.now()}`;
+        // Generate unique branch name based on video time in seconds
+        // This allows one branch per second of video
+        const videoTimeSeconds = Math.floor(currentTime / 1000);
+        const branchName = `interactive-${videoTimeSeconds}s`;
 
-        // Create and checkout the branch from the snapshot's commit
+        // FIRST: Checkout the commit from the recording at pause point
+        await this.performGitCheckout(commitHash);
+        console.log('[Player] Checked out commit from recording:', commitHash.substring(0, 8));
+
+        // THEN: Create the interactive branch from that commit
         await this.performGitCreateBranch(commitHash, branchName);
 
         // Store the active pause branch info for later note saving
@@ -839,13 +903,16 @@ export class Player {
   /**
    * Seek to a specific time
    * @param time - Relative time from start (in ms)
+   * @param options - Optional configuration for seek behavior
+   *   - resumePlayback: Whether to resume playback after seeking if it was playing before (default: true)
    */
-  async seek(time: number): Promise<void> {
+  async seek(time: number, options: { resumePlayback?: boolean } = {}): Promise<void> {
     if (!this.stateMachine.canSeek()) {
       console.warn('[Player] Cannot seek in current state:', this.stateMachine.getState());
       return;
     }
 
+    const { resumePlayback = true } = options;
     const wasPlaying = this.stateMachine.getState() === 'playing';
 
     // Pause if playing
@@ -891,12 +958,12 @@ export class Player {
 
       this.stateMachine.setState('paused');
 
-      // Resume playback if it was playing before
-      if (wasPlaying) {
+      // Resume playback if it was playing before AND resumePlayback is true
+      if (wasPlaying && resumePlayback) {
         this.play();
       }
 
-      console.log('[Player] Seek completed');
+      console.log('[Player] Seek completed', resumePlayback ? '(preserving playback state)' : '(staying paused)');
     } catch (error) {
       console.error('[Player] Seek failed:', error);
       this.stateMachine.setState('error');
@@ -995,14 +1062,15 @@ export class Player {
     // Checkout the note's branch
     await this.performGitCheckout(note.branchName);
 
-    // Seek to the note's timestamp
-    await this.seek(note.timestamp);
+    // Seek to the note's timestamp and stay paused
+    // (clicking on a note should always pause, not resume playback)
+    await this.seek(note.timestamp, { resumePlayback: false });
 
     // Set the active pause branch so user can continue working
     this.activePauseBranch = note.branchName;
     this.activePauseCommitHash = note.commitHash;
 
-    console.log('[Player] Note loaded successfully');
+    console.log('[Player] Note loaded successfully (player paused)');
   }
 
   /**

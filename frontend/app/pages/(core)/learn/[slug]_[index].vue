@@ -90,6 +90,7 @@ const {
 const {
   initializePlayer,
   setAudioElement,
+  setSocketClient,
   loadFromEvents,
   pause,
   togglePlayPause,
@@ -306,6 +307,9 @@ const startWorkspace = async (courseId: string) => {
       loading.value = false;
       sessionState.value = 'ready';
 
+      // Set socket client for player Git operations
+      setSocketClient(socketClient);
+
       // Initialize playback mode
       socketClient.init('PLAYBACK');
 
@@ -335,6 +339,9 @@ const startWorkspace = async (courseId: string) => {
       console.log('[Learn] Socket disconnected');
       isConnected.value = false;
       setSocketConnected(false);
+
+      // Clear socket client from player
+      setSocketClient(null);
     });
   } catch (err: any) {
     console.error('[Learn] Failed to start workspace:', err);
@@ -396,6 +403,7 @@ watch(isPlaying, async (playing) => {
       socketClient.disconnect();
       isConnected.value = false;
       setSocketConnected(false);
+      // Socket client will be cleared by onDisconnect handler
     }
   } else if (isReady.value) {
     // Paused - need workspace for interaction
@@ -413,6 +421,9 @@ watch(isPlaying, async (playing) => {
         console.log('[Learn] Socket reconnected successfully');
         isConnected.value = true;
         setSocketConnected(true);
+
+        // Set socket client for player Git operations
+        setSocketClient(socketClient);
 
         // Reinitialize playback mode after reconnection
         socketClient.init('PLAYBACK');
@@ -465,6 +476,9 @@ onUnmounted(() => {
   if (centerIconTimer !== null) {
     clearTimeout(centerIconTimer);
   }
+
+  // Clear socket client from player
+  setSocketClient(null);
 
   if (socketClient.isConnected) {
     console.log('[Learn] Disconnecting socket on unmount');

@@ -220,9 +220,11 @@ const handleBackgroundClick = (event: MouseEvent) => {
 };
 
 onMounted(() => {
+  // Note: init is called by the parent page (teach/learn), not here
+  // to avoid duplicate initialization
+
   // Determine mode based on route
   const mode = route.name && (route.name as string).startsWith('teach') ? 'RECORDING' : 'PLAYBACK';
-  socketClient.init(mode); // Initialize backend watcher event loop with mode
 
   // In recording mode, read the initial file tree
   if (mode === 'RECORDING') {

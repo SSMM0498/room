@@ -50,7 +50,7 @@ func (c *Client) ReadPump() {
 			go c.handleRequestResponse(msg)
 
 		// Fire-and-forget events (no response expected from worker)
-		case "terminal-input", "crud-collapse-folder", "crud-close-file", "watch":
+		case "terminal-input", "crud-collapse-folder", "crud-close-file", "watch", "create-initial-commit":
 			log.Printf("[BRIDGE] Frontend → Worker (fire-and-forget): event=%s", msg.Event)
 			// No response needed, just forward to the worker.
 			c.Worker.SendFireAndForget(&msg)
@@ -82,10 +82,18 @@ func (c *Client) handleRequestResponse(msg types.Message) {
 	ack, err := c.Worker.ForwardCommand(&msg, internalAckID)
 	if err != nil {
 		log.Printf("BRIDGE: Error forwarding command '%s': %v", msg.Event, err)
-		c.Conn.WriteJSON(types.Acknowledge{Event: msg.Event, Error: err.Error(), Data: map[string]interface{}{"ackID": internalAckID}})
+		// Use Send channel instead of direct WriteJSON to avoid concurrent writes
+		c.Send <- &types.Message{
+			Event: msg.Event,
+			Data:  map[string]interface{}{"ackID": internalAckID, "error": err.Error()},
+		}
 		return
 	}
 	log.Printf("BRIDGE: Send forwarding command '%s': %v", msg.Event, err)
 
-	c.Conn.WriteJSON(ack)
+	// Use Send channel instead of direct WriteJSON to avoid concurrent writes
+	c.Send <- &types.Message{
+		Event: ack.Event,
+		Data:  ack.Data,
+	}
 }

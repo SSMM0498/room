@@ -72,11 +72,14 @@ const { currentCourse, fetchCourseBySlug } = useCourses();
 const {
   isReady,
   isRecording,
+  isInitialCommitReady,
   micVolume,
   setupMedia,
   initializeRecorder,
   stopRecording,
   setupVcsWatcher,
+  setInitialCommitReady,
+  setUploadCallback,
   recorder,
 } = useRecorder();
 const { socketClient, getSocketUrl } = useSocket();
@@ -114,7 +117,7 @@ onMounted(() => {
   initializeRecorder({
     getUIState: () => {
       const _directoryTree = JSON.parse(JSON.stringify(directoryTree));
-      const _openFolders = openFolders.value;
+      const _openFolders = JSON.parse(JSON.stringify(openFolders.value));
       const _openTabs = openTabs.tabs.map(tab => tab.filePath)
       const _activeTab = activeTab.filePath
       const _mouseX = mouseX.value;
@@ -153,6 +156,53 @@ onMounted(() => {
         processes: []
       };
     },
+  });
+
+  // Set upload callback for recording
+  const { uploadRecording } = useCourseContent();
+  setUploadCallback(async (audioBlob: Blob, timelineNDJSON: string) => {
+    if (!currentCourse.value) {
+      console.error('No current course available for upload');
+      return false;
+    }
+
+    try {
+      console.log('Starting upload process...');
+      const result = await uploadRecording(
+        currentCourse.value.id,
+        timelineNDJSON,
+        audioBlob
+      );
+
+      if (result) {
+        console.log('✅ Upload completed successfully');
+        toast.add({
+          title: 'Recording Saved',
+          description: 'Your lesson has been saved successfully',
+          color: 'success',
+          icon: 'i-heroicons-check-circle'
+        });
+        return true;
+      } else {
+        console.error('❌ Upload failed - no result returned');
+        toast.add({
+          title: 'Upload Failed',
+          description: 'Failed to save your recording',
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle'
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Upload error:', error);
+      toast.add({
+        title: 'Upload Error',
+        description: 'An error occurred while saving your recording',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle'
+      });
+      return false;
+    }
   });
 });
 
@@ -224,11 +274,9 @@ const startWorkspace = async (courseId: string) => {
 
       // Initialize recording mode and VCS watcher
       socketClient.init('RECORDING', (response: any) => {
-        // Set initial commit hash in VcsWatcher if provided
-        if (response.initialCommitHash && recorder.value) {
-          recorder.value.getVcsWatcher().setInitialCommitHash(response.initialCommitHash);
-          console.log('[Teach] Initial commit hash set:', response.initialCommitHash.substring(0, 8));
-        }
+        // No initial commit is created during init
+        // The first commit will be created when a file is modified
+        console.log('[Teach] Workspace initialized in RECORDING mode');
       });
       setupVcsWatcher(socketClient);
 

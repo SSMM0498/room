@@ -579,6 +579,17 @@ export const usePlayer = () => {
   };
 
   /**
+   * Set the socket client for Git operations during pause/note loading
+   */
+  const setSocketClient = (client: any) => {
+    if (!player.value) {
+      console.error('[usePlayer] Cannot set socket client: Player not initialized');
+      return;
+    }
+    player.value.setSocketClient(client);
+  };
+
+  /**
    * Get the current ground truth state (UI + Workspace)
    */
   const getGroundTruthState = (): { ui: UIState | null; workspace: WorkspaceState | null } => {
@@ -719,6 +730,7 @@ export const usePlayer = () => {
     // Methods
     initializePlayer,
     setAudioElement,
+    setSocketClient,
     loadFromNDJSON,
     loadFromEvents,
     play,

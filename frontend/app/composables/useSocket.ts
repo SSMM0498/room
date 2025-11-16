@@ -281,6 +281,10 @@ class SocketClient {
     this.emit('init', { mode }, callback);
   }
 
+  createInitialCommit(callback?: (response: any) => void) {
+    this.emit('create-initial-commit', {}, callback);
+  }
+
   hydrateCreateFile(targetPath: string, contentBase64: string) {
     this.emit('hydrate-create-file', { targetPath, contentBase64 });
   }

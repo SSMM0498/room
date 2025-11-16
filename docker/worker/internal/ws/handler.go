@@ -50,7 +50,7 @@ type Client struct {
 	hub  *Hub
 	Conn *websocket.Conn
 	Send chan *types.Message
-	Mode string // "RECORDING" or "PLAYBACK"
+	Mode string
 }
 
 func (c *Client) readPump(h *Handler) {
@@ -122,20 +122,9 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		if err != nil {
 			log.Printf("[WORKER] Git initialization failed: %v", err)
 			ack.Error = err.Error()
-		} else {
-			// Get initial commit hash in RECORDING mode
-			if client.Mode == "RECORDING" {
-				hash, err := h.fsSvc.GetCurrentCommitHash()
-				if err == nil && hash != "" {
-					// Update ack.Data map to include initial commit hash
-					ack.Data = map[string]interface{}{
-						"ackID":             reqAckID,
-						"initialCommitHash": hash,
-					}
-					log.Printf("[WORKER] Initial commit hash: %s", hash[:8])
-				}
-			}
 		}
+		// Note: No initial commit is created during init
+		// Commits will only be created when files are actually modified
 
 		log.Println("[WORKER] Bridge initialized.")
 		go h.watchSvc.StartEventLoop(func(event fsnotify.Event) {
@@ -180,6 +169,33 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 		})
 		h.watchSvc.Watch("/workspace")
 		return
+	case "create-initial-commit":
+		log.Println("[WORKER] Creating initial commit for recording.")
+		// Only create initial commit in RECORDING mode
+		if client.Mode == "RECORDING" {
+			// Create a commit with the current workspace state
+			commitHash, err := h.fsSvc.CreateInitialCommit()
+			if err != nil {
+				log.Printf("[WORKER] Failed to create initial commit: %v", err)
+				ack.Error = err.Error()
+			} else if commitHash != "" {
+				// Broadcast workspace:commit event
+				client.hub.Send(&types.Message{
+					Event: "workspace:commit",
+					Data: map[string]interface{}{
+						"hash":    commitHash,
+						"message": "Initial workspace snapshot",
+					},
+				})
+				log.Printf("[WORKER] Initial commit created and broadcast: %s", commitHash[:8])
+				ack.Data = map[string]interface{}{
+					"ackID": reqAckID,
+					"hash":  commitHash,
+				}
+			} else {
+				log.Println("[WORKER] No changes to commit for initial snapshot")
+			}
+		}
 	case "hydrate-create-file":
 		log.Println("[WORKER] Hydrating file.")
 		var req types.HydrateFileRequest
@@ -675,6 +691,45 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 				}
 				log.Printf("[WORKER] ✅ Successfully created and checked out branch: %s", req.BranchName)
 			}
+		}
+	case "system:commit":
+		log.Println("[WORKER] Git commit command.")
+		var req struct {
+			Message string `json:"message"`
+			AckID   string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		commitMessage := req.Message
+		if commitMessage == "" {
+			commitMessage = "Interactive changes"
+		}
+
+		commitHash, err := h.fsSvc.CommitChanges(commitMessage, client.Mode)
+		if err != nil {
+			ack.Error = err.Error()
+			log.Printf("[WORKER] Git commit failed: %v", err)
+		} else if commitHash != "" {
+			ack.Data = map[string]interface{}{
+				"ackID":      reqAckID,
+				"commitHash": commitHash,
+				"status":     "committed",
+			}
+			log.Printf("[WORKER] ✅ Successfully committed changes: %s", commitHash[:8])
+		} else {
+			// No changes to commit
+			ack.Data = map[string]interface{}{
+				"ackID":  reqAckID,
+				"status": "no-changes",
+			}
+			log.Println("[WORKER] No changes to commit")
+		}
+	case "hydration-complete":
+		log.Println("[WORKER] Workspace hydration complete, forwarding to frontend.")
+		// Forward hydration-complete event to frontend
+		client.Send <- &types.Message{
+			Event: "hydration-complete",
+			Data:  map[string]interface{}{},
 		}
 	default:
 		log.Printf("[WORKER] Unknown event type: %s", msg.Event)

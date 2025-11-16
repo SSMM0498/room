@@ -88,7 +88,6 @@ func (c *Client) supervisor() {
 		// NOTE: Init message will be sent by frontend, not automatically by Bridge
 		close(c.isReady)
 
-		// --- THIS IS THE FIX ---
 		// Wait here until the readPump for this connection exits.
 		// When it exits, it means the connection is lost.
 		<-readPumpDone
@@ -115,7 +114,7 @@ func (c *Client) readPump(done chan<- struct{}) {
 
 		log.Printf("[BRIDGE] Worker → Bridge: event=%s", msg.Event)
 
-		if msg.Event == "file-changed" || msg.Event == "terminal-data" {
+		if msg.Event == "file-changed" || msg.Event == "terminal-data" || msg.Event == "workspace:commit" {
 			log.Printf("[BRIDGE] Publishing event to EventBus: %s", msg.Event)
 			c.eventBus.Publish("worker.events", &msg)
 		}
@@ -274,4 +273,10 @@ func (c *Client) hydrateWorkspace() {
 
 	wg.Wait()
 	log.Println("[BRIDGE] ✅ Workspace hydration complete.")
+
+	// Notify frontend that hydration is complete
+	c.SendFireAndForget(&types.Message{
+		Event: "hydration-complete",
+		Data:  map[string]interface{}{},
+	})
 }

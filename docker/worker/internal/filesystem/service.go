@@ -203,14 +203,20 @@ func (s *Service) InitializeGit(mode string) error {
 	s.gitInitMux.Lock()
 	defer s.gitInitMux.Unlock()
 
-	// If already initialized, skip
-	if s.gitInited {
+	s.mode = mode
+	gitDir := filepath.Join(s.baseDir, ".git")
+
+	// In RECORDING mode, always reinitialize (remove existing and start fresh)
+	// In PLAYBACK mode, skip if already initialized
+	if s.gitInited && mode != "RECORDING" {
 		log.Printf("[FS] Git already initialized, skipping")
 		return nil
 	}
 
-	s.mode = mode
-	gitDir := filepath.Join(s.baseDir, ".git")
+	// Reset gitInited flag in RECORDING mode to allow re-initialization
+	if mode == "RECORDING" {
+		s.gitInited = false
+	}
 
 	if mode == "RECORDING" {
 		// RECORDING MODE: Always start fresh
@@ -228,18 +234,9 @@ func (s *Service) InitializeGit(mode string) error {
 			return fmt.Errorf("git init failed: %w", err)
 		}
 
-		// Add all files
-		if _, err := s.executeGitCommand("add", "."); err != nil {
-			return fmt.Errorf("git add failed: %w", err)
-		}
-
-		// Create initial commit
-		if _, err := s.executeGitCommand("commit", "-m", "Initial commit"); err != nil {
-			// If no files to commit, that's okay
-			log.Printf("[FS] Initial commit warning (likely empty workspace): %v", err)
-		}
-
-		log.Println("[FS] ✅ Git repository initialized successfully for RECORDING")
+		// Note: We don't create an initial commit here
+		// Commits will only be created when files are actually modified
+		log.Println("[FS] ✅ Git repository initialized successfully for RECORDING (no initial commit)")
 	} else {
 		// PLAYBACK MODE: Use hydrated .git directory
 		if _, err := os.Stat(gitDir); err != nil {
@@ -251,6 +248,39 @@ func (s *Service) InitializeGit(mode string) error {
 
 	s.gitInited = true
 	return nil
+}
+
+// CreateInitialCommit creates the initial commit for the workspace
+// This captures the current state of all files as the starting point for recording
+func (s *Service) CreateInitialCommit() (string, error) {
+	// Only commit in RECORDING mode
+	if s.mode != "RECORDING" {
+		return "", nil
+	}
+
+	// Add all files
+	if _, err := s.executeGitCommand("add", "."); err != nil {
+		return "", fmt.Errorf("git add failed: %w", err)
+	}
+
+	// Create initial commit
+	if _, err := s.executeGitCommand("commit", "-m", "Initial workspace snapshot"); err != nil {
+		// If nothing to commit, return empty hash (not an error)
+		if strings.Contains(err.Error(), "nothing to commit") {
+			log.Println("[FS] No files to commit in initial snapshot")
+			return "", nil
+		}
+		return "", fmt.Errorf("git commit failed: %w", err)
+	}
+
+	// Get the commit hash
+	hash, err := s.executeGitCommand("rev-parse", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse failed: %w", err)
+	}
+
+	log.Printf("[FS] ✅ Initial commit created: %s", hash[:8])
+	return hash, nil
 }
 
 // commitChanges creates a git commit with the given message and returns the commit hash
@@ -283,6 +313,38 @@ func (s *Service) commitChanges(message string) (string, error) {
 	}
 
 	log.Printf("[FS] ✅ Committed: %s (hash: %s)", message, hash[:8])
+	return hash, nil
+}
+
+// CommitChanges creates a git commit for interactive changes (works in both RECORDING and PLAYBACK modes)
+// This is used when the user makes changes during pause in PLAYBACK mode
+func (s *Service) CommitChanges(message string, mode string) (string, error) {
+	if !s.gitInited {
+		return "", fmt.Errorf("git not initialized")
+	}
+
+	// Add all changes
+	if _, err := s.executeGitCommand("add", "."); err != nil {
+		return "", fmt.Errorf("git add failed: %w", err)
+	}
+
+	// Commit changes
+	if _, err := s.executeGitCommand("commit", "-m", message); err != nil {
+		// If nothing to commit, return empty hash (not an error)
+		if strings.Contains(err.Error(), "nothing to commit") {
+			log.Printf("[FS] No changes to commit for: %s", message)
+			return "", nil
+		}
+		return "", fmt.Errorf("git commit failed: %w", err)
+	}
+
+	// Get the commit hash
+	hash, err := s.executeGitCommand("rev-parse", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse failed: %w", err)
+	}
+
+	log.Printf("[FS] ✅ Committed interactive changes: %s (hash: %s)", message, hash[:8])
 	return hash, nil
 }
 
