@@ -18,7 +18,7 @@ import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
 import { IdeTabWatcher } from './IdeTabWatcher';
 import { ResourceWatcher } from './ResourceWatcher';
-import { VcsWatcher } from './VcsWatcher';
+import { CommitHashTracker } from './CommitHashTracker';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -54,8 +54,8 @@ export class Recorder {
   // Resource watcher (file/folder operations)
   private resourceWatcher: ResourceWatcher;
 
-  // VCS watcher (Git commit events)
-  private vcsWatcher: VcsWatcher;
+  // Commit hash tracker (Git commit tracking + snapshot triggers)
+  private commitHashTracker: CommitHashTracker;
 
   constructor(config: RecorderConfig = {}) {
     this.config = {
@@ -70,7 +70,10 @@ export class Recorder {
     this.styleWatcher = new CursorStyleWatcher(this.addNewEvent);
     this.ideTabWatcher = new IdeTabWatcher(this);
     this.resourceWatcher = new ResourceWatcher(this);
-    this.vcsWatcher = new VcsWatcher(this.addNewEvent);
+    // CommitHashTracker triggers delta snapshots on every commit
+    this.commitHashTracker = new CommitHashTracker((hash: string) => {
+      this.takeDeltaSnapshot();
+    });
   }
 
   /**
@@ -95,10 +98,10 @@ export class Recorder {
   }
 
   /**
-   * Get the VCS watcher instance for components to record Git commit events
+   * Get the commit hash tracker instance for components to track Git commits
    */
-  getVcsWatcher(): VcsWatcher {
-    return this.vcsWatcher;
+  getCommitHashTracker(): CommitHashTracker {
+    return this.commitHashTracker;
   }
 
   /**
@@ -198,7 +201,7 @@ export class Recorder {
     }
 
     const uiState = this.stateCapture.getUIState();
-    const commitHash = this.vcsWatcher.getLatestCommitHash();
+    const commitHash = this.commitHashTracker.getLatestCommitHash();
 
     const snapshotPayload = this.snapshotManager.createFullSnapshot(uiState, commitHash);
 
@@ -221,7 +224,7 @@ export class Recorder {
     }
 
     const currentUIState = this.stateCapture.getUIState();
-    const commitHash = this.vcsWatcher.getLatestCommitHash();
+    const commitHash = this.commitHashTracker.getLatestCommitHash();
 
     const deltaPayload = this.snapshotManager.createDeltaSnapshot(
       currentUIState,

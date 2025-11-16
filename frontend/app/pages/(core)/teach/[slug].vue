@@ -77,7 +77,7 @@ const {
   setupMedia,
   initializeRecorder,
   stopRecording,
-  setupVcsWatcher,
+  setupCommitHashTracker,
   setInitialCommitReady,
   setUploadCallback,
   recorder,
@@ -261,13 +261,13 @@ const startWorkspace = async (courseId: string) => {
       sessionState.value = 'ready';
       isWorkSpaceChecklistOpen.value = false;
 
-      // Initialize recording mode and VCS watcher
+      // Initialize recording mode and commit hash tracker
       socketClient.init('RECORDING', (response: any) => {
         // No initial commit is created during init
         // The first commit will be created when a file is modified
         console.log('[Teach] Workspace initialized in RECORDING mode');
       });
-      setupVcsWatcher(socketClient);
+      setupCommitHashTracker(socketClient);
 
       // Start file watching
       setupFileWatching();

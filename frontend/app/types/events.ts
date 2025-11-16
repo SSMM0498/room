@@ -372,13 +372,6 @@ export interface FilesExpandPayload {
 // CATEGORY 4: GROUND TRUTH STATE (Definitive State Changes)
 // ============================================================================
 
-export interface VcsPayload {
-  /** Git commit hash */
-  hash: string;
-  /** Commit message */
-  message: string;
-}
-
 export interface StateCommitPayload {
   /** File path */
   file: string;
@@ -458,7 +451,6 @@ export type AnyActionPacket =
   | ActionPacket<FilesExpandPayload>
   // Ground Truth State
   | ActionPacket<SnapshotPayload>
-  | ActionPacket<VcsPayload>
   | ActionPacket<StateCommitPayload>
   | ActionPacket<TerminalOutPayload>
   | ActionPacket<TerminalExitPayload>
@@ -509,8 +501,6 @@ export const EventTypes = {
   // Ground Truth State
   STATE_SNAPSHOT_FULL: 'state:snapshot:full',
   STATE_SNAPSHOT_DELTA: 'state:snapshot:delta',
-  STATE_VCS: 'state:vcs',
-  STATE_COMMIT: 'state:commit',
   TERMINAL_OUT: 'terminal:out',
   TERMINAL_EXIT: 'terminal:exit',
 
@@ -567,11 +557,4 @@ export function isSnapshot(event: ActionPacket): event is ActionPacket<SnapshotP
  */
 export function isStateCommit(event: ActionPacket): event is ActionPacket<StateCommitPayload> {
   return event.src === 'state' && event.act === EventTypes.STATE_COMMIT;
-}
-
-/**
- * Type guard to check if an event is a VCS (git commit) event
- */
-export function isVcsEvent(event: ActionPacket): event is ActionPacket<VcsPayload> {
-  return event.src === 'state' && event.act === EventTypes.STATE_VCS;
 }

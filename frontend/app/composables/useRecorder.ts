@@ -231,20 +231,20 @@ export const useRecorder = () => {
   };
 
   /**
-   * Setup VCS watcher to listen for Git commit events from WebSocket
+   * Setup commit hash tracker to listen for Git commit events from WebSocket
    * Call this after initializing the recorder and connecting to WebSocket
    */
-  const setupVcsWatcher = (socketClient: any) => {
+  const setupCommitHashTracker = (socketClient: any) => {
     if (!recorder.value) {
       console.error('❌ Recorder not initialized. Call initializeRecorder first.');
       return;
     }
 
-    const vcsWatcher = recorder.value.getVcsWatcher();
+    const commitHashTracker = recorder.value.getCommitHashTracker();
 
     // Listen for workspace:commit events from the Worker
     socketClient.handleWorkspaceCommit((data: { hash: string; message: string }) => {
-      vcsWatcher.recordCommit(data.hash, data.message);
+      commitHashTracker.recordCommit(data.hash, data.message);
 
       // Mark initial commit as ready when first commit arrives
       // (since no initial commit is created during init)
@@ -253,7 +253,7 @@ export const useRecorder = () => {
       }
     });
 
-    console.log('✅ VCS watcher setup complete');
+    console.log('✅ Commit hash tracker setup complete');
   };
 
   /**
@@ -320,7 +320,7 @@ export const useRecorder = () => {
     getAudioBlob,
     getRecorderStatus,
     setUploadCallback,
-    setupVcsWatcher,
+    setupCommitHashTracker,
     setInitialCommitReady,
     requestRecording,
   };

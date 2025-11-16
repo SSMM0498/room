@@ -13,7 +13,7 @@ import { EventTypes } from '~/types/events';
 export class IdeTabWatcher {
   private recorder: Recorder;
 
-  constructor(recorder: Recorder) {
+   constructor(recorder: Recorder) {
     this.recorder = recorder;
   }
 
