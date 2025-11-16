@@ -28,7 +28,6 @@ export class CursorInteractionWatcher {
 
     this.isWatching = true;
     document.addEventListener('mousedown', this.handleMouseDown);
-    console.log('[CursorInteractionWatcher] Started watching mouse interactions');
   }
 
   /**
@@ -41,7 +40,6 @@ export class CursorInteractionWatcher {
 
     this.isWatching = false;
     document.removeEventListener('mousedown', this.handleMouseDown);
-    console.log('[CursorInteractionWatcher] Stopped watching mouse interactions');
   }
 
   /**

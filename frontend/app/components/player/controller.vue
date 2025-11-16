@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerNote } from '~/types/player-notes';
+import type { PlayerNote } from '~/types/events.ts';
 
 const props = defineProps<{
   isPlaying?: boolean;

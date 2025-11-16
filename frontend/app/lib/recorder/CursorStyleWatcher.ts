@@ -34,12 +34,9 @@ export class CursorStyleWatcher {
 
     // Capture initial cursor style from document.body
     this.previousStyle = window.getComputedStyle(document.body).cursor || 'default';
-    console.log('[CursorStyleWatcher] Initial cursor style:', this.previousStyle);
 
     // Attach mouseover event listener with throttling
     document.addEventListener('mouseover', this.handleMouseOver);
-
-    console.log('[CursorStyleWatcher] Started watching cursor style changes');
   }
 
   /**
@@ -58,8 +55,6 @@ export class CursorStyleWatcher {
       clearTimeout(this.throttleTimer);
       this.throttleTimer = null;
     }
-
-    console.log('[CursorStyleWatcher] Stopped watching cursor style changes');
   }
 
   /**

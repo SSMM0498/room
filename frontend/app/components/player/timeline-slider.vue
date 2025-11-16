@@ -1,40 +1,18 @@
 <template>
-  <div
-    ref="sliderContainer"
-    class="timeline-slider"
-    @mousedown="handleMouseDown"
-    @mousemove="handleMouseMove"
-    @mouseleave="handleMouseLeave"
-  >
+  <div ref="sliderContainer" class="timeline-slider" @mousedown="handleMouseDown" @mousemove="handleMouseMove"
+    @mouseleave="handleMouseLeave">
     <div class="timeline-track">
-      <div
-        class="timeline-progress"
-        :style="{ width: progressPercent + '%' }"
-      ></div>
+      <div class="timeline-progress" :style="{ width: progressPercent + '%' }"></div>
 
-      <div
-        v-for="note in notes"
-        :key="note.id"
-        class="note-marker"
-        :style="{ left: getNotePosition(note) + '%' }"
-        @click.stop="handleNoteClick(note.id)"
-        @mouseenter="showNoteTooltip(note, $event)"
-        @mouseleave="hideTooltip"
-      >
+      <div v-for="note in notes" :key="note.id" class="note-marker" :style="{ left: getNotePosition(note) + '%' }"
+        @click.stop="handleNoteClick(note.id)" @mouseenter="showNoteTooltip(note, $event)" @mouseleave="hideTooltip">
         <div class="note-dot"></div>
       </div>
 
-      <div
-        class="timeline-scrubber"
-        :style="{ left: progressPercent + '%' }"
-      ></div>
+      <div class="timeline-scrubber" :style="{ left: progressPercent + '%' }"></div>
     </div>
 
-    <div
-      v-if="tooltip.visible"
-      class="timeline-tooltip"
-      :style="{ left: tooltip.x + 'px' }"
-    >
+    <div v-if="tooltip.visible" class="timeline-tooltip" :style="{ left: tooltip.x + 'px' }">
       <div class="tooltip-time">{{ tooltip.time }}</div>
       <div v-if="tooltip.description" class="tooltip-description">
         {{ tooltip.description }}
@@ -44,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerNote } from '~/types/player-notes';
+import type { PlayerNote } from '~/types/events.ts';
 
 const props = defineProps<{
   currentTime: number;  // Current time in ms

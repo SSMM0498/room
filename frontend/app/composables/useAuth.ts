@@ -1,5 +1,5 @@
 import type { AuthModel } from 'pocketbase';
-import { type AuthResponse, type UserModel } from '../../types/api'
+import { type AuthResponse, type UserModel } from '~~/types/api'
 
 export const useAuth = () => {
   const authUser = useAuthUser();

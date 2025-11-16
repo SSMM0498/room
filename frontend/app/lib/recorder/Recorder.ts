@@ -59,15 +59,15 @@ export class Recorder {
 
   constructor(config: RecorderConfig = {}) {
     this.config = {
-      fullSnapshotInterval: config.fullSnapshotInterval ?? 30000,
-      deltaSnapshotInterval: config.deltaSnapshotInterval ?? 3000,
+      fullSnapshotInterval: config.fullSnapshotInterval ?? 15000,
+      deltaSnapshotInterval: config.deltaSnapshotInterval ?? 1500,
       version: config.version ?? 1,
     };
-
+    this.addNewEvent = this.addNewEvent.bind(this);
     this.snapshotManager = new SnapshotManager();
-    this.cursorWatcher = new CursorMovementWatcher(this.addNewEvent.bind(this));
-    this.clickWatcher = new CursorInteractionWatcher(this.addNewEvent.bind(this));
-    this.styleWatcher = new CursorStyleWatcher(this.addNewEvent.bind(this));
+    this.cursorWatcher = new CursorMovementWatcher(this.addNewEvent);
+    this.clickWatcher = new CursorInteractionWatcher(this.addNewEvent);
+    this.styleWatcher = new CursorStyleWatcher(this.addNewEvent);
     this.ideTabWatcher = new IdeTabWatcher(this);
     this.resourceWatcher = new ResourceWatcher(this);
     this.vcsWatcher = new VcsWatcher(this);
@@ -106,7 +106,7 @@ export class Recorder {
    * @param initialTabPaths - Optional array of file paths for tabs open at recording start
    * @param activeTabPath - Optional file path of the initially active tab
    */
-  start(initialTabPaths?: string[], activeTabPath?: string): void {
+  start(): void {
     if (this.isRecording) {
       console.warn('[Recorder] Already recording');
       return;

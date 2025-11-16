@@ -24,6 +24,26 @@ export interface ActionPacket<P = any> {
   p: P;
 }
 
+export interface PlayerNote {
+  /** Unique identifier for the note */
+  id: string;
+
+  /** Recording timestamp (in ms) when the note was created (when user paused) */
+  timestamp: number;
+
+  /** Git branch name containing the user's changes */
+  branchName: string;
+
+  /** Latest commit hash on the branch */
+  commitHash: string;
+
+  /** Optional user-provided description of the note */
+  description?: string;
+
+  /** Unix timestamp when the note was saved */
+  createdAt: number;
+}
+
 // ============================================================================
 // SNAPSHOT PAYLOADS (Ground Truth State)
 // ============================================================================

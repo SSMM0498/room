@@ -21,7 +21,7 @@ import { CursorStylePlayer } from './CursorStylePlayer';
 import { IdeTabPlayer } from './IdeTabPlayer';
 import { ResourcePlayer } from './ResourcePlayer';
 import type { PlayerConfig, PlayerState } from './types';
-import type { PlayerNote } from '~/types/player-notes';
+import type { PlayerNote } from '~/types/events.ts';
 
 export class Player {
   private stateMachine: PlayerStateMachine;
@@ -566,11 +566,11 @@ export class Player {
             });
             if (createPayload.type === 'f') {
               actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.ideTabPlayer.playTabOpen(createPayload.path!, '');
-              },
-            });
+                delay: actionDelay,
+                doAction: () => {
+                  this.ideTabPlayer.playTabOpen(createPayload.path!, '');
+                },
+              });
             }
             console.log(`[Player] Converted FILES_CREATE: ${createPayload.path} (${createPayload.type})`);
           }

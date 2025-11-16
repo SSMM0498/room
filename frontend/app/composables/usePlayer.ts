@@ -2,8 +2,8 @@ import { ref, computed, onUnmounted, watch } from 'vue';
 import { Player } from '~/lib/player';
 import type { PlayerConfig, PlayerState } from '~/lib/player';
 import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
-import type { ActiveFile } from '../../types/file-tree';
-import type { PlayerNote } from '~/types/player-notes';
+import type { ActiveFile } from '~~/types/file-tree';
+import type { PlayerNote } from '~/types/events.ts';
 import objectPath from 'object-path';
 
 export const usePlayer = () => {
