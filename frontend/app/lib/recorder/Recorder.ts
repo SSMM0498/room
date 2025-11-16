@@ -70,7 +70,7 @@ export class Recorder {
     this.styleWatcher = new CursorStyleWatcher(this.addNewEvent);
     this.ideTabWatcher = new IdeTabWatcher(this);
     this.resourceWatcher = new ResourceWatcher(this);
-    this.vcsWatcher = new VcsWatcher(this);
+    this.vcsWatcher = new VcsWatcher(this.addNewEvent);
   }
 
   /**

@@ -6,16 +6,17 @@
  * hash which serves as the ground truth for workspace state.
  */
 
-import type { Recorder } from './Recorder';
 import { EventTypes } from '~/types/events';
 import type { VcsPayload } from '~/types/events';
 
+type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
+
 export class VcsWatcher {
-  private recorder: Recorder;
+  private addEvent: AddEventCallback;
   private latestCommitHash: string = '';
 
-  constructor(recorder: Recorder) {
-    this.recorder = recorder;
+  constructor(addEvent: AddEventCallback) {
+    this.addEvent = addEvent;
   }
 
   /**
@@ -28,7 +29,7 @@ export class VcsWatcher {
     // Track the latest commit hash
     this.latestCommitHash = hash;
 
-    this.recorder.addNewEvent<VcsPayload>('state', EventTypes.STATE_VCS, {
+    this.addEvent<VcsPayload>('state', EventTypes.STATE_VCS, {
       hash,
       message,
     });

@@ -71,7 +71,8 @@ export class StateReconstructor {
 
     // Step 2: Load the base snapshot as UI state and commit hash
     const snapshotPayload = baseSnapshot.p as SnapshotPayload;
-    this.uiState = snapshotPayload.ui;
+    // Full snapshots contain complete UIState, cast to UIState to ensure type safety
+    this.uiState = snapshotPayload.ui as UIState;
     this.commitHash = snapshotPayload.workspace.commitHash;
 
     // Step 3: Apply all delta snapshots from base to target
@@ -94,11 +95,45 @@ export class StateReconstructor {
 
   /**
    * Apply a delta snapshot to the UI state
+   * Merges only the changed fields from the delta into the current state
    * NOTE: Workspace state is no longer updated via snapshots (handled by Git)
    */
   private applyDeltaSnapshot(delta: SnapshotPayload): void {
-    // Update UI state and commit hash
-    this.uiState = delta.ui;
+    if (!this.uiState) {
+      console.warn('[StateReconstructor] No base UI state to apply delta to');
+      return;
+    }
+
+    // Delta contains only changed fields (Partial<UIState>)
+    // Merge each field conditionally
+    if (delta.ui.mouse) {
+      this.uiState.mouse = delta.ui.mouse;
+    }
+
+    if (delta.ui.scrolls) {
+      this.uiState.scrolls = delta.ui.scrolls;
+    }
+
+    if (delta.ui.ide) {
+      this.uiState.ide = delta.ui.ide;
+    }
+
+    if (delta.ui.fileTree) {
+      // Update expandedPaths from delta
+      this.uiState.fileTree.expandedPaths = delta.ui.fileTree.expandedPaths;
+
+      // Only update tree if present in delta (null in delta snapshots, full tree in full snapshots)
+      if (delta.ui.fileTree.tree !== null) {
+        this.uiState.fileTree.tree = delta.ui.fileTree.tree;
+      }
+      // If tree is null in delta, keep existing tree (deltas skip tree to reduce size)
+    }
+
+    if (delta.ui.browser) {
+      this.uiState.browser = delta.ui.browser;
+    }
+
+    // Always update commit hash (present in both full and delta snapshots)
     this.commitHash = delta.workspace.commitHash;
   }
 

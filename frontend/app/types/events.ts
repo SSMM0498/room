@@ -157,9 +157,12 @@ export interface WorkspaceState {
  * Snapshot payload
  * NOTE: After Git-based state management, workspace contains the commit hash at snapshot time.
  * The commit hash is used to restore the exact workspace state during playback.
+ *
+ * For full snapshots, ui contains complete UIState.
+ * For delta snapshots, ui contains only changed fields (Partial<UIState>).
  */
 export interface SnapshotPayload {
-  ui: UIState;
+  ui: UIState | Partial<UIState>;
   workspace: {
     commitHash: string; // Git commit hash at the time of snapshot
   };
