@@ -145,17 +145,6 @@ onMounted(() => {
         browser: { url: '' },
       }
     },
-    getWorkspaceState: () => {
-      const files: Record<string, string> = {};
-      for (const tab of openTabs.tabs) {
-        files[tab.filePath] = tab.fileContent;
-      }
-      return {
-        files,
-        terminals: {},
-        processes: []
-      };
-    },
   });
 
   // Set upload callback for recording

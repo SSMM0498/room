@@ -15,7 +15,6 @@ export interface RecorderConfig {
 
 export interface IDEStateCapture {
   getUIState(): UIState;
-  getWorkspaceState(): WorkspaceState;
 }
 
 export interface RecorderStatus {

@@ -103,8 +103,6 @@ export class Recorder {
 
   /**
    * Starts the recording session
-   * @param initialTabPaths - Optional array of file paths for tabs open at recording start
-   * @param activeTabPath - Optional file path of the initially active tab
    */
   start(): void {
     if (this.isRecording) {
