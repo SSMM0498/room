@@ -40,6 +40,27 @@ export class StateReconstructor {
   }
 
   /**
+   * Set full snapshot - replaces entire current state
+   * Called when full snapshot event is encountered during playback
+   * NOTE: State is stored internally, NOT applied to UI
+   */
+  setFullSnapshot(snapshot: SnapshotPayload): void {
+    this.uiState = snapshot.ui as UIState;
+    this.commitHash = snapshot.workspace.commitHash;
+    console.log('[StateReconstructor] Set full snapshot with commit:', this.commitHash?.substring(0, 8));
+  }
+
+  /**
+   * Apply delta snapshot - merges changes into current state
+   * Called when delta snapshot event is encountered during playback
+   * NOTE: State is stored internally, NOT applied to UI
+   */
+  applyDelta(delta: SnapshotPayload): void {
+    this.applyDeltaSnapshot(delta);
+    console.log('[StateReconstructor] Applied delta snapshot, commit:', this.commitHash?.substring(0, 8));
+  }
+
+  /**
    * Reconstruct the UI state at a specific time
    * NOTE: Workspace state (files/folders) is reconstructed separately via Git checkout
    */

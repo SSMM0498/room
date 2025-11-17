@@ -33,7 +33,7 @@ import type * as monaco from 'monaco-editor';
 import map from '~/utils/lang-map';
 import { debounce, type ActiveFile } from '~~/types/file-tree';
 
-const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
+const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles } = useIDE();
 const colorMode = useColorMode();
 const { socketClient } = useSocket();
 const { recorder } = useRecorder();
@@ -122,12 +122,9 @@ socketClient.handleDeleteResource((data: any) => {
 // Watch for active tab changes to record tab switch events
 watch(() => activeTab.filePath, (newFilePath, oldFilePath) => {
 	if (oldFilePath && newFilePath && newFilePath !== oldFilePath) {
-		// Record tab switch event with current content
+		// Record tab switch event (content restored via Git + typing events)
 		if (recorder.value) {
-			const tab = openTabs.tabs.find(t => t.filePath === newFilePath);
-			if (tab) {
-				recorder.value.getIdeTabWatcher().recordTabSwitch(newFilePath, tab.fileContent);
-			}
+			recorder.value.getIdeTabWatcher().recordTabSwitch(newFilePath);
 		}
 	}
 	previousActiveTabPath.value = newFilePath;

@@ -110,38 +110,36 @@ export const usePlayer = () => {
     if (newPlayer) {
       // Register tab switch callback
       newPlayer.getIdeTabPlayer().setOnTabSwitch((filePath: string, content: string) => {
-        // Find or create tab with new content
+        // Find or create tab (content will be built by typing events)
         let tab = openTabs.tabs.find(t => t.filePath === filePath);
         if (!tab) {
-          // If tab doesn't exist yet, create it
+          // If tab doesn't exist yet, create it with empty content
           tab = {
             filePath,
-            fileContent: content
+            fileContent: '' // Empty - content built by typing events
           };
           openTabs.tabs.push(tab);
-        } else {
-          // Update existing tab's content
-          tab.fileContent = content;
         }
+        // Don't update existing tab's content - preserve content built by typing events
         setActiveTab(tab);
-        setTabContent(tab);
-        console.log(`[Player] Playing tab switch: ${filePath}`);
+        // Don't call setTabContent - only switch active tab, preserve editor content
+        console.log(`[Player] Playing tab switch: ${filePath} (content from typing events)`);
       });
 
       // Register tab open callback
       newPlayer.getIdeTabPlayer().setOnTabOpen((filePath: string, content: string) => {
-        // Create and open new tab with content
+        // Create and open new tab (content will be built by typing events)
         const newTab: ActiveFile = {
           filePath,
-          fileContent: content
+          fileContent: '' // Empty - content built by typing events
         };
         // Add to openTabs if not already there
         if (!openTabs.tabs.some(t => t.filePath === filePath)) {
           openTabs.tabs.push(newTab);
         }
         setActiveTab(newTab);
-        setTabContent(newTab);
-        console.log(`[Player] Playing tab open: ${filePath}`);
+        // Don't call setTabContent - let typing events build the content
+        console.log(`[Player] Playing tab open: ${filePath} (content from typing events)`);
       });
 
       // Register tab close callback
@@ -161,6 +159,11 @@ export const usePlayer = () => {
         } else {
           console.warn(`[Player] Cannot close tab ${filePath} - tab not found`);
         }
+      });
+
+      // Register callback for getting current open tabs (used for snapshot restoration)
+      newPlayer.getIdeTabPlayer().setOnGetOpenTabs(() => {
+        return openTabs.tabs.map(t => t.filePath);
       });
 
       // Register folder expand/collapse callback

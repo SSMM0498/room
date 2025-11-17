@@ -21,12 +21,12 @@ export class IdeTabWatcher {
   /**
    * Record a tab open event
    * Called by file-explorer when user opens a file
+   * NOTE: Content is not recorded - it will be restored via Git checkout + typing events
    */
-  recordTabOpen(filePath: string, content: string): void {
+  recordTabOpen(filePath: string): void {
     this.addEvent('ui', EventTypes.IDE_TABS_OPEN, {
       type: 'editor',
       path: filePath,
-      content: content,
     });
     console.log(`[IdeTabWatcher] Tab opened: ${filePath}`);
   }
@@ -46,12 +46,12 @@ export class IdeTabWatcher {
   /**
    * Record a tab switch event
    * Called by editor when user switches to a different tab
+   * NOTE: Content is not recorded - it will be restored via Git checkout + typing events
    */
-  recordTabSwitch(filePath: string, content: string): void {
+  recordTabSwitch(filePath: string): void {
     this.addEvent('ui', EventTypes.IDE_TABS_SWITCH, {
       type: 'editor',
       path: filePath,
-      content: content,
     });
     console.log(`[IdeTabWatcher] Tab switched to: ${filePath}`);
   }

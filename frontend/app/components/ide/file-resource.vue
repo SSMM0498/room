@@ -83,7 +83,7 @@ const openResource = ref(false);
 
 // Computed property to check if this specific resource is being renamed (local or global state)
 const isThisResourceRenaming = computed(() => {
-	console.log('Checking if resource is renaming:', item.path, isRenaming.value, renameContext);
+	console.trace('Checking if resource is renaming:', item.path, isRenaming.value, renameContext);
 	return isRenaming.value || (renameContext.isRenaming && renameContext.path === item.path);
 });
 

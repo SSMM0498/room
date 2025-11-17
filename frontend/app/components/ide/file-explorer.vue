@@ -44,7 +44,7 @@
           @open-folder="openFolder" @open-file="openFile" @delete-resource="deleteResource"
           @move-resource="moveResource" />
       </Suspense>
-      <div class="mt-1 w-full h-full p-3">
+      <div class="mt-1 w-full h-full px-3">
         <div id="drop-zone" class="flex-1" @click.prevent="handleBackgroundClick"
           @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop"
           :class="{ 'drag-over': isDragging }">
@@ -247,9 +247,9 @@ socketClient.handleReadFile((data: ReadFileResponse) => {
   setActiveTab(newActiveTab);
   addNewTab(newActiveTab);
 
-  // Record tab open event for recording with content
+  // Record tab open event for recording (content restored via Git + typing events)
   if (recorder.value) {
-    recorder.value.getIdeTabWatcher().recordTabOpen(data.targetPath, data.fileContent);
+    recorder.value.getIdeTabWatcher().recordTabOpen(data.targetPath);
   }
 });
 

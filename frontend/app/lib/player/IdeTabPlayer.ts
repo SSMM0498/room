@@ -11,6 +11,7 @@ export class IdeTabPlayer {
   private onTabOpenCallback: ((filePath: string, content: string) => void) | null = null;
   private onTabCloseCallback: ((filePath: string) => void) | null = null;
   private onTabSwitchCallback: ((filePath: string, content: string) => void) | null = null;
+  private onGetOpenTabsCallback: (() => string[]) | null = null;
 
   /**
    * Register callback for tab open events
@@ -37,6 +38,15 @@ export class IdeTabPlayer {
   setOnTabSwitch(callback: (filePath: string, content: string) => void): void {
     this.onTabSwitchCallback = callback;
     console.log('[IdeTabPlayer] Tab switch callback registered');
+  }
+
+  /**
+   * Register callback for getting current open tabs
+   * Called by editor component to allow snapshot restoration to diff current vs target state
+   */
+  setOnGetOpenTabs(callback: () => string[]): void {
+    this.onGetOpenTabsCallback = callback;
+    console.log('[IdeTabPlayer] Get open tabs callback registered');
   }
 
   /**
@@ -78,34 +88,51 @@ export class IdeTabPlayer {
   /**
    * Apply a full snapshot of tab state
    *
+   * This method performs complete tab synchronization:
+   * 1. Closes tabs that are open but NOT in the snapshot
+   * 2. Opens tabs that are in the snapshot but not currently open
+   * 3. Switches to the active file from the snapshot
+   *
    * NOTE: With Git-based state management, file contents are NOT stored in snapshots.
    * Files are restored via Git checkout in the Worker filesystem. This method opens
    * tabs with empty content initially, and the UI components should request actual
    * content from the Worker via WebSocket.
    *
    * @param editorTabs - Tab state from snapshot (which files are open, which is active)
-   * @param workspaceFiles - Legacy parameter, kept for backwards compatibility but typically empty
    */
   applyTabSnapshot(
     editorTabs: { openFiles: string[]; activeFile: string | null }
   ): void {
-    // Close all open tabs that aren't in snapshot
-    if (this.onTabCloseCallback) {
-      // We can't actually close tabs here since we don't know current state
-      // The UI component will handle diffing and closing
-      console.log('[IdeTabPlayer] Tab state will be reset by UI component');
-    }
+    // Get current open tabs from the UI
+    const currentTabs = this.onGetOpenTabsCallback?.() ?? [];
+    console.log(`[IdeTabPlayer] Applying tab snapshot - Current: ${currentTabs.length} tabs, Target: ${editorTabs.openFiles.length} tabs`);
 
-    // Switch to active file if specified
-    if (editorTabs.activeFile && this.onTabSwitchCallback) {
-      // Check if content is provided (legacy), otherwise use empty string
-      const content = '';
-      this.onTabSwitchCallback(editorTabs.activeFile, content);
-      if (content) {
-        console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile}`);
-      } else {
-        console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile} (content will be read from Worker)`);
+    // Step 1: Close tabs that are NOT in the snapshot
+    currentTabs.forEach(tabPath => {
+      if (!editorTabs.openFiles.includes(tabPath)) {
+        if (this.onTabCloseCallback) {
+          this.onTabCloseCallback(tabPath);
+          console.log(`[IdeTabPlayer] Closing tab not in snapshot: ${tabPath}`);
+        }
       }
+    });
+
+    // Step 2: Open tabs in the snapshot (if not already open)
+    editorTabs.openFiles.forEach(filePath => {
+      if (!currentTabs.includes(filePath)) {
+        if (this.onTabOpenCallback) {
+          // Content will be read from Worker filesystem
+          this.onTabOpenCallback(filePath, '');
+          console.log(`[IdeTabPlayer] Opening tab from snapshot: ${filePath} (content will be read from Worker)`);
+        }
+      }
+    });
+
+    // Step 3: Switch to active file if specified
+    if (editorTabs.activeFile && this.onTabSwitchCallback) {
+      // Content will be read from Worker filesystem
+      this.onTabSwitchCallback(editorTabs.activeFile, '');
+      console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile}`);
     }
   }
 
@@ -116,6 +143,7 @@ export class IdeTabPlayer {
     this.onTabOpenCallback = null;
     this.onTabCloseCallback = null;
     this.onTabSwitchCallback = null;
+    this.onGetOpenTabsCallback = null;
     console.log('[IdeTabPlayer] Destroyed');
   }
 }

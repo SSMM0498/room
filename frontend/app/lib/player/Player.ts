@@ -11,7 +11,7 @@
  */
 
 import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload, EditorScrollPayload, EditorScrollPathPayload, EditorTypePayload, EditorPastePayload, EditorSelectPayload } from '~/types/events';
-import { EventTypes, isFullSnapshot } from '~/types/events';
+import { EventTypes, isFullSnapshot, isDeltaSnapshot } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
@@ -399,52 +399,19 @@ export class Player {
         continue;
       }
 
-      // For full snapshots, apply tab state and file tree state immediately
+      // Snapshots are not played as visual actions - they only update the current snapshot object
+      // This keeps the StateReconstructor's internal state up-to-date as events play
       if (isFullSnapshot(event)) {
         const snapshotPayload = event.p as SnapshotPayload;
-        const actionDelay = event.t - this.baselineTime;
+        this.stateReconstructor.setFullSnapshot(snapshotPayload);
+        continue; // Skip - snapshots are not converted to actions
+      }
 
-        // Apply mouse position
-        if (snapshotPayload.ui?.mouse) {
-          actions.push({
-            delay: actionDelay,
-            doAction: () => {
-              this.cursorPlayer.setPosition(snapshotPayload.ui.mouse!.x, snapshotPayload.ui.mouse!.y);
-            },
-          });
-          console.log(`[Player] Converted FULL_SNAPSHOT mouse position at ${actionDelay}ms (${snapshotPayload.ui.mouse.x}, ${snapshotPayload.ui.mouse.y})`);
-        }
-
-        // Apply tab state
-        if (snapshotPayload.ui?.ide?.tabs?.editor) {
-          actions.push({
-            delay: actionDelay,
-            doAction: () => {
-              this.ideTabPlayer.applyTabSnapshot(
-                snapshotPayload.ui.ide!.tabs.editor,
-              );
-            },
-          });
-          console.log(`[Player] Converted FULL_SNAPSHOT tabs state at ${actionDelay}ms`);
-        }
-
-        // Apply file tree state
-        if (snapshotPayload.ui?.fileTree && this.onFileTreeRestoreCallback) {
-          actions.push({
-            delay: actionDelay,
-            doAction: () => {
-              if (this.onFileTreeRestoreCallback) {
-                this.onFileTreeRestoreCallback(
-                  snapshotPayload.ui.fileTree!.expandedPaths,
-                  snapshotPayload.ui.fileTree!.tree
-                );
-              }
-            },
-          });
-          console.log(`[Player] Converted FULL_SNAPSHOT file tree state at ${actionDelay}ms with ${snapshotPayload.ui.fileTree!.expandedPaths.length} expanded paths`);
-        }
-
-        continue;
+      // Delta snapshots also update the current snapshot object without visual playback
+      if (isDeltaSnapshot(event)) {
+        const snapshotPayload = event.p as SnapshotPayload;
+        this.stateReconstructor.applyDelta(snapshotPayload);
+        continue; // Skip - snapshots are not converted to actions
       }
 
       switch (event.act) {
@@ -521,7 +488,7 @@ export class Player {
             actions.push({
               delay: actionDelay,
               doAction: () => {
-                this.ideTabPlayer.playTabOpen(tabOpenPayload.path!, tabOpenPayload.content!);
+                this.ideTabPlayer.playTabOpen(tabOpenPayload.path!, tabOpenPayload.content ?? '');
               },
             });
             console.log(`[Player] Converted IDE_TABS_OPEN: ${tabOpenPayload.path}`);
@@ -551,7 +518,7 @@ export class Player {
             actions.push({
               delay: actionDelay,
               doAction: () => {
-                this.ideTabPlayer.playTabSwitch(tabSwitchPayload.path!, tabSwitchPayload.content!);
+                this.ideTabPlayer.playTabSwitch(tabSwitchPayload.path!, tabSwitchPayload.content ?? '');
               },
             });
             console.log(`[Player] Converted IDE_TABS_SWITCH: ${tabSwitchPayload.path}`);
@@ -912,14 +879,22 @@ export class Player {
       console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
     } else {
       // First play - start from beginning
-      // Reconstruct state at time 0 to get initial commit
-      await this.stateReconstructor.reconstructStateAtTime(this.timeline, this.baselineTime);
+      // Find the first full snapshot after meta:start to use as starting point
+      const firstSnapshot = this.timeline.find(event => isFullSnapshot(event));
+      const initialTime = firstSnapshot ? firstSnapshot.t : this.baselineTime;
+
+      // Reconstruct state at the first snapshot (starting point)
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, initialTime);
       const initialCommitHash = this.stateReconstructor.getCommitHash();
 
       if (initialCommitHash) {
         await this.performGitCheckout(initialCommitHash);
         console.log('[Player] Checked out initial commit:', initialCommitHash.substring(0, 8));
       }
+
+      // Apply the initial UI state from the first snapshot (starting point)
+      this.stateReconstructor.applyReconstructedStateToUI();
+      console.log('[Player] Applied initial UI state from first snapshot after meta:start');
 
       this.scheduler.start();
       console.log('[Player] Starting playback from beginning');
