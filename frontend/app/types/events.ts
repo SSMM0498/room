@@ -551,10 +551,3 @@ export function isDeltaSnapshot(event: ActionPacket): event is ActionPacket<Snap
 export function isSnapshot(event: ActionPacket): event is ActionPacket<SnapshotPayload> {
   return isFullSnapshot(event) || isDeltaSnapshot(event);
 }
-
-/**
- * Type guard to check if an event is a state commit
- */
-export function isStateCommit(event: ActionPacket): event is ActionPacket<StateCommitPayload> {
-  return event.src === 'state' && event.act === EventTypes.STATE_COMMIT;
-}

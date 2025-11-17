@@ -68,8 +68,8 @@ export class Recorder {
     this.cursorWatcher = new CursorMovementWatcher(this.addNewEvent);
     this.clickWatcher = new CursorInteractionWatcher(this.addNewEvent);
     this.styleWatcher = new CursorStyleWatcher(this.addNewEvent);
-    this.ideTabWatcher = new IdeTabWatcher(this);
-    this.resourceWatcher = new ResourceWatcher(this);
+    this.ideTabWatcher = new IdeTabWatcher(this.addNewEvent);
+    this.resourceWatcher = new ResourceWatcher(this.addNewEvent);
     // CommitHashTracker triggers delta snapshots on every commit
     this.commitHashTracker = new CommitHashTracker((hash: string) => {
       this.takeDeltaSnapshot();

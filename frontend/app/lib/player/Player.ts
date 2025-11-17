@@ -389,7 +389,7 @@ export class Player {
           actions.push({
             delay: actionDelay,
             doAction: () => {
-              this.cursorPlayer.setPosition(snapshotPayload.ui.mouse.x, snapshotPayload.ui.mouse.y);
+              this.cursorPlayer.setPosition(snapshotPayload.ui.mouse!.x, snapshotPayload.ui.mouse!.y);
             },
           });
           console.log(`[Player] Converted FULL_SNAPSHOT mouse position at ${actionDelay}ms (${snapshotPayload.ui.mouse.x}, ${snapshotPayload.ui.mouse.y})`);
@@ -401,7 +401,7 @@ export class Player {
             delay: actionDelay,
             doAction: () => {
               this.ideTabPlayer.applyTabSnapshot(
-                snapshotPayload.ui.ide.tabs.editor,
+                snapshotPayload.ui.ide!.tabs.editor,
               );
             },
           });
@@ -415,13 +415,13 @@ export class Player {
             doAction: () => {
               if (this.onFileTreeRestoreCallback) {
                 this.onFileTreeRestoreCallback(
-                  snapshotPayload.ui.fileTree.expandedPaths,
-                  snapshotPayload.ui.fileTree.tree
+                  snapshotPayload.ui.fileTree!.expandedPaths,
+                  snapshotPayload.ui.fileTree!.tree
                 );
               }
             },
           });
-          console.log(`[Player] Converted FULL_SNAPSHOT file tree state at ${actionDelay}ms with ${snapshotPayload.ui.fileTree.expandedPaths.length} expanded paths`);
+          console.log(`[Player] Converted FULL_SNAPSHOT file tree state at ${actionDelay}ms with ${snapshotPayload.ui.fileTree!.expandedPaths.length} expanded paths`);
         }
 
         continue;

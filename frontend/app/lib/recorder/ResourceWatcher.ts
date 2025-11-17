@@ -8,15 +8,16 @@
  * - User renames or moves a file or folder
  */
 
-import type { Recorder } from './Recorder';
 import { EventTypes } from '~/types/events';
 import type { FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload } from '~/types/events';
 
-export class ResourceWatcher {
-  private recorder: Recorder;
+type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
 
-  constructor(recorder: Recorder) {
-    this.recorder = recorder;
+export class ResourceWatcher {
+  private addEvent: AddEventCallback;
+
+  constructor(addEvent: AddEventCallback) {
+    this.addEvent = addEvent;
   }
 
   /**
@@ -28,7 +29,7 @@ export class ResourceWatcher {
     expanded: boolean,
     content?: Array<{ name: string; path: string; type: 'file' | 'directory' }>
   ): void {
-    this.recorder.addNewEvent<FilesExpandPayload>('files', EventTypes.FILES_EXPAND, {
+    this.addEvent<FilesExpandPayload>('files', EventTypes.FILES_EXPAND, {
       path,
       expanded,
       content,
@@ -41,7 +42,7 @@ export class ResourceWatcher {
    * Called by file-explorer when user creates a new file or folder
    */
   recordCreate(path: string, type: 'f' | 'd'): void {
-    this.recorder.addNewEvent<FilesCreatePayload>('files', EventTypes.FILES_CREATE, {
+    this.addEvent<FilesCreatePayload>('files', EventTypes.FILES_CREATE, {
       path,
       type,
     });
@@ -53,7 +54,7 @@ export class ResourceWatcher {
    * Called by file-explorer when user deletes a file or folder
    */
   recordDelete(path: string): void {
-    this.recorder.addNewEvent<FilesDeletePayload>('files', EventTypes.FILES_DELETE, {
+    this.addEvent<FilesDeletePayload>('files', EventTypes.FILES_DELETE, {
       path,
     });
     console.log(`[ResourceWatcher] Resource deleted: ${path}`);
@@ -64,7 +65,7 @@ export class ResourceWatcher {
    * Called by file-explorer when user renames or moves a file or folder
    */
   recordMove(from: string, to: string): void {
-    this.recorder.addNewEvent<FilesMovePayload>('files', EventTypes.FILES_MOVE, {
+    this.addEvent<FilesMovePayload>('files', EventTypes.FILES_MOVE, {
       from,
       to,
     });
@@ -76,7 +77,7 @@ export class ResourceWatcher {
    * Called when user clicks "New File" or "New Folder" button
    */
   recordCreateInputShow(type: 'file' | 'folder', parentPath: string): void {
-    this.recorder.addNewEvent<FilesCreateInputShowPayload>('files', EventTypes.FILES_CREATE_INPUT_SHOW, {
+    this.addEvent<FilesCreateInputShowPayload>('files', EventTypes.FILES_CREATE_INPUT_SHOW, {
       type,
       parentPath,
     });
@@ -88,7 +89,7 @@ export class ResourceWatcher {
    * Called as user types the resource name
    */
   recordCreateInputType(text: string): void {
-    this.recorder.addNewEvent<FilesCreateInputTypePayload>('files', EventTypes.FILES_CREATE_INPUT_TYPE, {
+    this.addEvent<FilesCreateInputTypePayload>('files', EventTypes.FILES_CREATE_INPUT_TYPE, {
       text,
     });
     console.log(`[ResourceWatcher] Create input typed: "${text}"`);
@@ -99,7 +100,7 @@ export class ResourceWatcher {
    * Called when input is dismissed (either by submit or cancel)
    */
   recordCreateInputHide(cancelled: boolean): void {
-    this.recorder.addNewEvent<FilesCreateInputHidePayload>('files', EventTypes.FILES_CREATE_INPUT_HIDE, {
+    this.addEvent<FilesCreateInputHidePayload>('files', EventTypes.FILES_CREATE_INPUT_HIDE, {
       cancelled,
     });
     console.log(`[ResourceWatcher] Create input hidden: ${cancelled ? 'cancelled' : 'submitted'}`);
@@ -110,7 +111,7 @@ export class ResourceWatcher {
    * Called when user starts renaming a file or folder
    */
   recordRenameInputShow(path: string, currentName: string): void {
-    this.recorder.addNewEvent<FilesRenameInputShowPayload>('files', EventTypes.FILES_RENAME_INPUT_SHOW, {
+    this.addEvent<FilesRenameInputShowPayload>('files', EventTypes.FILES_RENAME_INPUT_SHOW, {
       path,
       currentName,
     });
@@ -122,7 +123,7 @@ export class ResourceWatcher {
    * Called as user types the new resource name
    */
   recordRenameInputType(text: string): void {
-    this.recorder.addNewEvent<FilesRenameInputTypePayload>('files', EventTypes.FILES_RENAME_INPUT_TYPE, {
+    this.addEvent<FilesRenameInputTypePayload>('files', EventTypes.FILES_RENAME_INPUT_TYPE, {
       text,
     });
     console.log(`[ResourceWatcher] Rename input typed: "${text}"`);
@@ -133,7 +134,7 @@ export class ResourceWatcher {
    * Called when input is dismissed (either by submit or cancel)
    */
   recordRenameInputHide(cancelled: boolean): void {
-    this.recorder.addNewEvent<FilesRenameInputHidePayload>('files', EventTypes.FILES_RENAME_INPUT_HIDE, {
+    this.addEvent<FilesRenameInputHidePayload>('files', EventTypes.FILES_RENAME_INPUT_HIDE, {
       cancelled,
     });
     console.log(`[ResourceWatcher] Rename input hidden: ${cancelled ? 'cancelled' : 'submitted'}`);
@@ -144,7 +145,7 @@ export class ResourceWatcher {
    * Called when user clicks the "more" button to show context menu
    */
   recordPopoverShow(path: string): void {
-    this.recorder.addNewEvent<FilesPopoverShowPayload>('files', EventTypes.FILES_POPOVER_SHOW, {
+    this.addEvent<FilesPopoverShowPayload>('files', EventTypes.FILES_POPOVER_SHOW, {
       path,
     });
     console.log(`[ResourceWatcher] Popover shown: ${path}`);
@@ -155,7 +156,7 @@ export class ResourceWatcher {
    * Called when popover is closed
    */
   recordPopoverHide(path: string): void {
-    this.recorder.addNewEvent<FilesPopoverHidePayload>('files', EventTypes.FILES_POPOVER_HIDE, {
+    this.addEvent<FilesPopoverHidePayload>('files', EventTypes.FILES_POPOVER_HIDE, {
       path,
     });
     console.log(`[ResourceWatcher] Popover hidden: ${path}`);
