@@ -10,7 +10,7 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload } from '~/types/events';
+import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload, EditorScrollPayload, EditorScrollPathPayload, EditorTypePayload, EditorPastePayload, EditorSelectPayload } from '~/types/events';
 import { EventTypes, isFullSnapshot } from '~/types/events';
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
@@ -20,6 +20,8 @@ import { CursorInteractionPlayer } from './CursorInteractionPlayer';
 import { CursorStylePlayer } from './CursorStylePlayer';
 import { IdeTabPlayer } from './IdeTabPlayer';
 import { ResourcePlayer } from './ResourcePlayer';
+import { EditorScrollPlayer } from './EditorScrollPlayer';
+import { EditorInputPlayer } from './EditorInputPlayer';
 import type { PlayerConfig, PlayerState } from './types';
 import type { PlayerNote } from '~/types/events.ts';
 
@@ -32,6 +34,8 @@ export class Player {
   private stylePlayer: CursorStylePlayer;
   private ideTabPlayer: IdeTabPlayer;
   private resourcePlayer: ResourcePlayer;
+  private editorScrollPlayer: EditorScrollPlayer;
+  private editorInputPlayer: EditorInputPlayer;
   private timeline: AnyActionPacket[] = [];
   private baselineTime: number = 0; // First event timestamp
   private duration: number = 0;
@@ -64,6 +68,8 @@ export class Player {
     this.stylePlayer = new CursorStylePlayer();
     this.ideTabPlayer = new IdeTabPlayer();
     this.resourcePlayer = new ResourcePlayer();
+    this.editorScrollPlayer = new EditorScrollPlayer();
+    this.editorInputPlayer = new EditorInputPlayer();
     this.audioElement = config.audioElement ?? null;
 
     // Link the style player to the cursor element (after it's created)
@@ -124,6 +130,20 @@ export class Player {
    */
   getResourcePlayer(): ResourcePlayer {
     return this.resourcePlayer;
+  }
+
+  /**
+   * Get the editor scroll player instance for components to register scroll callbacks
+   */
+  getEditorScrollPlayer(): EditorScrollPlayer {
+    return this.editorScrollPlayer;
+  }
+
+  /**
+   * Get the editor input player instance for components to register input callbacks
+   */
+  getEditorInputPlayer(): EditorInputPlayer {
+    return this.editorInputPlayer;
   }
 
   /**
@@ -726,6 +746,90 @@ export class Player {
           }
           break;
 
+        case EventTypes.EDITOR_SCROLL:
+          // Schedule editor scroll action
+          const editorScrollPayload = event.p as EditorScrollPayload;
+          if (editorScrollPayload && editorScrollPayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.editorScrollPlayer.playScroll(editorScrollPayload.f, editorScrollPayload.top, editorScrollPayload.left);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_SCROLL: ${editorScrollPayload.f} (${editorScrollPayload.top}, ${editorScrollPayload.left})`);
+          }
+          break;
+
+        case EventTypes.EDITOR_SCROLL_PATH:
+          // Schedule each scroll position at its exact recorded time (like mouse path)
+          const scrollPathPayload = event.p as EditorScrollPathPayload;
+          if (scrollPathPayload && scrollPathPayload.f && scrollPathPayload.positions) {
+            const filePath = scrollPathPayload.f;
+            const positions = scrollPathPayload.positions;
+            if (positions.length === 0) break;
+
+            // Schedule each position at: event.t + position.timeOffset
+            positions.forEach((pos) => {
+              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
+
+              actions.push({
+                delay: actionDelay,
+                doAction: () => {
+                  this.editorScrollPlayer.playScroll(filePath, pos.top, pos.left);
+                },
+              });
+            });
+
+            console.log(`[Player] Converted EDITOR_SCROLL_PATH: ${filePath} with ${positions.length} positions`);
+          }
+          break;
+
+        case EventTypes.EDITOR_TYPE:
+          // Schedule editor typing action
+          const editorTypePayload = event.p as EditorTypePayload;
+          if (editorTypePayload && editorTypePayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.editorInputPlayer.playType(editorTypePayload.f, editorTypePayload.c);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_TYPE: ${editorTypePayload.f} (${editorTypePayload.c.length} chars)`);
+          }
+          break;
+
+        case EventTypes.EDITOR_PASTE:
+          // Schedule editor paste action
+          const editorPastePayload = event.p as EditorPastePayload;
+          if (editorPastePayload && editorPastePayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.editorInputPlayer.playPaste(editorPastePayload.f, editorPastePayload.c, editorPastePayload.pos);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_PASTE: ${editorPastePayload.f} (${editorPastePayload.c.length} chars)`);
+          }
+          break;
+
+        case EventTypes.EDITOR_SELECT:
+          // Schedule editor selection action
+          const editorSelectPayload = event.p as EditorSelectPayload;
+          if (editorSelectPayload && editorSelectPayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              doAction: () => {
+                this.editorInputPlayer.playSelect(editorSelectPayload.f, editorSelectPayload.s, editorSelectPayload.e);
+              },
+            });
+            console.log(`[Player] Converted EDITOR_SELECT: ${editorSelectPayload.f} [${editorSelectPayload.s.join(',')}] to [${editorSelectPayload.e.join(',')}]`);
+          }
+          break;
+
         // TODO: Handle other event types
         default:
           // For now, just log unhandled events
@@ -1123,6 +1227,10 @@ export class Player {
 
     // Destroy resource player
     this.resourcePlayer.destroy();
+
+    // Destroy editor players
+    this.editorScrollPlayer.destroy();
+    this.editorInputPlayer.destroy();
 
     console.log('[Player] Destroyed');
   }

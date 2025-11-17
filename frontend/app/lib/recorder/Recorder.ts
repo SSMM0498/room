@@ -19,6 +19,8 @@ import { CursorStyleWatcher } from './CursorStyleWatcher';
 import { IdeTabWatcher } from './IdeTabWatcher';
 import { ResourceWatcher } from './ResourceWatcher';
 import { CommitHashTracker } from './CommitHashTracker';
+import { EditorScrollWatcher } from './EditorScrollWatcher';
+import { EditorInputWatcher } from './EditorInputWatcher';
 import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
 
 export class Recorder {
@@ -57,6 +59,12 @@ export class Recorder {
   // Commit hash tracker (Git commit tracking + snapshot triggers)
   private commitHashTracker: CommitHashTracker;
 
+  // Editor scroll watcher (editor scroll position changes)
+  private editorScrollWatcher: EditorScrollWatcher;
+
+  // Editor input watcher (typing, paste, selection)
+  private editorInputWatcher: EditorInputWatcher;
+
   constructor(config: RecorderConfig = {}) {
     this.config = {
       fullSnapshotInterval: config.fullSnapshotInterval ?? 15000,
@@ -74,6 +82,8 @@ export class Recorder {
     this.commitHashTracker = new CommitHashTracker((hash: string) => {
       this.takeDeltaSnapshot();
     });
+    this.editorScrollWatcher = new EditorScrollWatcher(this.addNewEvent);
+    this.editorInputWatcher = new EditorInputWatcher(this.addNewEvent);
   }
 
   /**
@@ -102,6 +112,20 @@ export class Recorder {
    */
   getCommitHashTracker(): CommitHashTracker {
     return this.commitHashTracker;
+  }
+
+  /**
+   * Get the editor scroll watcher instance for components to record scroll events
+   */
+  getEditorScrollWatcher(): EditorScrollWatcher {
+    return this.editorScrollWatcher;
+  }
+
+  /**
+   * Get the editor input watcher instance for components to record input events
+   */
+  getEditorInputWatcher(): EditorInputWatcher {
+    return this.editorInputWatcher;
   }
 
   /**
@@ -155,6 +179,9 @@ export class Recorder {
     this.cursorWatcher.stop();
     this.clickWatcher.stop();
     this.styleWatcher.stop();
+
+    // Flush any pending editor input events
+    this.editorInputWatcher.cleanup();
 
     // Stop snapshot intervals
     this.stopSnapshotIntervals();
@@ -308,5 +335,16 @@ export class Recorder {
       duration: this.getDuration(),
       eventCount: this.eventsTimeLine.length,
     };
+  }
+
+  /**
+   * Clean up resources and stop recording
+   */
+  destroy(): void {
+    if (this.isRecording) {
+      this.stop();
+    }
+    this.editorScrollWatcher.destroy();
+    console.log('[Recorder] Destroyed');
   }
 }

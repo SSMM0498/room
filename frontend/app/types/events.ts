@@ -279,6 +279,23 @@ export interface EditorScrollPayload {
   left: number;
 }
 
+/**
+ * Single editor scroll position with timing information
+ */
+export interface EditorScrollPosition {
+  top: number;
+  left: number;
+  /** Time offset in milliseconds from event timestamp */
+  timeOffset: number;
+}
+
+export interface EditorScrollPathPayload {
+  /** File path */
+  f: string;
+  /** Array of scroll positions with timing information */
+  positions: EditorScrollPosition[];
+}
+
 export interface TerminalScrollPayload {
   /** Terminal ID */
   id: string;
@@ -435,6 +452,7 @@ export type AnyActionPacket =
   // UI State
   | ActionPacket<EditorSelectPayload>
   | ActionPacket<EditorScrollPayload>
+  | ActionPacket<EditorScrollPathPayload>
   | ActionPacket<TerminalScrollPayload>
   | ActionPacket<BrowserScrollPayload>
   | ActionPacket<FileExplorerScrollPayload>
@@ -482,6 +500,7 @@ export const EventTypes = {
   // UI State
   EDITOR_SELECT: 'editor:select',
   EDITOR_SCROLL: 'editor:scroll',
+  EDITOR_SCROLL_PATH: 'editor:scroll:path',
   TERMINAL_SCROLL: 'terminal:scroll',
   BROWSER_SCROLL: 'browser:scroll',
   FILE_EXPLORER_SCROLL: 'files:scroll',

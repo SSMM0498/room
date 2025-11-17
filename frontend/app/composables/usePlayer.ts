@@ -6,17 +6,16 @@ import type { ActiveFile } from '~~/types/file-tree';
 import type { PlayerNote } from '~/types/events.ts';
 import objectPath from 'object-path';
 
-export const usePlayer = () => {
-  // Core Player instance
-  const player = ref<Player | null>(null);
-  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
+// Global player instance and state (shared across all components)
+const player = ref<Player | null>(null);
+const currentTime = ref(0);
+const duration = ref(0);
+const playerState = ref<PlayerState>('idle');
+const audioElement = ref<HTMLAudioElement | null>(null);
+const notes = ref<PlayerNote[]>([]);
 
-  // Reactive state
-  const currentTime = ref(0);
-  const duration = ref(0);
-  const playerState = ref<PlayerState>('idle');
-  const audioElement = ref<HTMLAudioElement | null>(null);
-  const notes = ref<PlayerNote[]>([]);
+export const usePlayer = () => {
+  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
 
   // Helper functions for tree manipulation
   const pathToObjectPath = (path: string): string => {

@@ -4,59 +4,78 @@
 			class="flex items-center flex-nowrap w-full rounded-t-lg border-b border-gray-200 dark:border-gray-700 text-sm justify-start gap-1 mb-1">
 			<UIcon name="i-ph-code" class="size-4 mx-2" />
 			<h5>Editor</h5>
-			{{  }}
+			{{ }}
 			<div class="ml-1 flex items-center justify-center cursor-pointer border-r p-1 border-gray-200 dark:border-gray-800 hover:bg-black/10"
 				:class="{ active: openTab.filePath === activeTab.filePath }" v-for="(openTab, key) in openTabs.tabs"
 				:key="openTab.filePath">
 				<widget-file-icon class="mr-1 flex-none" :path="openTab.filePath" :is-directory="false"
 					:is-directory-open="false" />
-				<p class="mr-1" @click="(event) => setActiveTab(openTab)">
+				<p class="mr-1" @click="() => setActiveTab(openTab)">
 					{{ openTab.filePath.split("/").splice(-1)[0] }}
 				</p>
 				<UIcon v-if="savingFiles.has(openTab.filePath)" name="i-heroicons:arrow-path"
 					class="animate-spin mr-1 text-blue-500" />
-				<UButton @click="(event) => handleTabClose(openTab, key)" icon="i-heroicons:x-mark-20-solid" size="xs"
+				<UButton @click="() => handleTabClose(openTab, key)" icon="i-heroicons:x-mark-20-solid" size="xs"
 					variant="ghost" :padded="false" :square="true" color="neutral">
 				</UButton>
 			</div>
 			<UButton class="ml-1 my-1" icon="i-heroicons:plus-20-solid" size="xs" variant="soft" color="primary">
 			</UButton>
 		</nav>
-		<Editor class="monaco" :theme="theme" :options="{
-			minimap: {
-				enabled: false
-			}
-		}" :language="language" :value="activeTab.fileContent" :onChange="onCodeChange" :onMount="onEditorMount">
-		</Editor>
+		<Editor v-model:value="editorContent" :language="language" :theme="theme" :options="editorOptions"
+			@mount="handleEditorMount" class="monaco" />
 	</div>
 </template>
 <script setup lang="ts">
 import { getFileExtension } from '~/utils/file-tree';
 import Editor from "@guolao/vue-monaco-editor";
+import type * as monaco from 'monaco-editor';
 import map from '~/utils/lang-map';
 import { debounce, type ActiveFile } from '~~/types/file-tree';
 
 const { activeTab, openTabs, setActiveTab, setTabContent, deleteTab, savingFiles, setCursorPosition } = useIDE();
-const colorMode = useColorMode()
+const colorMode = useColorMode();
 const { socketClient } = useSocket();
 const { recorder } = useRecorder();
 const isSaving = ref(false);
-const editorInstance = ref<any>(null);
+const editorInstance = ref<monaco.editor.IStandaloneCodeEditor | null>(null);
 const previousActiveTabPath = ref<string>(activeTab.filePath);
+
+// Define emits for parent components
+const emit = defineEmits<{
+	editorMounted: [editor: monaco.editor.IStandaloneCodeEditor]
+}>();
 
 const theme = computed(() => colorMode.value === 'dark'
 	? 'vs-dark'
 	: 'vs-light',
-)
+);
 
 const language = computed(() => {
 	if (activeTab && activeTab.filePath) {
-		const languages = map.languages(getFileExtension(activeTab.filePath) ?? '')
-		return (languages.length > 0 && languages[0]) ? languages[0] : 'plaintext'
+		const languages = map.languages(getFileExtension(activeTab.filePath) ?? '');
+		return (languages.length > 0 && languages[0]) ? languages[0] : 'plaintext';
 	} else {
-		return 'plaintext'
+		return 'plaintext';
 	}
-})
+});
+
+const editorContent = computed({
+	get: () => activeTab.fileContent || '',
+	set: (value: string) => {
+		const tab: ActiveFile = { filePath: activeTab.filePath, fileContent: value };
+		setActiveTab(tab);
+		setTabContent(tab);
+		debouncedUpdate(activeTab.filePath, value);
+	}
+});
+
+const editorOptions = {
+	minimap: {
+		enabled: false
+	},
+	automaticLayout: true,
+};
 
 const debouncedUpdate = debounce((filePath: string, fileContent: string) => {
 	isSaving.value = true;
@@ -64,31 +83,16 @@ const debouncedUpdate = debounce((filePath: string, fileContent: string) => {
 	socketClient.updateFile({
 		targetPath: filePath,
 		fileContent: fileContent
-	})
+	});
 }, 1000);
 
-const onCodeChange = (value: string | undefined) => {
-	if (value) {
-		const tab: ActiveFile = { filePath: activeTab.filePath, fileContent: value };
-		setActiveTab(tab);
-		setTabContent(tab);
-		debouncedUpdate(activeTab.filePath, value);
-	}
-};
-
-const onEditorMount = (editor: any) => {
+// Handle Monaco Editor mount
+const handleEditorMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
 	editorInstance.value = editor;
 
-	// Track cursor position changes
-	editor.onDidChangeCursorPosition((e: any) => {
-		setCursorPosition(e.position.lineNumber, e.position.column);
-	});
-
-	// Set initial cursor position
-	const position = editor.getPosition();
-	if (position) {
-		setCursorPosition(position.lineNumber, position.column);
-	}
+	// Emit editor mounted event for parent components
+	// Pages will set up recording/playback based on their mode
+	emit('editorMounted', editor);
 };
 
 // Handle update file response from server

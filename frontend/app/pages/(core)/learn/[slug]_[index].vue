@@ -41,7 +41,7 @@
 
     <!-- IDE Wrapper -->
     <div class="flex-1 flex w-full h-full overflow-hidden relative">
-      <ide-wrap :loading="loading" />
+      <ide-wrap :loading="loading" @editor-mounted="handleEditorMounted" />
 
       <!-- Playing Blocker Overlay -->
       <div v-show="!isPaused"
@@ -111,6 +111,7 @@ const {
   toggleMute,
   notes,
   loadNote,
+  player
 } = usePlayer();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
@@ -164,6 +165,87 @@ const handleTogglePlayPause = () => {
 
   showCenterIcon(icon);
   togglePlayPause();
+};
+
+// Handle editor mounted event and set up ALL playback
+const handleEditorMounted = (editor: any) => {
+  console.log('[Learn] Editor mounted, setting up all playback handlers');
+
+  // ========== PLAYBACK: Register scroll callback ==========
+  player.value?.getEditorScrollPlayer().setOnScroll((filePath: string, top: number, left: number) => {
+    editor.setScrollTop(top);
+    if (left !== undefined && left !== 0) {
+      editor.setScrollLeft(left);
+    }
+  });
+
+  // ========== PLAYBACK: Typing playback ==========
+  player.value?.getEditorInputPlayer().setOnType((filePath: string, chunk: string) => {
+    const model = editor.getModel();
+    if (model) {
+      const position = editor.getPosition();
+      if (position) {
+        const range = {
+          startLineNumber: position.lineNumber,
+          startColumn: position.column,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        };
+        model.pushEditOperations(
+          [],
+          [{ range, text: chunk }],
+          () => null
+        );
+        console.log(`[Learn] Playing typing: ${filePath} (${chunk.length} chars)`);
+      }
+    }
+  });
+
+  // ========== PLAYBACK: Paste playback ==========
+  player.value?.getEditorInputPlayer().setOnPaste((filePath: string, content: string, position?: [number, number]) => {
+
+    const model = editor.getModel();
+    if (model) {
+      let line: number;
+      let column: number;
+
+      if (position) {
+        line = position[0];
+        column = position[1];
+      } else {
+        const pos = editor.getPosition();
+        if (!pos) return; // No position available
+        line = pos.lineNumber;
+        column = pos.column;
+      }
+
+      const range = {
+        startLineNumber: line,
+        startColumn: column,
+        endLineNumber: line,
+        endColumn: column,
+      };
+      model.pushEditOperations(
+        [],
+        [{ range, text: content }],
+        () => null
+      );
+      console.log(`[Learn] Playing paste: ${filePath} (${content.length} chars)`);
+    }
+  });
+
+  // ========== PLAYBACK: Selection playback ==========
+  player.value?.getEditorInputPlayer().setOnSelect((filePath: string, start: [number, number], end: [number, number]) => {
+
+    const selection = {
+      startLineNumber: start[0],
+      startColumn: start[1],
+      endLineNumber: end[0],
+      endColumn: end[1],
+    };
+    editor.setSelection(selection);
+    console.log(`[Learn] Playing selection: ${filePath} [${start.join(',')}] to [${end.join(',')}]`);
+  });
 };
 
 // Handle seek from header

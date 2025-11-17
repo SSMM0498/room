@@ -51,7 +51,7 @@
         </UCard>
       </template>
     </UModal>
-    <ide-wrap :loading="loading" />
+    <ide-wrap :loading="loading" @editor-mounted="handleEditorMounted" />
   </div>
 </template>
 <script lang="ts" setup>
@@ -94,6 +94,7 @@ const {
   handleDirectoryDelete,
   handleRename,
   setSocketConnected,
+  setCursorPosition,
 } = useIDE();
 
 type SessionState = 'checklist' | 'starting' | 'connecting' | 'ready';
@@ -111,6 +112,107 @@ let recordingTimerInterval: number | null = null;
 
 // Mouse position tracking using VueUse
 const { x: mouseX, y: mouseY } = useMouse();
+
+// Handle editor mounted event and set up ALL recording
+const handleEditorMounted = (editor: any) => {
+  console.log('[Teach] Editor mounted, setting up all recording handlers');
+
+  // ========== RECORDING: Editor scroll events ==========
+  editor.onDidScrollChange((e: any) => {
+    // Only record scroll events when actively recording
+    if (recorder.value && activeTab.filePath) {
+      const recorderStatus = recorder.value.getStatus();
+      if (recorderStatus.isRecording) {
+        recorder.value.getEditorScrollWatcher().recordScroll(
+          activeTab.filePath,
+          e.scrollTop,
+          e.scrollLeft
+        );
+      }
+    }
+  });
+
+  // ========== RECORDING: Editor content changes (typing) ==========
+  editor.onDidChangeModelContent((e: any) => {
+    // Only record typing when actively recording
+    if (recorder.value && activeTab.filePath) {
+      const recorderStatus = recorder.value.getStatus();
+      if (recorderStatus.isRecording) {
+        // Check if this is a paste operation (will be handled separately)
+        // Monaco fires onDidChangeModelContent for all edits, but we want to filter out pastes
+        const changes = e.changes;
+        if (changes && changes.length > 0) {
+          // For now, record all changes as typing
+          // The paste event will handle paste operations separately
+          const text = changes.map((change: any) => change.text).join('');
+          if (text) {
+            recorder.value.getEditorInputWatcher().recordTyping(activeTab.filePath, text);
+          }
+        }
+      }
+    }
+  });
+
+  // ========== RECORDING: Paste events ==========
+  editor.onDidPaste((e: any) => {
+    // Only record paste when actively recording
+    if (recorder.value && activeTab.filePath) {
+      const recorderStatus = recorder.value.getStatus();
+      if (recorderStatus.isRecording) {
+        const range = e.range;
+        const position: [number, number] = [range.startLineNumber, range.startColumn];
+        // The actual pasted content is available in the model
+        const model = editor.getModel();
+        if (model) {
+          const pastedText = model.getValueInRange(range);
+          recorder.value.getEditorInputWatcher().recordPaste(
+            activeTab.filePath,
+            pastedText,
+            position
+          );
+        }
+      }
+    }
+  });
+
+  // ========== RECORDING: Selection changes ==========
+  editor.onDidChangeCursorSelection((e: any) => {
+    // Only record selection when actively recording
+    if (recorder.value && activeTab.filePath) {
+      const recorderStatus = recorder.value.getStatus();
+      if (recorderStatus.isRecording) {
+        const selection = e.selection;
+        // Only record if there's an actual selection (not just cursor position)
+        if (!selection.isEmpty()) {
+          const start: [number, number] = [selection.startLineNumber, selection.startColumn];
+          const end: [number, number] = [selection.endLineNumber, selection.endColumn];
+          recorder.value.getEditorInputWatcher().recordSelection(
+            activeTab.filePath,
+            start,
+            end
+          );
+        }
+      }
+    }
+  });
+
+  // ========== RECORDING: Cursor position changes ==========
+  editor.onDidChangeCursorPosition((e: any) => {
+    // Only track cursor position when actively recording
+    if (recorder.value && activeTab.filePath) {
+      const recorderStatus = recorder.value.getStatus();
+      if (recorderStatus.isRecording) {
+        setCursorPosition(e.position.lineNumber, e.position.column);
+      }
+    }
+  });
+
+  // Set initial cursor position
+  const position = editor.getPosition();
+  if (position) {
+    setCursorPosition(position.lineNumber, position.column);
+  }
+};
 
 // Initialize recorder with full structure but only tab tracking active
 onMounted(() => {

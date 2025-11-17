@@ -6,7 +6,7 @@
   </aside>
   <div class="flex flex-col items-center justify-center h-full mr-2 pb-2 w-3/7 overflow-hidden">
     <USkeleton v-if="loading" class="w-full h-full" />
-    <ide-editor v-else class="w-full border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700
+    <ide-editor v-else @editor-mounted="handleEditorMounted" class="w-full border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-800 dark:border-gray-700
       h-full" />
   </div>
   <div class="w-3/7 flex flex-col items-center justify-center h-full mr-2 pb-2">
@@ -21,6 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import type * as monaco from 'monaco-editor';
+
 const {
   url,
   showTerminal,
@@ -33,6 +35,16 @@ const props = defineProps<{
 
 // Use loading from props or default to true
 const loading = computed(() => props.loading ?? true);
+
+// Define emits to forward editor events to parent
+const emit = defineEmits<{
+  editorMounted: [editor: monaco.editor.IStandaloneCodeEditor]
+}>();
+
+// Forward editor mounted event to parent
+const handleEditorMounted = (editor: monaco.editor.IStandaloneCodeEditor) => {
+  emit('editorMounted', editor);
+};
 </script>
 
 <style lang="css" scoped>

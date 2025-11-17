@@ -44,9 +44,11 @@
           @open-folder="openFolder" @open-file="openFile" @delete-resource="deleteResource"
           @move-resource="moveResource" />
       </Suspense>
-      <div id="drop-zone" class="mt-1 flex-1 mx-3" @click.prevent="handleBackgroundClick"
-        @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop"
-        :class="{ 'drag-over': isDragging }">
+      <div class="mt-1 w-full h-full p-3">
+        <div id="drop-zone" class="flex-1" @click.prevent="handleBackgroundClick"
+          @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop"
+          :class="{ 'drag-over': isDragging }">
+        </div>
       </div>
     </div>
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelected" />
@@ -484,7 +486,7 @@ socketClient.handleDeleteResource((data: any) => {
 @reference "tailwindcss";
 
 #drop-zone {
-  @apply flex h-full min-h-[100px] w-full hover:border-dashed hover:border border-sky-500 rounded-lg transition-all duration-200;
+  @apply flex h-full w-full hover:border-dashed hover:border border-sky-500 rounded-lg transition-all duration-200;
 }
 
 .drag-over {
