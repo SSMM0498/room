@@ -51,11 +51,6 @@ export class Player {
   private activePauseBranch: string | null = null;
   private activePauseCommitHash: string | null = null;
 
-  // Workspace hydration tracking
-  private workspaceHydrated: boolean = false;
-  private hydrationResolve: (() => void) | null = null;
-  private hydrationPromise: Promise<void> | null = null;
-
   // File tree restoration callback
   private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
 
@@ -177,33 +172,6 @@ export class Player {
   setSocketClient(client: any): void {
     this.socketClient = client;
     console.log('[Player] Socket client set for Git operations');
-
-    // Set up hydration promise if not already hydrated
-    if (!this.workspaceHydrated && client) {
-      this.hydrationPromise = new Promise((resolve) => {
-        this.hydrationResolve = resolve;
-      });
-
-      // Listen for hydration-complete event
-      const handleHydrationComplete = (event: MessageEvent) => {
-        try {
-          const response = JSON.parse(event.data);
-          if (response.event === 'hydration-complete') {
-            console.log('[Player] Workspace hydration complete');
-            this.workspaceHydrated = true;
-            if (this.hydrationResolve) {
-              this.hydrationResolve();
-              this.hydrationResolve = null;
-            }
-            client.instance?.removeEventListener('message', handleHydrationComplete);
-          }
-        } catch (error) {
-          // Ignore parse errors
-        }
-      };
-
-      client.instance?.addEventListener('message', handleHydrationComplete);
-    }
   }
 
   /**
@@ -222,18 +190,19 @@ export class Player {
   }
 
   /**
-   * Setup interactive branch for pause interaction
-   * Checks for existing notes at current timestamp, or creates a new branch
+   * Setup interactive workspace for pause interaction
+   * Checks for existing notes at current timestamp (in seconds), or checks out snapshot commit
    */
   private async setupInteractiveBranchAtCurrentTime(): Promise<void> {
     const currentTime = this.scheduler.getCurrentTime();
+    const currentTimeSeconds = Math.floor(currentTime / 1000);
 
-    // Check if a note already exists at this timestamp
-    const existingNote = this.notes.find(n => Math.abs(n.timestamp - currentTime) < 100); // Within 100ms
+    // Check if a note already exists at this timestamp (using seconds)
+    const existingNote = this.notes.find(n => n.timestamp === currentTimeSeconds);
 
     if (existingNote) {
       // Load existing note's branch
-      console.log('[Player] Found existing note at this timestamp, loading branch:', existingNote.branchName);
+      console.log('[Player] Found existing note at', currentTimeSeconds, 'seconds, loading branch:', existingNote.branchName);
       await this.performGitCheckout(existingNote.branchName);
       this.activePauseBranch = existingNote.branchName;
       this.activePauseCommitHash = existingNote.commitHash;
@@ -246,43 +215,20 @@ export class Player {
       const commitHash = this.stateReconstructor.getCommitHash();
 
       if (commitHash && commitHash !== '') {
-        // Generate unique branch name based on video time in seconds
-        // This allows one branch per second of video
-        const videoTimeSeconds = Math.floor(currentTime / 1000);
-        const branchName = `interactive-${videoTimeSeconds}s`;
-
-        // FIRST: Checkout the commit from the recording at pause point
+        // Checkout the commit from the recording at pause point
         await this.performGitCheckout(commitHash);
-        console.log('[Player] Checked out commit from recording:', commitHash.substring(0, 8));
+        console.log('[Player] Checked out commit from snapshot:', commitHash.substring(0, 8));
 
-        // THEN: Create the interactive branch from that commit
-        await this.performGitCreateBranch(commitHash, branchName);
-
-        // Store the active pause branch info for later note saving
-        this.activePauseBranch = branchName;
+        // Note: Branch creation will happen on resume via system:save-branch
+        // Store commit hash for later use
         this.activePauseCommitHash = commitHash;
-
-        console.log('[Player] Created interactive branch:', branchName, 'from commit:', commitHash.substring(0, 8));
+        this.activePauseBranch = null; // No branch yet until resume
       } else {
-        console.warn('[Player] No commit hash in snapshot at pause time', currentTime / 1000, 'seconds - cannot create interactive branch');
+        console.warn('[Player] No commit hash in snapshot at pause time', currentTimeSeconds, 'seconds - cannot checkout workspace');
       }
     }
   }
 
-  /**
-   * Wait for workspace hydration to complete (only on first pause)
-   */
-  private async waitForHydration(): Promise<void> {
-    if (this.workspaceHydrated) {
-      return; // Already hydrated
-    }
-
-    if (this.hydrationPromise) {
-      console.log('[Player] Waiting for workspace hydration...');
-      await this.hydrationPromise;
-      console.log('[Player] Hydration complete, proceeding with pause');
-    }
-  }
 
   /**
    * Perform Git checkout to restore workspace to a specific commit or branch
@@ -315,37 +261,68 @@ export class Player {
   }
 
   /**
-   * Create a new Git branch from a commit and check it out
-   * Called when user pauses to interact with the code
+   * Save all changes to an interactive branch
+   * Creates or updates a branch at the current timestamp (in seconds)
+   * Called when user resumes playback after pausing
    */
-  private async performGitCreateBranch(commitHash: string, branchName: string): Promise<void> {
+  private async performSaveBranch(timestampSeconds: number): Promise<{branchName: string, commitHash: string} | null> {
     if (!this.socketClient) {
-      console.warn('[Player] No socket client available for Git branch creation');
-      return;
+      console.warn('[Player] No socket client available for Git save branch');
+      return null;
     }
 
     if (!this.socketClient.isConnected) {
-      console.warn('[Player] Socket not connected, cannot create Git branch');
-      return;
+      console.warn('[Player] Socket not connected, cannot save branch');
+      return null;
     }
 
     return new Promise((resolve, reject) => {
-      console.log(`[Player] Creating branch ${branchName} from commit: ${commitHash.substring(0, 8)}`);
+      const ackID = `save-branch-${Date.now()}`;
+      console.log(`[Player] Saving branch for timestamp: ${timestampSeconds}s`);
 
-      // Send system:create-branch command to Worker
+      // Set up listener for response
+      const handleResponse = (event: MessageEvent) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (response.event === 'system:save-branch' && response.data?.ackID === ackID) {
+            this.socketClient.instance?.removeEventListener('message', handleResponse);
+
+            if (response.data.error) {
+              console.error('[Player] Save branch failed:', response.data.error);
+              resolve(null);
+            } else {
+              console.log('[Player] Branch saved:', response.data.branchName, response.data.commitHash?.substring(0, 8));
+              resolve({
+                branchName: response.data.branchName,
+                commitHash: response.data.commitHash
+              });
+            }
+          }
+        } catch (error) {
+          // Ignore parse errors
+        }
+      };
+
+      this.socketClient.instance?.addEventListener('message', handleResponse);
+
+      // Send system:save-branch command to Worker
       this.socketClient.instance?.send(JSON.stringify({
-        event: 'system:create-branch',
+        event: 'system:save-branch',
         data: {
-          commitHash: commitHash,
-          branchName: branchName
+          timestamp: timestampSeconds,
+          ackID: ackID
         }
       }));
 
-      // For now, just resolve immediately
-      // In a real implementation, you might want to wait for an acknowledgment
-      resolve();
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        this.socketClient.instance?.removeEventListener('message', handleResponse);
+        console.warn('[Player] Save branch timeout');
+        resolve(null);
+      }, 5000);
     });
   }
+
 
   /**
    * Load a timeline from an array of events
@@ -772,21 +749,43 @@ export class Player {
     }
 
     const previousState = this.playerStateMachine.getState();
-    this.playerStateMachine.setState('playing');
-
     const isResumingFromPause = previousState === 'paused';
 
     if (isResumingFromPause) {
-      if (this.activePauseBranch) {
+      // Save branch if socket is connected (BEFORE changing state to 'playing')
+      if (this.socketClient && this.socketClient.isConnected) {
+        const currentTime = this.scheduler.getCurrentTime();
+        const currentTimeSeconds = Math.floor(currentTime / 1000);
+
         try {
-          this.saveCurrentBranchAsNote();
+          // Save branch with all changes from pause session
+          const result = await this.performSaveBranch(currentTimeSeconds);
+
+          if (result) {
+            // Save as note with branch info
+            const note: PlayerNote = {
+              id: `note-${Date.now()}`,
+              timestamp: currentTimeSeconds,
+              branchName: result.branchName,
+              commitHash: result.commitHash,
+              createdAt: Date.now()
+            };
+
+            this.notes.push(note);
+            this.persistNotes();
+            console.log('[Player] Saved note:', note);
+          }
         } catch (error) {
-          console.error('[Player] Failed to commit/save during resume:', error);
-          // Continue with playback even if commit/save fails
+          console.error('[Player] Failed to save branch during resume:', error);
+          // Continue with playback even if save fails
         }
       }
 
-      // Proceed with checkout and resume after commit/save completes
+      // NOW set state to playing (after save-branch completes)
+      // This triggers socket disconnection in learn page
+      this.playerStateMachine.setState('playing');
+
+      // Proceed with checkout and resume after save completes
       // Reconstruct state to get the commit hash from snapshot
       const currentTime = this.scheduler.getCurrentTime();
       const absoluteTime = this.baselineTime + currentTime;
@@ -810,6 +809,9 @@ export class Player {
       this.scheduler.resume();
       console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
     } else {
+      // First play - set state immediately (no save-branch needed)
+      this.playerStateMachine.setState('playing');
+
       // First play - start from beginning
       const metaStartEvent = this.timeline[0] as ActionPacket<MetaStartPayload>;
       const initialSnapshot = metaStartEvent.p.initialSnapshot;
@@ -861,10 +863,7 @@ export class Player {
     const currentTime = this.scheduler.getCurrentTime();
     console.log('[Player] Playback paused at', currentTime / 1000, 'seconds');
 
-    // Wait for workspace hydration to complete (only on first pause)
-    await this.waitForHydration();
-
-    // Setup interactive branch for pause interaction (only if socket is connected)
+    // Setup interactive workspace for pause interaction (only if socket is connected)
     // If socket is not connected, this will be done when socket connects via checkoutWorkspaceAtCurrentTime()
     if (this.socketClient && this.socketClient.isConnected) {
       await this.setupInteractiveBranchAtCurrentTime();
@@ -991,7 +990,7 @@ export class Player {
 
     const note: PlayerNote = {
       id: `note-${Date.now()}`,
-      timestamp: this.getCurrentTime(),
+      timestamp: Math.floor(this.getCurrentTime() / 1000), // Use seconds
       branchName: this.activePauseBranch,
       commitHash: this.activePauseCommitHash,
       description,

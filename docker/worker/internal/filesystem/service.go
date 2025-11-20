@@ -413,3 +413,61 @@ func (s *Service) CreateBranchAndCheckout(commitHash string, branchName string) 
 	log.Printf("[FS] ✅ Created and checked out branch: %s from commit: %s", branchName, commitHash[:8])
 	return nil
 }
+
+// SaveBranch saves all changes to an interactive branch
+// If the branch exists, it checks it out and commits changes
+// If the branch doesn't exist, it creates the branch from current HEAD and commits
+// Returns the branch name and commit hash
+func (s *Service) SaveBranch(timestampSeconds int, mode string) (string, string, error) {
+	if !s.gitInited {
+		return "", "", fmt.Errorf("git not initialized")
+	}
+
+	branchName := fmt.Sprintf("interactive-%ds", timestampSeconds)
+
+	// Check if branch exists
+	branches, err := s.executeGitCommand("branch", "--list", branchName)
+	branchExists := err == nil && strings.Contains(branches, branchName)
+
+	if branchExists {
+		// Branch exists - checkout and commit changes
+		log.Printf("[FS] Branch %s exists, checking out and committing changes", branchName)
+
+		// Checkout existing branch
+		if _, err := s.executeGitCommand("checkout", branchName); err != nil {
+			return "", "", fmt.Errorf("git checkout %s failed: %w", branchName, err)
+		}
+	} else {
+		// Branch doesn't exist - create from current HEAD
+		log.Printf("[FS] Branch %s doesn't exist, creating from current HEAD", branchName)
+
+		// Get current commit hash
+		currentCommit, err := s.GetCurrentCommitHash()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get current commit: %w", err)
+		}
+
+		// Create new branch from current HEAD
+		if _, err := s.executeGitCommand("checkout", "-b", branchName, currentCommit); err != nil {
+			return "", "", fmt.Errorf("git checkout -b %s failed: %w", branchName, err)
+		}
+	}
+
+	// Commit all changes
+	commitMessage := fmt.Sprintf("Interactive changes at %ds", timestampSeconds)
+	commitHash, err := s.CommitChanges(commitMessage, mode)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to commit changes: %w", err)
+	}
+
+	// If no changes were committed (empty hash), get current HEAD
+	if commitHash == "" {
+		commitHash, err = s.GetCurrentCommitHash()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get commit hash: %w", err)
+		}
+	}
+
+	log.Printf("[FS] ✅ Saved branch: %s (commit: %s)", branchName, commitHash[:8])
+	return branchName, commitHash, nil
+}

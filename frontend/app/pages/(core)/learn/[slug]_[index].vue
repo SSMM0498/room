@@ -139,19 +139,16 @@ const showCenterIcon = (icon: string) => {
   centerIcon.visible = true;
   centerIcon.fadingOut = false;
 
-  // Clear any existing timer
   if (centerIconTimer !== null) {
     clearTimeout(centerIconTimer);
   }
 
-  // Start fade out after a short delay
   centerIconTimer = window.setTimeout(() => {
     centerIcon.fadingOut = true;
-    // Hide after fade animation completes
     centerIconTimer = window.setTimeout(() => {
       centerIcon.visible = false;
-    }, 300); // Match CSS transition duration
-  }, 500); // Show for 500ms before fading
+    }, 300);
+  }, 500);
 };
 
 // Handle toggle play/pause with center icon
@@ -336,11 +333,9 @@ onMounted(async () => {
       icon: 'i-heroicons-exclamation-triangle',
     });
   }
-
-  // Note: Workspace will be started on first pause, not on mount
 });
 
-// Start workspace and connect socket (called on first pause)
+// Start workspace (called on first pause)
 const startWorkspace = async (courseId: string) => {
   try {
     loading.value = true;
@@ -363,74 +358,16 @@ const startWorkspace = async (courseId: string) => {
       });
       sessionState.value = 'checklist';
       loading.value = false;
-      return;
+      return false;
     }
 
-    sessionState.value = 'connecting';
-    progressMessage.value = 'Connecting to the IDE...';
-
-    // Connect to workspace via socket
+    // Store workspace URL for socket connection
     const k8sName = `${workspace.name}`;
-    const workspaceWsUrl = getSocketUrl(k8sName);
+    workspaceUrl.value = getSocketUrl(k8sName);
 
-    // Store workspace URL for reconnection
-    workspaceUrl.value = workspaceWsUrl;
-
-    console.log(`[Learn] Connecting to WebSocket at: ${workspaceWsUrl}`);
-
-    // Initialize the socket connection
-    socketClient.initialize(workspaceWsUrl);
-
-    // Set up connection callback
-    socketClient.connect(() => {
-      console.log('[Learn] Socket connected successfully');
-      isConnected.value = true;
-      setSocketConnected(true);
-      loading.value = false;
-      sessionState.value = 'ready';
-
-      // Set socket client for player Git operations
-      setSocketClient(socketClient);
-
-      // Initialize playback mode
-      socketClient.init('PLAYBACK');
-
-      // Start file watching
-      setupFileWatching();
-
-      // Checkout workspace to match recording state at current timestamp
-      // This must happen after hydration completes, so we wait a moment
-      setTimeout(async () => {
-        await player.value?.checkoutWorkspaceAtCurrentTime();
-      }, 500);
-
-      toast.add({
-        title: 'IDE Connected!',
-        description: 'You can now interact with the workspace.',
-        color: 'success'
-      });
-    });
-
-    // Monitor connection errors
-    socketClient.onConnectError((err: Error) => {
-      console.error('[Learn] Socket connection error:', err);
-      socketError.value = err;
-      loading.value = false;
-      toast.add({
-        title: 'Connection Error',
-        description: 'Failed to connect to workspace.',
-        color: 'error'
-      });
-    });
-
-    socketClient.onDisconnect(() => {
-      console.log('[Learn] Socket disconnected');
-      isConnected.value = false;
-      setSocketConnected(false);
-
-      // Clear socket client from player
-      setSocketClient(null);
-    });
+    console.log('[Learn] Workspace started:', workspace.name);
+    loading.value = false;
+    return true;
   } catch (err: any) {
     console.error('[Learn] Failed to start workspace:', err);
     socketError.value = err;
@@ -440,7 +377,74 @@ const startWorkspace = async (courseId: string) => {
       description: 'Failed to start workspace.',
       color: 'error'
     });
+    return false;
   }
+};
+
+// Connect to workspace socket
+const connectSocket = async () => {
+  if (!workspaceUrl.value) {
+    console.error('[Learn] Cannot connect socket: no workspace URL');
+    return;
+  }
+
+  console.log(`[Learn] Connecting to WebSocket at: ${workspaceUrl.value}`);
+  sessionState.value = 'connecting';
+  progressMessage.value = 'Connecting to the IDE...';
+
+  // Initialize the socket connection
+  socketClient.initialize(workspaceUrl.value);
+
+  // Set up connection callback
+  socketClient.connect(() => {
+    console.log('[Learn] Socket connected successfully');
+    isConnected.value = true;
+    setSocketConnected(true);
+    loading.value = false;
+    sessionState.value = 'ready';
+
+    // Set socket client for player Git operations
+    setSocketClient(socketClient);
+
+    // Initialize playback mode
+    socketClient.init('PLAYBACK');
+
+    // Start file watching
+    setupFileWatching();
+
+    // Checkout workspace to match recording state at current timestamp
+    // This must happen after hydration completes, so we wait a moment
+    setTimeout(async () => {
+      await player.value?.checkoutWorkspaceAtCurrentTime();
+    }, 500);
+
+    toast.add({
+      title: 'IDE Connected!',
+      description: 'You can now interact with the workspace.',
+      color: 'success'
+    });
+  });
+
+  // Monitor connection errors
+  socketClient.onConnectError((err: Error) => {
+    console.error('[Learn] Socket connection error:', err);
+    socketError.value = err;
+    loading.value = false;
+    toast.add({
+      title: 'Connection Error',
+      description: 'Failed to connect to workspace.',
+      color: 'error'
+    });
+  });
+
+  socketClient.onDisconnect(() => {
+    console.log('[Learn] Socket disconnected');
+    isConnected.value = false;
+    setSocketConnected(false);
+
+    // Clear socket client from player
+    setSocketClient(null);
+  });
 };
 
 // Set up file watching similar to teach page
@@ -480,14 +484,19 @@ const setupFileWatching = () => {
 };
 
 // Watch player state and manage socket connection
-// Start workspace on first pause, then disconnect when playing, reconnect when paused
+// Flow:
+// - On pause: Connect socket → Checkout workspace to current timestamp
+// - On resume: Player saves branch FIRST (while socket still connected) →
+//              THEN state changes to 'playing' → Socket disconnects here
+// - First pause: Start workspace, then connect socket
 watch(isPlaying, async (playing) => {
   console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value);
 
   if (playing) {
     // Disconnect socket during playback - we're using recorded events
+    // Note: This happens AFTER Player.play() completes save-branch operation
     if (socketClient.isConnected) {
-      console.log('[Learn] Disconnecting socket during playback');
+      console.log('[Learn] Disconnecting socket during playback (after save-branch)');
       socketClient.disconnect();
       isConnected.value = false;
       setSocketConnected(false);
@@ -496,49 +505,19 @@ watch(isPlaying, async (playing) => {
   } else if (isReady.value) {
     // Paused - need workspace for interaction
     if (!workspaceInitialized.value && lessonCourseId.value) {
-      // First pause - initialize workspace
+      // First pause - start workspace then connect socket
       console.log('[Learn] First pause - starting workspace');
       workspaceInitialized.value = true;
-      await startWorkspace(lessonCourseId.value);
+
+      const workspaceStarted = await startWorkspace(lessonCourseId.value);
+      if (workspaceStarted) {
+        // Workspace is ready, now connect socket
+        await connectSocket();
+      }
     } else if (workspaceUrl.value && !socketClient.isConnected) {
-      // Subsequent pause - reconnect to existing workspace
-      console.log('[Learn] Reconnecting socket while paused');
-
-      socketClient.initialize(workspaceUrl.value);
-      socketClient.connect(() => {
-        console.log('[Learn] Socket reconnected successfully');
-        isConnected.value = true;
-        setSocketConnected(true);
-
-        // Set socket client for player Git operations
-        setSocketClient(socketClient);
-
-        // Reinitialize playback mode after reconnection
-        socketClient.init('PLAYBACK');
-
-        setupFileWatching();
-
-        // Checkout workspace to match recording state at current timestamp
-        setTimeout(async () => {
-          await player.value?.checkoutWorkspaceAtCurrentTime();
-        }, 500);
-
-        toast.add({
-          title: 'IDE Connected',
-          description: 'You can now interact with the workspace.',
-          color: 'success',
-          duration: 2000
-        });
-      });
-
-      socketClient.onConnectError((err: Error) => {
-        console.error('[Learn] Socket reconnection error:', err);
-        toast.add({
-          title: 'Reconnection Error',
-          description: 'Failed to reconnect to workspace.',
-          color: 'error'
-        });
-      });
+      // Subsequent pause - just reconnect socket
+      console.log('[Learn] Subsequent pause - reconnecting socket');
+      await connectSocket();
     }
   }
 });

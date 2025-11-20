@@ -724,6 +724,31 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 			}
 			log.Println("[WORKER] No changes to commit")
 		}
+	case "system:save-branch":
+		log.Println("[WORKER] Git save branch command.")
+		var req struct {
+			Timestamp int    `json:"timestamp"` // in seconds
+			AckID     string `json:"ackID"`
+		}
+		json.Unmarshal(dataBytes, &req)
+
+		if req.Timestamp == 0 {
+			ack.Error = "timestamp is required"
+		} else {
+			branchName, commitHash, err := h.fsSvc.SaveBranch(req.Timestamp, client.Mode)
+			if err != nil {
+				ack.Error = err.Error()
+				log.Printf("[WORKER] Git save branch failed: %v", err)
+			} else {
+				ack.Data = map[string]interface{}{
+					"ackID":      reqAckID,
+					"branchName": branchName,
+					"commitHash": commitHash,
+					"status":     "saved",
+				}
+				log.Printf("[WORKER] ✅ Successfully saved branch: %s (%s)", branchName, commitHash[:8])
+			}
+		}
 	case "hydration-complete":
 		log.Println("[WORKER] Workspace hydration complete, forwarding to frontend.")
 		// Forward hydration-complete event to frontend
