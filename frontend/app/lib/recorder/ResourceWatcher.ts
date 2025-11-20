@@ -84,6 +84,7 @@ export class ResourceWatcher {
     console.log(`[ResourceWatcher] Create input shown: ${type} in ${parentPath}`);
   }
 
+  // TODO: Save caret position
   /**
    * Record typing in the resource creation input
    * Called as user types the resource name
@@ -118,6 +119,7 @@ export class ResourceWatcher {
     console.log(`[ResourceWatcher] Rename input shown: ${path} (${currentName})`);
   }
 
+  // TODO: Save caret position
   /**
    * Record typing in the resource rename input
    * Called as user types the new resource name

@@ -398,6 +398,12 @@ const startWorkspace = async (courseId: string) => {
       // Start file watching
       setupFileWatching();
 
+      // Checkout workspace to match recording state at current timestamp
+      // This must happen after hydration completes, so we wait a moment
+      setTimeout(async () => {
+        await player.value?.checkoutWorkspaceAtCurrentTime();
+      }, 500);
+
       toast.add({
         title: 'IDE Connected!',
         description: 'You can now interact with the workspace.',
@@ -511,6 +517,11 @@ watch(isPlaying, async (playing) => {
         socketClient.init('PLAYBACK');
 
         setupFileWatching();
+
+        // Checkout workspace to match recording state at current timestamp
+        setTimeout(async () => {
+          await player.value?.checkoutWorkspaceAtCurrentTime();
+        }, 500);
 
         toast.add({
           title: 'IDE Connected',

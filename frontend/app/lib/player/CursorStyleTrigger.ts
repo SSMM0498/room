@@ -1,11 +1,11 @@
 /**
- * Cursor Style Player
+ * Cursor Style Trigger
  *
  * Applies cursor style changes to the fake cursor element during playback.
  * Maps CSS cursor values to the appropriate CSS classes defined in mouse.css.
  */
 
-export class CursorStylePlayer {
+export class CursorStyleTrigger {
   private cursorElement: HTMLElement | null = null;
 
   /**
@@ -20,7 +20,7 @@ export class CursorStylePlayer {
    */
   setCursorStyle(style: string): void {
     if (!this.cursorElement) {
-      console.warn('[CursorStylePlayer] No cursor element set');
+      console.warn('[CursorStyleTrigger] No cursor element set');
       return;
     }
 
@@ -33,9 +33,9 @@ export class CursorStylePlayer {
     // Add the new cursor style class if not 'default' or 'auto'
     if (normalizedStyle && normalizedStyle !== 'default' && normalizedStyle !== 'auto') {
       this.cursorElement.classList.add(normalizedStyle);
-      console.log(`[CursorStylePlayer] Applied cursor style: ${normalizedStyle}`);
+      console.log(`[CursorStyleTrigger] Applied cursor style: ${normalizedStyle}`);
     } else {
-      console.log(`[CursorStylePlayer] Reset to default cursor`);
+      console.log(`[CursorStyleTrigger] Reset to default cursor`);
     }
   }
 

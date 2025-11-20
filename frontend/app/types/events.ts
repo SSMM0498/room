@@ -48,6 +48,8 @@ export interface PlayerNote {
 // SNAPSHOT PAYLOADS (Ground Truth State)
 // ============================================================================
 
+export type ComponentId = 'editor' | 'terminal' | 'files' | 'browser';
+
 /**
  * Mouse position state
  */
@@ -59,22 +61,21 @@ export interface MouseState {
 /**
  * Scroll positions for all scrollable components
  */
-export interface ScrollState {
-  [componentId: string]: {
-    top: number;
-    left?: number;
-  };
-}
+export type ScrollState = Map<ComponentId, {
+  top: number
+  left?: number
+}> | null
 
 /**
  * IDE layout and tab state
  */
 export interface IDEState {
-  activePanel: 'editor' | 'terminal' | 'files' | 'browser';
+  activePanel: ComponentId;
   tabs: {
     editor: {
       openFiles: string[];
       activeFile: string | null;
+      content?: string;
     };
     terminal: {
       openTerminals: string[];
@@ -102,60 +103,15 @@ export interface BrowserState {
  * Complete UI state for snapshots
  */
 export interface UIState {
+  ide: IDEState;
   mouse: MouseState;
   scrolls: ScrollState;
-  ide: IDEState;
   fileTree: FileTreeState;
   browser: BrowserState;
 }
 
 /**
- * Full file state (all files with complete content)
- */
-export interface FullFileState {
-  [filePath: string]: string;
-}
-
-/**
- * Delta file state (only changes since last snapshot)
- */
-export interface DeltaFileState {
-  updated: { [filePath: string]: string };
-  deleted: string[];
-}
-
-/**
- * Terminal instance state
- */
-export interface TerminalState {
-  id: string;
-  title: string;
-  buffer: string;
-}
-
-/**
- * Background process state
- */
-export interface ProcessState {
-  terminalId: string;
-  command: string;
-  startTime: number;
-}
-
-/**
- * Complete workspace state for snapshots
- */
-export interface WorkspaceState {
-  files: FullFileState | DeltaFileState;
-  terminals: {
-    [terminalId: string]: TerminalState;
-  };
-  processes: ProcessState[];
-}
-
-/**
  * Snapshot payload
- * NOTE: After Git-based state management, workspace contains the commit hash at snapshot time.
  * The commit hash is used to restore the exact workspace state during playback.
  *
  * For full snapshots, ui contains complete UIState.
@@ -164,7 +120,7 @@ export interface WorkspaceState {
 export interface SnapshotPayload {
   ui: UIState | Partial<UIState>;
   workspace: {
-    commitHash: string; // Git commit hash at the time of snapshot
+    commitHash: string;
   };
 }
 
@@ -272,13 +228,6 @@ export interface EditorSelectPayload {
   e: [number, number];
 }
 
-export interface EditorScrollPayload {
-  /** File path */
-  f: string;
-  top: number;
-  left: number;
-}
-
 /**
  * Single editor scroll position with timing information
  */
@@ -316,30 +265,26 @@ export interface FileExplorerScrollPayload {
 }
 
 export interface IDEFocusPayload {
-  target: 'editor' | 'terminal' | 'files' | 'browser';
+  target: ComponentId;
   /** Optional ID for specific component instance */
   id?: string;
 }
 
-export interface IDETabsOpenPayload {
-  type: 'editor' | 'terminal';
-  /** File path for editor tabs */
-  path?: string;
-  content?: string;
-  /** Terminal ID for terminal tabs */
-  id?: string;
-}
-
-export interface IDETabsClosePayload {
-  type: 'editor' | 'terminal';
+export interface EditorTabsOpenPayload {
+  type: 'editor';
   path?: string;
   id?: string;
 }
 
-export interface IDETabsSwitchPayload {
-  type: 'editor' | 'terminal';
+export interface EditorTabsClosePayload {
+  type: 'editor';
   path?: string;
-  content?: string;
+  id?: string;
+}
+
+export interface EditorTabsSwitchPayload {
+  type: 'editor';
+  path?: string;
   id?: string;
 }
 
@@ -389,24 +334,13 @@ export interface FilesExpandPayload {
 // CATEGORY 4: GROUND TRUTH STATE (Definitive State Changes)
 // ============================================================================
 
-export interface StateCommitPayload {
-  /** File path */
-  file: string;
-  /** Full, confirmed content */
-  content: string;
-}
-
 export interface TerminalOutPayload {
-  /** Terminal ID */
   id: string;
-  /** stdout/stderr data chunk */
   data: string;
 }
 
 export interface TerminalExitPayload {
-  /** Terminal ID */
   id: string;
-  /** Exit code */
   code: number;
 }
 
@@ -417,10 +351,12 @@ export interface TerminalExitPayload {
 export interface MetaStartPayload {
   version: number;
   timestamp: number;
+  initialSnapshot: SnapshotPayload;
 }
 
 export interface MetaEndPayload {
   timestamp: number;
+  lastSnapshot: SnapshotPayload;
 }
 
 export interface MetaChapterMarkPayload {
@@ -451,15 +387,14 @@ export type AnyActionPacket =
   | ActionPacket<FilesPopoverHidePayload>
   // UI State
   | ActionPacket<EditorSelectPayload>
-  | ActionPacket<EditorScrollPayload>
   | ActionPacket<EditorScrollPathPayload>
+  | ActionPacket<EditorTabsOpenPayload>
+  | ActionPacket<EditorTabsClosePayload>
+  | ActionPacket<EditorTabsSwitchPayload>
   | ActionPacket<TerminalScrollPayload>
   | ActionPacket<BrowserScrollPayload>
   | ActionPacket<FileExplorerScrollPayload>
   | ActionPacket<IDEFocusPayload>
-  | ActionPacket<IDETabsOpenPayload>
-  | ActionPacket<IDETabsClosePayload>
-  | ActionPacket<IDETabsSwitchPayload>
   | ActionPacket<BrowserNavPayload>
   // Commands
   | ActionPacket<TerminalExecPayload>
@@ -469,13 +404,13 @@ export type AnyActionPacket =
   | ActionPacket<FilesExpandPayload>
   // Ground Truth State
   | ActionPacket<SnapshotPayload>
-  | ActionPacket<StateCommitPayload>
   | ActionPacket<TerminalOutPayload>
-  | ActionPacket<TerminalExitPayload>
   // Meta
   | ActionPacket<MetaStartPayload>
   | ActionPacket<MetaEndPayload>
   | ActionPacket<MetaChapterMarkPayload>;
+
+export type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
 
 // ============================================================================
 // EVENT TYPE CONSTANTS
@@ -486,8 +421,7 @@ export const EventTypes = {
   MOUSE_PATH: 'mouse:path',
   MOUSE_CLICK: 'mouse:click',
   MOUSE_STYLE: 'mouse:style',
-  EDITOR_TYPE: 'editor:type',
-  EDITOR_PASTE: 'editor:paste',
+
   FILES_CREATE_INPUT_SHOW: 'files:create:input:show',
   FILES_CREATE_INPUT_TYPE: 'files:create:input:type',
   FILES_CREATE_INPUT_HIDE: 'files:create:input:hide',
@@ -496,32 +430,33 @@ export const EventTypes = {
   FILES_RENAME_INPUT_HIDE: 'files:rename:input:hide',
   FILES_POPOVER_SHOW: 'files:popover:show',
   FILES_POPOVER_HIDE: 'files:popover:hide',
-
-  // UI State
-  EDITOR_SELECT: 'editor:select',
-  EDITOR_SCROLL: 'editor:scroll',
-  EDITOR_SCROLL_PATH: 'editor:scroll:path',
-  TERMINAL_SCROLL: 'terminal:scroll',
-  BROWSER_SCROLL: 'browser:scroll',
   FILE_EXPLORER_SCROLL: 'files:scroll',
-  IDE_FOCUS: 'ide:focus',
-  IDE_TABS_OPEN: 'ide:tabs:open',
-  IDE_TABS_CLOSE: 'ide:tabs:close',
-  IDE_TABS_SWITCH: 'ide:tabs:switch',
-  BROWSER_NAV: 'browser:nav',
-
-  // Commands
-  TERMINAL_EXEC: 'terminal:exec',
   FILES_CREATE: 'files:create',
   FILES_DELETE: 'files:delete',
   FILES_MOVE: 'files:move',
   FILES_EXPAND: 'files:expand',
 
+  EDITOR_TYPE: 'editor:type',
+  EDITOR_PASTE: 'editor:paste',
+  EDITOR_SELECT: 'editor:select',
+  EDITOR_SCROLL: 'editor:scroll',
+  EDITOR_TABS_OPEN: 'editor:tabs:open',
+  EDITOR_TABS_CLOSE: 'editor:tabs:close',
+  EDITOR_TABS_SWITCH: 'editor:tabs:switch',
+
+  TERMINAL_EXEC: 'terminal:type',
+  TERMINAL_SELECT: 'terminal:select',
+  TERMINAL_SCROLL: 'terminal:scroll',
+
+  BROWSER_NAV: 'browser:type',
+  BROWSER_SELECT: 'terminal:select',
+  BROWSER_SCROLL: 'browser:scroll',
+
+  IDE_FOCUS: 'ide:focus',
+
   // Ground Truth State
   STATE_SNAPSHOT_FULL: 'state:snapshot:full',
   STATE_SNAPSHOT_DELTA: 'state:snapshot:delta',
-  TERMINAL_OUT: 'terminal:out',
-  TERMINAL_EXIT: 'terminal:exit',
 
   // Meta
   META_START: 'meta:start',

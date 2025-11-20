@@ -7,11 +7,9 @@
  * - Editor closes a tab
  */
 
-import { EventTypes } from '~/types/events';
+import { EventTypes, type AddEventCallback } from '~/types/events';
 
-type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
-
-export class IdeTabWatcher {
+export class EditorTabWatcher {
   private addEvent: AddEventCallback;
 
   constructor(addEvent: AddEventCallback) {
@@ -21,10 +19,10 @@ export class IdeTabWatcher {
   /**
    * Record a tab open event
    * Called by file-explorer when user opens a file
-   * NOTE: Content is not recorded - it will be restored via Git checkout + typing events
+   * TODO: Call directly through the editor component because there are other ways to open a file than the file explorer
    */
   recordTabOpen(filePath: string): void {
-    this.addEvent('ui', EventTypes.IDE_TABS_OPEN, {
+    this.addEvent('ui', EventTypes.EDITOR_TABS_OPEN, {
       type: 'editor',
       path: filePath,
     });
@@ -36,7 +34,7 @@ export class IdeTabWatcher {
    * Called by editor when user closes a tab
    */
   recordTabClose(filePath: string): void {
-    this.addEvent('ui', EventTypes.IDE_TABS_CLOSE, {
+    this.addEvent('ui', EventTypes.EDITOR_TABS_CLOSE, {
       type: 'editor',
       path: filePath,
     });
@@ -46,10 +44,9 @@ export class IdeTabWatcher {
   /**
    * Record a tab switch event
    * Called by editor when user switches to a different tab
-   * NOTE: Content is not recorded - it will be restored via Git checkout + typing events
    */
   recordTabSwitch(filePath: string): void {
-    this.addEvent('ui', EventTypes.IDE_TABS_SWITCH, {
+    this.addEvent('ui', EventTypes.EDITOR_TABS_SWITCH, {
       type: 'editor',
       path: filePath,
     });

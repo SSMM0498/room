@@ -45,7 +45,8 @@ func (c *Client) ReadPump() {
 		// Events that require request-response pattern
 		case "crud-read-file", "crud-read-folder", "create-terminal", "close-terminal", "crud-download-workspace",
 			"hydrate-create-file", "crud-create-file", "crud-create-folder", "command-preview", "command-run",
-			"crud-update-file", "crud-delete-resource", "crud-move-resource":
+			"crud-update-file", "crud-delete-resource", "crud-move-resource",
+			"system:checkout", "system:save-branch", "system:commit":
 			log.Printf("[BRIDGE] Frontend → Worker (request-response): event=%s", msg.Event)
 			go c.handleRequestResponse(msg)
 

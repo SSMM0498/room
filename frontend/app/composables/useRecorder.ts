@@ -94,7 +94,7 @@ export const useRecorder = () => {
    */
   const initializeRecorder = (stateCapture: IDEStateCapture, config?: RecorderConfig) => {
     recorder.value = new Recorder(config);
-    recorder.value.setStateCapture(stateCapture);
+    recorder.value.setUIStateTracker(stateCapture);
   };
 
   /**

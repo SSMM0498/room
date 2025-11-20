@@ -2,18 +2,15 @@
  * Recorder Type Definitions
  */
 
-import type { UIState, WorkspaceState } from '~/types/events';
+import type { UIState } from '~/types/events';
 
 export interface RecorderConfig {
-  /** Interval for full snapshots in milliseconds (default: 15000ms = 15s) */
-  fullSnapshotInterval?: number;
-  /** Interval for delta snapshots in milliseconds (default: 1500ms = 1.5s) */
-  deltaSnapshotInterval?: number;
-  /** Version number for the recording format */
+  fullSnapshotInterval?: number; // (default: 15000ms = 15s)
+  deltaSnapshotInterval?: number; // (default: 1500ms = 1.5s)
   version?: number;
 }
 
-export interface IDEStateCapture {
+export interface UIStateTracker {
   getUIState(): UIState;
 }
 

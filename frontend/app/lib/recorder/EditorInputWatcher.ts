@@ -6,10 +6,9 @@
  */
 
 import { EventTypes } from '~/types/events';
-import type { EditorTypePayload, EditorPastePayload, EditorSelectPayload } from '~/types/events';
+import type { EditorTypePayload, EditorPastePayload, EditorSelectPayload, AddEventCallback } from '~/types/events';
 
-type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
-
+// TODO: Save caret position
 export class EditorInputWatcher {
   private addEvent: AddEventCallback;
 
@@ -17,7 +16,7 @@ export class EditorInputWatcher {
   private typingBuffer: string = '';
   private typingFilePath: string = '';
   private typingTimer: number | null = null;
-  private readonly TYPING_BATCH_DELAY = 500; // ms
+  private readonly TYPING_BATCH_DELAY = 1000; // ms
 
   constructor(addEvent: AddEventCallback) {
     this.addEvent = addEvent;
@@ -52,7 +51,7 @@ export class EditorInputWatcher {
 
   /**
    * Flush the typing buffer immediately
-   * Called when switching files or on significant pauses
+   * Called when switching files or on significant pauses (1s)
    */
   flushTypingBuffer(): void {
     if (this.typingBuffer && this.typingFilePath) {

@@ -1,11 +1,11 @@
 /**
- * EditorInputPlayer - Plays back editor input events (typing, paste, selection)
+ * EditorInputTrigger - Plays back editor input events (typing, paste, selection)
  *
  * Receives callbacks from the editor component and triggers input actions
  * during playback.
  */
 
-export class EditorInputPlayer {
+export class EditorInputTrigger {
   private onTypeCallback: ((filePath: string, chunk: string) => void) | null = null;
   private onPasteCallback: ((filePath: string, content: string, position?: [number, number]) => void) | null = null;
   private onSelectCallback: ((filePath: string, start: [number, number], end: [number, number]) => void) | null = null;
@@ -16,7 +16,7 @@ export class EditorInputPlayer {
    */
   setOnType(callback: (filePath: string, chunk: string) => void): void {
     this.onTypeCallback = callback;
-    console.log('[EditorInputPlayer] Type callback registered');
+    console.log('[EditorInputTrigger] Type callback registered');
   }
 
   /**
@@ -25,7 +25,7 @@ export class EditorInputPlayer {
    */
   setOnPaste(callback: (filePath: string, content: string, position?: [number, number]) => void): void {
     this.onPasteCallback = callback;
-    console.log('[EditorInputPlayer] Paste callback registered');
+    console.log('[EditorInputTrigger] Paste callback registered');
   }
 
   /**
@@ -34,7 +34,7 @@ export class EditorInputPlayer {
    */
   setOnSelect(callback: (filePath: string, start: [number, number], end: [number, number]) => void): void {
     this.onSelectCallback = callback;
-    console.log('[EditorInputPlayer] Select callback registered');
+    console.log('[EditorInputTrigger] Select callback registered');
   }
 
   /**
@@ -45,9 +45,9 @@ export class EditorInputPlayer {
   playType(filePath: string, chunk: string): void {
     if (this.onTypeCallback) {
       this.onTypeCallback(filePath, chunk);
-      console.log(`[EditorInputPlayer] Playing typing: ${filePath} (${chunk.length} chars)`);
+      console.log(`[EditorInputTrigger] Playing typing: ${filePath} (${chunk.length} chars)`);
     } else {
-      console.warn('[EditorInputPlayer] No type callback registered');
+      console.warn('[EditorInputTrigger] No type callback registered');
     }
   }
 
@@ -60,9 +60,9 @@ export class EditorInputPlayer {
   playPaste(filePath: string, content: string, position?: [number, number]): void {
     if (this.onPasteCallback) {
       this.onPasteCallback(filePath, content, position);
-      console.log(`[EditorInputPlayer] Playing paste: ${filePath} (${content.length} chars)`);
+      console.log(`[EditorInputTrigger] Playing paste: ${filePath} (${content.length} chars)`);
     } else {
-      console.warn('[EditorInputPlayer] No paste callback registered');
+      console.warn('[EditorInputTrigger] No paste callback registered');
     }
   }
 
@@ -75,9 +75,9 @@ export class EditorInputPlayer {
   playSelect(filePath: string, start: [number, number], end: [number, number]): void {
     if (this.onSelectCallback) {
       this.onSelectCallback(filePath, start, end);
-      console.log(`[EditorInputPlayer] Playing selection: ${filePath} [${start.join(',')}] to [${end.join(',')}]`);
+      console.log(`[EditorInputTrigger] Playing selection: ${filePath} [${start.join(',')}] to [${end.join(',')}]`);
     } else {
-      console.warn('[EditorInputPlayer] No select callback registered');
+      console.warn('[EditorInputTrigger] No select callback registered');
     }
   }
 
@@ -88,6 +88,6 @@ export class EditorInputPlayer {
     this.onTypeCallback = null;
     this.onPasteCallback = null;
     this.onSelectCallback = null;
-    console.log('[EditorInputPlayer] Destroyed');
+    console.log('[EditorInputTrigger] Destroyed');
   }
 }

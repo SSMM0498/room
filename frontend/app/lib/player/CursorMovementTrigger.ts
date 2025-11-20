@@ -5,45 +5,21 @@
  * Position is set directly by action scheduler - no interpolation needed.
  */
 
-export class CursorMovementPlayer {
+export class CursorMovementTrigger {
   private cursorElement: HTMLElement | null = null;
 
-  constructor() {
-    this.createCursorElement();
-  }
-
   /**
-   * Create the fake cursor element
+   * Set reference to the cursor element
    */
-  private createCursorElement(): void {
-    // Check if cursor already exists
-    if (document.querySelector('.player-mouse')) {
-      this.cursorElement = document.querySelector('.player-mouse');
-      return;
-    }
-
-    // Create new cursor element
-    const cursor = document.createElement('div');
-    cursor.className = 'player-mouse';
-    cursor.style.position = 'fixed';
-    cursor.style.pointerEvents = 'none';
-    cursor.style.zIndex = '9999';
-    cursor.style.display = 'none';
-
-    // Add inner light element
-    const light = document.createElement('div');
-    light.className = 'player-mouse-light';
-    cursor.appendChild(light);
-
-    document.body.appendChild(cursor);
-    this.cursorElement = cursor;
+  setCursorElement(element: HTMLElement | null): void {
+    this.cursorElement = element;
   }
 
   /**
    * Show the fake cursor
    */
   show(): void {
-    if (this.cursorElement) {
+    if (this.cursorElement && this.cursorElement.style.display !== 'block') {
       this.cursorElement.style.display = 'block';
     }
   }
@@ -52,7 +28,7 @@ export class CursorMovementPlayer {
    * Hide the fake cursor
    */
   hide(): void {
-    if (this.cursorElement) {
+    if (this.cursorElement && this.cursorElement.style.display !== 'none') {
       this.cursorElement.style.display = 'none';
     }
   }

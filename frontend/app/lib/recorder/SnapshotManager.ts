@@ -13,6 +13,7 @@ import type {
   IDEState,
   FileTreeState,
   ScrollState,
+  ComponentId,
 } from '~/types/events';
 
 export class SnapshotManager {
@@ -51,16 +52,12 @@ export class SnapshotManager {
       return null; // No baseline to compare against
     }
 
-    // Calculate UI delta
-    // lastSnapshotState.ui is always a full UIState (we only store full states for comparison)
     const uiDelta = this.calculateUIStateDelta(this.lastSnapshotState.ui as UIState, currentUIState);
 
-    // Only create delta if there are actual changes
     if (!this.hasUIChanges(uiDelta)) {
       return null;
     }
 
-    // Warn if commit hash is empty - this may cause playback failures
     if (commitHash === '') {
       console.warn('[SnapshotManager] Creating delta snapshot with empty commit hash - playback may fail');
     }
@@ -72,7 +69,6 @@ export class SnapshotManager {
       }
     };
 
-    // Update last snapshot state to current state
     this.lastSnapshotState = {
       ui: currentUIState,
       workspace: {
@@ -145,16 +141,16 @@ export class SnapshotManager {
    * Compare two scroll states for equality
    */
   private areScrollsEqual(a: ScrollState, b: ScrollState): boolean {
-    const aKeys = Object.keys(a);
-    const bKeys = Object.keys(b);
+    const aKeys = Object.keys(a) as ComponentId[];
+    const bKeys = Object.keys(b) as ComponentId[];
 
     if (aKeys.length !== bKeys.length) {
       return false;
     }
 
-    return aKeys.every(key => {
-      const aScroll = a[key];
-      const bScroll = b[key];
+    return aKeys.every((key) => {
+      const bScroll = b.get(key);
+      const aScroll = a.get(key);
       if (!aScroll || !bScroll) {
         return false;
       }

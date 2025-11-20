@@ -72,13 +72,11 @@ const { currentCourse, fetchCourseBySlug } = useCourses();
 const {
   isReady,
   isRecording,
-  isInitialCommitReady,
   micVolume,
   setupMedia,
   initializeRecorder,
   stopRecording,
   setupCommitHashTracker,
-  setInitialCommitReady,
   setUploadCallback,
   recorder,
 } = useRecorder();
@@ -112,6 +110,89 @@ let recordingTimerInterval: number | null = null;
 
 // Mouse position tracking using VueUse
 const { x: mouseX, y: mouseY } = useMouse();
+
+// Initialize recorder with full structure but only tab tracking active
+onMounted(() => {
+  initializeRecorder({
+    getUIState: () => {
+      const _directoryTree = JSON.parse(JSON.stringify(directoryTree));
+      const _openFolders = JSON.parse(JSON.stringify(openFolders.value));
+      const _openTabs = openTabs.tabs.map(tab => tab.filePath)
+      const _activeTab = activeTab.filePath
+      const _mouseX = mouseX.value;
+      const _mouseY = mouseY.value;
+      return {
+        mouse: { x: _mouseX, y: _mouseY },
+        scrolls: null,
+        ide: {
+          activePanel: 'editor',
+          tabs: {
+            editor: {
+              openFiles: _openTabs,
+              activeFile: _activeTab || null
+            },
+            terminal: {
+              openTerminals: [],
+              activeTerminal: null
+            },
+          },
+        },
+        fileTree: {
+          expandedPaths: _openFolders,
+          tree: _directoryTree || null
+        },
+        browser: { url: '' },
+      }
+    },
+  });
+
+  // Set upload callback for recording
+  const { uploadRecording } = useCourseContent();
+  setUploadCallback(async (audioBlob: Blob, timelineNDJSON: string) => {
+    if (!currentCourse.value) {
+      console.error('No current course available for upload');
+      return false;
+    }
+
+    try {
+      console.log('Starting upload process...');
+      const result = await uploadRecording(
+        currentCourse.value.id,
+        timelineNDJSON,
+        audioBlob
+      );
+
+      if (result) {
+        console.log('✅ Upload completed successfully');
+        toast.add({
+          title: 'Recording Saved',
+          description: 'Your lesson has been saved successfully',
+          color: 'success',
+          icon: 'i-heroicons-check-circle'
+        });
+        return true;
+      } else {
+        console.error('❌ Upload failed - no result returned');
+        toast.add({
+          title: 'Upload Failed',
+          description: 'Failed to save your recording',
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle'
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Upload error:', error);
+      toast.add({
+        title: 'Upload Error',
+        description: 'An error occurred while saving your recording',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle'
+      });
+      return false;
+    }
+  });
+});
 
 // Handle editor mounted event and set up ALL recording
 const handleEditorMounted = (editor: any) => {
@@ -213,89 +294,6 @@ const handleEditorMounted = (editor: any) => {
     setCursorPosition(position.lineNumber, position.column);
   }
 };
-
-// Initialize recorder with full structure but only tab tracking active
-onMounted(() => {
-  initializeRecorder({
-    getUIState: () => {
-      const _directoryTree = JSON.parse(JSON.stringify(directoryTree));
-      const _openFolders = JSON.parse(JSON.stringify(openFolders.value));
-      const _openTabs = openTabs.tabs.map(tab => tab.filePath)
-      const _activeTab = activeTab.filePath
-      const _mouseX = mouseX.value;
-      const _mouseY = mouseY.value;
-      return {
-        mouse: { x: _mouseX, y: _mouseY },
-        scrolls: {},
-        ide: {
-          activePanel: 'editor',
-          tabs: {
-            editor: {
-              openFiles: _openTabs,
-              activeFile: _activeTab || null
-            },
-            terminal: {
-              openTerminals: [],
-              activeTerminal: null
-            },
-          },
-        },
-        fileTree: {
-          expandedPaths: _openFolders,
-          tree: _directoryTree || null
-        },
-        browser: { url: '' },
-      }
-    },
-  });
-
-  // Set upload callback for recording
-  const { uploadRecording } = useCourseContent();
-  setUploadCallback(async (audioBlob: Blob, timelineNDJSON: string) => {
-    if (!currentCourse.value) {
-      console.error('No current course available for upload');
-      return false;
-    }
-
-    try {
-      console.log('Starting upload process...');
-      const result = await uploadRecording(
-        currentCourse.value.id,
-        timelineNDJSON,
-        audioBlob
-      );
-
-      if (result) {
-        console.log('✅ Upload completed successfully');
-        toast.add({
-          title: 'Recording Saved',
-          description: 'Your lesson has been saved successfully',
-          color: 'success',
-          icon: 'i-heroicons-check-circle'
-        });
-        return true;
-      } else {
-        console.error('❌ Upload failed - no result returned');
-        toast.add({
-          title: 'Upload Failed',
-          description: 'Failed to save your recording',
-          color: 'error',
-          icon: 'i-heroicons-exclamation-triangle'
-        });
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Upload error:', error);
-      toast.add({
-        title: 'Upload Error',
-        description: 'An error occurred while saving your recording',
-        color: 'error',
-        icon: 'i-heroicons-exclamation-triangle'
-      });
-      return false;
-    }
-  });
-});
 
 const setupMicrophone = async () => {
   isSettingUpMic.value = true;
@@ -409,7 +407,7 @@ const startWorkspace = async (courseId: string) => {
   }
 };
 
-// Set up file watching similar to arkad-app/pages/ide/index.vue
+// Set up file watching
 const setupFileWatching = () => {
   socketClient.handleWatch(({ event, data }: WatchResponse) => {
     if (event === "rename") {

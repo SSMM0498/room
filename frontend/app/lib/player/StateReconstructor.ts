@@ -14,24 +14,24 @@ import type {
   UIState,
 } from '~/types/events';
 import { isFullSnapshot, isDeltaSnapshot } from '~/types/events';
-import type { CursorMovementPlayer } from './CursorMovementPlayer';
-import type { IdeTabPlayer } from './IdeTabPlayer';
+import type { CursorMovementTrigger } from './CursorMovementTrigger';
+import type { EditorTabTrigger } from './EditorTabTrigger';
 
 export class StateReconstructor {
   private uiState: UIState | null = null;
   private commitHash: string | null = null; // Current commit hash from snapshot
 
   // References to UI players for applying state
-  private cursorPlayer: CursorMovementPlayer | null = null;
-  private ideTabPlayer: IdeTabPlayer | null = null;
+  private cursorPlayer: CursorMovementTrigger | null = null;
+  private ideTabPlayer: EditorTabTrigger | null = null;
   private fileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
 
   /**
    * Set references to UI players for state application
    */
   setUIPlayers(
-    cursorPlayer: CursorMovementPlayer,
-    ideTabPlayer: IdeTabPlayer,
+    cursorPlayer: CursorMovementTrigger,
+    ideTabPlayer: EditorTabTrigger,
     fileTreeRestoreCallback: (expandedPaths: string[], tree: any | null) => void
   ): void {
     this.cursorPlayer = cursorPlayer;
@@ -42,7 +42,6 @@ export class StateReconstructor {
   /**
    * Set full snapshot - replaces entire current state
    * Called when full snapshot event is encountered during playback
-   * NOTE: State is stored internally, NOT applied to UI
    */
   setFullSnapshot(snapshot: SnapshotPayload): void {
     this.uiState = snapshot.ui as UIState;
@@ -160,8 +159,6 @@ export class StateReconstructor {
 
   /**
    * Apply the reconstructed UI state to the UI players
-   * NOTE: File contents for tabs are read from the Worker filesystem (restored via Git),
-   * not from snapshots
    */
   applyReconstructedStateToUI(): void {
     if (!this.uiState) {
@@ -176,7 +173,6 @@ export class StateReconstructor {
     }
 
     // Apply tab state
-    // NOTE: File contents will be read from Worker filesystem (restored via Git checkout)
     if (this.uiState.ide?.tabs?.editor && this.ideTabPlayer) {
       this.ideTabPlayer.applyTabSnapshot(
         this.uiState.ide.tabs.editor,
@@ -192,6 +188,8 @@ export class StateReconstructor {
       );
       console.log(`[StateReconstructor] Applied file tree state: ${this.uiState.fileTree.expandedPaths.length} expanded paths`);
     }
+
+    // TODO: Apply content editor state
   }
 
   /**

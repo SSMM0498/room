@@ -6,7 +6,7 @@
  */
 
 export interface ActionWithDelay {
-  doAction: () => void;
+  triggerAction: () => void;
   delay: number; // Absolute time when this action should execute
 }
 
@@ -16,14 +16,6 @@ export class ActionTimelineScheduler {
   private actionsBuffer: ActionWithDelay[] = [];
   private raf: number | null = null;
   private liveMode: boolean = false;
-
-  /**
-   * Add an action after the timer starts
-   */
-  public addAction(action: ActionWithDelay): void {
-    const index = this.findActionIndex(action);
-    this.actionsBuffer.splice(index, 0, action);
-  }
 
   /**
    * Add all actions before the timer starts
@@ -36,13 +28,14 @@ export class ActionTimelineScheduler {
    * Start the scheduler
    */
   public start(): void {
+    // TODO: Need detailled explanation of the scheduler mechanism
     this.actionsBuffer.sort((a1, a2) => a1.delay - a2.delay);
     this.timeOffset = 0;
     let lastTimestamp = performance.now();
     const { actionsBuffer: actions } = this;
     const self = this;
 
-    function check(time: number) {
+    function triggerAllActions(time: number) {
       self.timeOffset += time - lastTimestamp;
       lastTimestamp = time;
 
@@ -52,18 +45,18 @@ export class ActionTimelineScheduler {
 
         if (self.timeOffset >= action.delay) {
           actions.shift();
-          action.doAction();
+          action.triggerAction();
         } else {
           break;
         }
       }
 
       if (actions.length > 0 || self.liveMode) {
-        self.raf = requestAnimationFrame(check);
+        self.raf = requestAnimationFrame(triggerAllActions);
       }
     }
 
-    this.raf = requestAnimationFrame(check);
+    this.raf = requestAnimationFrame(triggerAllActions);
   }
 
   /**
@@ -99,7 +92,7 @@ export class ActionTimelineScheduler {
 
         if (self.timeOffset >= action.delay) {
           actions.shift();
-          action.doAction();
+          action.triggerAction();
         } else {
           break;
         }

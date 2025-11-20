@@ -1,5 +1,5 @@
 /**
- * ResourcePlayer - Plays back file system operations
+ * ResourceTrigger - Plays back file system operations
  *
  * Components register callbacks that will be invoked during playback:
  * - onFolderExpand: Expands or collapses a folder
@@ -8,7 +8,7 @@
  * - onMove: Renames or moves a file or folder
  */
 
-export class ResourcePlayer {
+export class ResourceTrigger {
   private onFolderExpandCallback: ((
     path: string,
     expanded: boolean,
@@ -38,7 +38,7 @@ export class ResourcePlayer {
     ) => void
   ): void {
     this.onFolderExpandCallback = callback;
-    console.log('[ResourcePlayer] Folder expand callback registered');
+    console.log('[ResourceTrigger] Folder expand callback registered');
   }
 
   /**
@@ -47,7 +47,7 @@ export class ResourcePlayer {
    */
   setOnCreate(callback: (path: string, type: 'f' | 'd') => void): void {
     this.onCreateCallback = callback;
-    console.log('[ResourcePlayer] Create callback registered');
+    console.log('[ResourceTrigger] Create callback registered');
   }
 
   /**
@@ -56,7 +56,7 @@ export class ResourcePlayer {
    */
   setOnDelete(callback: (path: string) => void): void {
     this.onDeleteCallback = callback;
-    console.log('[ResourcePlayer] Delete callback registered');
+    console.log('[ResourceTrigger] Delete callback registered');
   }
 
   /**
@@ -65,7 +65,7 @@ export class ResourcePlayer {
    */
   setOnMove(callback: (from: string, to: string) => void): void {
     this.onMoveCallback = callback;
-    console.log('[ResourcePlayer] Move callback registered');
+    console.log('[ResourceTrigger] Move callback registered');
   }
 
   /**
@@ -74,7 +74,7 @@ export class ResourcePlayer {
    */
   setOnCreateInputShow(callback: (type: 'file' | 'folder', parentPath: string) => void): void {
     this.onCreateInputShowCallback = callback;
-    console.log('[ResourcePlayer] Create input show callback registered');
+    console.log('[ResourceTrigger] Create input show callback registered');
   }
 
   /**
@@ -83,7 +83,7 @@ export class ResourcePlayer {
    */
   setOnCreateInputType(callback: (text: string) => void): void {
     this.onCreateInputTypeCallback = callback;
-    console.log('[ResourcePlayer] Create input type callback registered');
+    console.log('[ResourceTrigger] Create input type callback registered');
   }
 
   /**
@@ -92,7 +92,7 @@ export class ResourcePlayer {
    */
   setOnCreateInputHide(callback: (cancelled: boolean) => void): void {
     this.onCreateInputHideCallback = callback;
-    console.log('[ResourcePlayer] Create input hide callback registered');
+    console.log('[ResourceTrigger] Create input hide callback registered');
   }
 
   /**
@@ -101,7 +101,7 @@ export class ResourcePlayer {
    */
   setOnRenameInputShow(callback: (path: string, currentName: string) => void): void {
     this.onRenameInputShowCallback = callback;
-    console.log('[ResourcePlayer] Rename input show callback registered');
+    console.log('[ResourceTrigger] Rename input show callback registered');
   }
 
   /**
@@ -110,7 +110,7 @@ export class ResourcePlayer {
    */
   setOnRenameInputType(callback: (text: string) => void): void {
     this.onRenameInputTypeCallback = callback;
-    console.log('[ResourcePlayer] Rename input type callback registered');
+    console.log('[ResourceTrigger] Rename input type callback registered');
   }
 
   /**
@@ -119,7 +119,7 @@ export class ResourcePlayer {
    */
   setOnRenameInputHide(callback: (cancelled: boolean) => void): void {
     this.onRenameInputHideCallback = callback;
-    console.log('[ResourcePlayer] Rename input hide callback registered');
+    console.log('[ResourceTrigger] Rename input hide callback registered');
   }
 
   /**
@@ -128,7 +128,7 @@ export class ResourcePlayer {
    */
   setOnPopoverShow(callback: (path: string) => void): void {
     this.onPopoverShowCallback = callback;
-    console.log('[ResourcePlayer] Popover show callback registered');
+    console.log('[ResourceTrigger] Popover show callback registered');
   }
 
   /**
@@ -137,7 +137,7 @@ export class ResourcePlayer {
    */
   setOnPopoverHide(callback: (path: string) => void): void {
     this.onPopoverHideCallback = callback;
-    console.log('[ResourcePlayer] Popover hide callback registered');
+    console.log('[ResourceTrigger] Popover hide callback registered');
   }
 
   /**
@@ -150,9 +150,9 @@ export class ResourcePlayer {
   ): void {
     if (this.onFolderExpandCallback) {
       this.onFolderExpandCallback(path, expanded, content);
-      console.log(`[ResourcePlayer] Playing folder ${expanded ? 'expand' : 'collapse'}: ${path}${content ? ` with ${content.length} items` : ''}`);
+      console.log(`[ResourceTrigger] Playing folder ${expanded ? 'expand' : 'collapse'}: ${path}${content ? ` with ${content.length} items` : ''}`);
     } else {
-      console.warn(`[ResourcePlayer] No folder expand callback registered for: ${path}`);
+      console.warn(`[ResourceTrigger] No folder expand callback registered for: ${path}`);
     }
   }
 
@@ -162,9 +162,9 @@ export class ResourcePlayer {
   playCreate(path: string, type: 'f' | 'd'): void {
     if (this.onCreateCallback) {
       this.onCreateCallback(path, type);
-      console.log(`[ResourcePlayer] Playing ${type === 'f' ? 'file' : 'folder'} create: ${path}`);
+      console.log(`[ResourceTrigger] Playing ${type === 'f' ? 'file' : 'folder'} create: ${path}`);
     } else {
-      console.warn(`[ResourcePlayer] No create callback registered for: ${path}`);
+      console.warn(`[ResourceTrigger] No create callback registered for: ${path}`);
     }
   }
 
@@ -174,9 +174,9 @@ export class ResourcePlayer {
   playDelete(path: string): void {
     if (this.onDeleteCallback) {
       this.onDeleteCallback(path);
-      console.log(`[ResourcePlayer] Playing delete: ${path}`);
+      console.log(`[ResourceTrigger] Playing delete: ${path}`);
     } else {
-      console.warn(`[ResourcePlayer] No delete callback registered for: ${path}`);
+      console.warn(`[ResourceTrigger] No delete callback registered for: ${path}`);
     }
   }
 
@@ -186,9 +186,9 @@ export class ResourcePlayer {
   playMove(from: string, to: string): void {
     if (this.onMoveCallback) {
       this.onMoveCallback(from, to);
-      console.log(`[ResourcePlayer] Playing move: ${from} -> ${to}`);
+      console.log(`[ResourceTrigger] Playing move: ${from} -> ${to}`);
     } else {
-      console.warn(`[ResourcePlayer] No move callback registered for: ${from}`);
+      console.warn(`[ResourceTrigger] No move callback registered for: ${from}`);
     }
   }
 
@@ -198,9 +198,9 @@ export class ResourcePlayer {
   playCreateInputShow(type: 'file' | 'folder', parentPath: string): void {
     if (this.onCreateInputShowCallback) {
       this.onCreateInputShowCallback(type, parentPath);
-      console.log(`[ResourcePlayer] Playing create input show: ${type} in ${parentPath}`);
+      console.log(`[ResourceTrigger] Playing create input show: ${type} in ${parentPath}`);
     } else {
-      console.warn(`[ResourcePlayer] No create input show callback registered`);
+      console.warn(`[ResourceTrigger] No create input show callback registered`);
     }
   }
 
@@ -210,9 +210,9 @@ export class ResourcePlayer {
   playCreateInputType(text: string): void {
     if (this.onCreateInputTypeCallback) {
       this.onCreateInputTypeCallback(text);
-      console.log(`[ResourcePlayer] Playing create input type: "${text}"`);
+      console.log(`[ResourceTrigger] Playing create input type: "${text}"`);
     } else {
-      console.warn(`[ResourcePlayer] No create input type callback registered`);
+      console.warn(`[ResourceTrigger] No create input type callback registered`);
     }
   }
 
@@ -222,9 +222,9 @@ export class ResourcePlayer {
   playCreateInputHide(cancelled: boolean): void {
     if (this.onCreateInputHideCallback) {
       this.onCreateInputHideCallback(cancelled);
-      console.log(`[ResourcePlayer] Playing create input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+      console.log(`[ResourceTrigger] Playing create input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
     } else {
-      console.warn(`[ResourcePlayer] No create input hide callback registered`);
+      console.warn(`[ResourceTrigger] No create input hide callback registered`);
     }
   }
 
@@ -234,9 +234,9 @@ export class ResourcePlayer {
   playRenameInputShow(path: string, currentName: string): void {
     if (this.onRenameInputShowCallback) {
       this.onRenameInputShowCallback(path, currentName);
-      console.log(`[ResourcePlayer] Playing rename input show: ${path} (${currentName})`);
+      console.log(`[ResourceTrigger] Playing rename input show: ${path} (${currentName})`);
     } else {
-      console.warn(`[ResourcePlayer] No rename input show callback registered`);
+      console.warn(`[ResourceTrigger] No rename input show callback registered`);
     }
   }
 
@@ -246,9 +246,9 @@ export class ResourcePlayer {
   playRenameInputType(text: string): void {
     if (this.onRenameInputTypeCallback) {
       this.onRenameInputTypeCallback(text);
-      console.log(`[ResourcePlayer] Playing rename input type: "${text}"`);
+      console.log(`[ResourceTrigger] Playing rename input type: "${text}"`);
     } else {
-      console.warn(`[ResourcePlayer] No rename input type callback registered`);
+      console.warn(`[ResourceTrigger] No rename input type callback registered`);
     }
   }
 
@@ -258,9 +258,9 @@ export class ResourcePlayer {
   playRenameInputHide(cancelled: boolean): void {
     if (this.onRenameInputHideCallback) {
       this.onRenameInputHideCallback(cancelled);
-      console.log(`[ResourcePlayer] Playing rename input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
+      console.log(`[ResourceTrigger] Playing rename input hide: ${cancelled ? 'cancelled' : 'submitted'}`);
     } else {
-      console.warn(`[ResourcePlayer] No rename input hide callback registered`);
+      console.warn(`[ResourceTrigger] No rename input hide callback registered`);
     }
   }
 
@@ -270,9 +270,9 @@ export class ResourcePlayer {
   playPopoverShow(path: string): void {
     if (this.onPopoverShowCallback) {
       this.onPopoverShowCallback(path);
-      console.log(`[ResourcePlayer] Playing popover show: ${path}`);
+      console.log(`[ResourceTrigger] Playing popover show: ${path}`);
     } else {
-      console.warn(`[ResourcePlayer] No popover show callback registered`);
+      console.warn(`[ResourceTrigger] No popover show callback registered`);
     }
   }
 
@@ -282,9 +282,9 @@ export class ResourcePlayer {
   playPopoverHide(path: string): void {
     if (this.onPopoverHideCallback) {
       this.onPopoverHideCallback(path);
-      console.log(`[ResourcePlayer] Playing popover hide: ${path}`);
+      console.log(`[ResourceTrigger] Playing popover hide: ${path}`);
     } else {
-      console.warn(`[ResourcePlayer] No popover hide callback registered`);
+      console.warn(`[ResourceTrigger] No popover hide callback registered`);
     }
   }
 
@@ -304,6 +304,6 @@ export class ResourcePlayer {
     this.onRenameInputHideCallback = null;
     this.onPopoverShowCallback = null;
     this.onPopoverHideCallback = null;
-    console.log('[ResourcePlayer] Destroyed');
+    console.log('[ResourceTrigger] Destroyed');
   }
 }

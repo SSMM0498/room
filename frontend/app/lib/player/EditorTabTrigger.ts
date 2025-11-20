@@ -1,5 +1,5 @@
 /**
- * IdeTabPlayer - Plays back IDE tab operations
+ * EditorTabTrigger - Plays back Editor tab operations
  *
  * Components register callbacks that will be invoked during playback:
  * - onTabOpen: Opens a new tab
@@ -7,19 +7,19 @@
  * - onTabSwitch: Switches to a different tab
  */
 
-export class IdeTabPlayer {
-  private onTabOpenCallback: ((filePath: string, content: string) => void) | null = null;
+export class EditorTabTrigger {
+  private onTabOpenCallback: ((filePath: string) => void) | null = null;
   private onTabCloseCallback: ((filePath: string) => void) | null = null;
-  private onTabSwitchCallback: ((filePath: string, content: string) => void) | null = null;
+  private onTabSwitchCallback: ((filePath: string) => void) | null = null;
   private onGetOpenTabsCallback: (() => string[]) | null = null;
 
   /**
    * Register callback for tab open events
    * Called by file-explorer component
    */
-  setOnTabOpen(callback: (filePath: string, content: string) => void): void {
+  setOnTabOpen(callback: (filePath: string) => void): void {
     this.onTabOpenCallback = callback;
-    console.log('[IdeTabPlayer] Tab open callback registered');
+    console.log('[EditorTabTrigger] Tab open callback registered');
   }
 
   /**
@@ -28,16 +28,16 @@ export class IdeTabPlayer {
    */
   setOnTabClose(callback: (filePath: string) => void): void {
     this.onTabCloseCallback = callback;
-    console.log('[IdeTabPlayer] Tab close callback registered');
+    console.log('[EditorTabTrigger] Tab close callback registered');
   }
 
   /**
    * Register callback for tab switch events
    * Called by editor component
    */
-  setOnTabSwitch(callback: (filePath: string, content: string) => void): void {
+  setOnTabSwitch(callback: (filePath: string) => void): void {
     this.onTabSwitchCallback = callback;
-    console.log('[IdeTabPlayer] Tab switch callback registered');
+    console.log('[EditorTabTrigger] Tab switch callback registered');
   }
 
   /**
@@ -46,18 +46,18 @@ export class IdeTabPlayer {
    */
   setOnGetOpenTabs(callback: () => string[]): void {
     this.onGetOpenTabsCallback = callback;
-    console.log('[IdeTabPlayer] Get open tabs callback registered');
+    console.log('[EditorTabTrigger] Get open tabs callback registered');
   }
 
   /**
    * Trigger tab open during playback
    */
-  playTabOpen(filePath: string, content: string): void {
+  playTabOpen(filePath: string): void {
     if (this.onTabOpenCallback) {
-      this.onTabOpenCallback(filePath, content);
-      console.log(`[IdeTabPlayer] Playing tab open: ${filePath}`);
+      this.onTabOpenCallback(filePath);
+      console.log(`[EditorTabTrigger] Playing tab open: ${filePath}`);
     } else {
-      console.warn(`[IdeTabPlayer] No tab open callback registered for: ${filePath}`);
+      console.warn(`[EditorTabTrigger] No tab open callback registered for: ${filePath}`);
     }
   }
 
@@ -67,21 +67,21 @@ export class IdeTabPlayer {
   playTabClose(filePath: string): void {
     if (this.onTabCloseCallback) {
       this.onTabCloseCallback(filePath);
-      console.log(`[IdeTabPlayer] Playing tab close: ${filePath}`);
+      console.log(`[EditorTabTrigger] Playing tab close: ${filePath}`);
     } else {
-      console.warn(`[IdeTabPlayer] No tab close callback registered for: ${filePath}`);
+      console.warn(`[EditorTabTrigger] No tab close callback registered for: ${filePath}`);
     }
   }
 
   /**
    * Trigger tab switch during playback
    */
-  playTabSwitch(filePath: string, content: string): void {
+  playTabSwitch(filePath: string): void {
     if (this.onTabSwitchCallback) {
-      this.onTabSwitchCallback(filePath, content);
-      console.log(`[IdeTabPlayer] Playing tab switch: ${filePath}`);
+      this.onTabSwitchCallback(filePath);
+      console.log(`[EditorTabTrigger] Playing tab switch: ${filePath}`);
     } else {
-      console.warn(`[IdeTabPlayer] No tab switch callback registered for: ${filePath}`);
+      console.warn(`[EditorTabTrigger] No tab switch callback registered for: ${filePath}`);
     }
   }
 
@@ -105,14 +105,14 @@ export class IdeTabPlayer {
   ): void {
     // Get current open tabs from the UI
     const currentTabs = this.onGetOpenTabsCallback?.() ?? [];
-    console.log(`[IdeTabPlayer] Applying tab snapshot - Current: ${currentTabs.length} tabs, Target: ${editorTabs.openFiles.length} tabs`);
+    console.log(`[EditorTabTrigger] Applying tab snapshot - Current: ${currentTabs.length} tabs, Target: ${editorTabs.openFiles.length} tabs`);
 
     // Step 1: Close tabs that are NOT in the snapshot
     currentTabs.forEach(tabPath => {
       if (!editorTabs.openFiles.includes(tabPath)) {
         if (this.onTabCloseCallback) {
           this.onTabCloseCallback(tabPath);
-          console.log(`[IdeTabPlayer] Closing tab not in snapshot: ${tabPath}`);
+          console.log(`[EditorTabTrigger] Closing tab not in snapshot: ${tabPath}`);
         }
       }
     });
@@ -122,8 +122,8 @@ export class IdeTabPlayer {
       if (!currentTabs.includes(filePath)) {
         if (this.onTabOpenCallback) {
           // Content will be read from Worker filesystem
-          this.onTabOpenCallback(filePath, '');
-          console.log(`[IdeTabPlayer] Opening tab from snapshot: ${filePath} (content will be read from Worker)`);
+          this.onTabOpenCallback(filePath);
+          console.log(`[EditorTabTrigger] Opening tab from snapshot: ${filePath} (content will be read from Worker)`);
         }
       }
     });
@@ -131,8 +131,8 @@ export class IdeTabPlayer {
     // Step 3: Switch to active file if specified
     if (editorTabs.activeFile && this.onTabSwitchCallback) {
       // Content will be read from Worker filesystem
-      this.onTabSwitchCallback(editorTabs.activeFile, '');
-      console.log(`[IdeTabPlayer] Setting active tab from snapshot: ${editorTabs.activeFile}`);
+      this.onTabSwitchCallback(editorTabs.activeFile);
+      console.log(`[EditorTabTrigger] Setting active tab from snapshot: ${editorTabs.activeFile}`);
     }
   }
 
@@ -144,6 +144,6 @@ export class IdeTabPlayer {
     this.onTabCloseCallback = null;
     this.onTabSwitchCallback = null;
     this.onGetOpenTabsCallback = null;
-    console.log('[IdeTabPlayer] Destroyed');
+    console.log('[EditorTabTrigger] Destroyed');
   }
 }

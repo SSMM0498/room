@@ -35,6 +35,47 @@
   animation: click .1s ease-in-out;
 }
 
+.player-click-ripple {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  border: 2px solid rgba(59, 130, 246, 0.8);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 70%);
+  animation: player-click-ripple 0.6s ease-out;
+}
+
+@keyframes player-click-ripple {
+  0% {
+    width: 10px;
+    height: 10px;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  100% {
+    width: 50px;
+    height: 50px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
+}
+
+.player-click-ripple.left-click {
+  border-color: rgba(59, 130, 246, 0.8);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 70%);
+}
+
+.player-click-ripple.right-click {
+  border-color: rgba(239, 68, 68, 0.8);
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0) 70%);
+}
+
+.player-click-ripple.middle-click {
+  border-color: rgba(34, 197, 94, 0.8);
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0) 70%);
+}
+
 .player-mouse.alias::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='14' height='14'%3E%3Cpath fill='none' d='M0 0h24v24H0z'/%3E%3Cpath d='M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2zm0 9H8v2h4v3l4-4-4-4v3z' fill='rgba(255,255,255,1)' stroke='rgba(0,0,0,1)' stroke-width='.25'/%3E%3C/svg%3E");
 }
@@ -169,24 +210,24 @@
 
 @keyframes click {
   0% {
-      width: 24px;
-      height: 24px;
-      transform: translate(0, 0);
+    width: 24px;
+    height: 24px;
+    transform: translate(0, 0);
   }
 
   50% {
-      width: 22px;
-      height: 22px;
-      transform: translate(-2px, -2px);
+    width: 22px;
+    height: 22px;
+    transform: translate(-2px, -2px);
   }
 }
 
 @keyframes rotate {
   0% {
-      transform: rotate(0);
+    transform: rotate(0);
   }
 
   100% {
-      transform: rotate(360deg);
+    transform: rotate(360deg);
   }
 }

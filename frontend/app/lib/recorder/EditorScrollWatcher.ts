@@ -8,22 +8,14 @@
  */
 
 import { EventTypes } from '~/types/events';
-import type { EditorScrollPathPayload, EditorScrollPosition } from '~/types/events';
-
-interface ScrollPoint {
-  top: number;
-  left: number;
-  timeOffset: number; // Time since batch started (ms)
-}
-
-type AddEventCallback = <P>(src: string, act: string, payload: P, timestamp?: number) => void;
+import type { AddEventCallback, EditorScrollPathPayload, EditorScrollPosition } from '~/types/events';
 
 export class EditorScrollWatcher {
   private addEvent: AddEventCallback;
 
   // Batching state per file
   private fileBatches: Map<string, {
-    positions: ScrollPoint[];
+    positions: EditorScrollPosition[];
     batchStartTime: number;
     flushTimer: number | null;
     lastCaptureTime: number;
@@ -109,7 +101,7 @@ export class EditorScrollWatcher {
     }));
 
     // Emit a single editor:scroll:path event with all positions including timing
-    this.addEvent<EditorScrollPathPayload>('ui', EventTypes.EDITOR_SCROLL_PATH, {
+    this.addEvent<EditorScrollPathPayload>('ui', EventTypes.EDITOR_SCROLL, {
       f: filePath,
       positions,
     });

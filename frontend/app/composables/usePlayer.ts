@@ -1,7 +1,7 @@
 import { ref, computed, onUnmounted, watch } from 'vue';
 import { Player } from '~/lib/player';
 import type { PlayerConfig, PlayerState } from '~/lib/player';
-import type { AnyActionPacket, UIState, WorkspaceState } from '~/types/events';
+import type { AnyActionPacket, UIState } from '~/types/events';
 import type { ActiveFile } from '~~/types/file-tree';
 import type { PlayerNote } from '~/types/events.ts';
 import objectPath from 'object-path';
@@ -15,7 +15,7 @@ const audioElement = ref<HTMLAudioElement | null>(null);
 const notes = ref<PlayerNote[]>([]);
 
 export const usePlayer = () => {
-  const { openTabs, activeTab, setActiveTab, setTabContent, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
+  const { openTabs, activeTab, setActiveTab, deleteTab, toggleOpenFolder, openFolders, directoryTree, setDirectoryTree, resourceCreation, renameContext, popoverState } = useIDE();
 
   // Helper functions for tree manipulation
   const pathToObjectPath = (path: string): string => {
@@ -109,7 +109,7 @@ export const usePlayer = () => {
   watch(player, (newPlayer) => {
     if (newPlayer) {
       // Register tab switch callback
-      newPlayer.getIdeTabPlayer().setOnTabSwitch((filePath: string, content: string) => {
+      newPlayer.geEditorTabPlayer().setOnTabSwitch((filePath: string) => {
         // Find or create tab (content will be built by typing events)
         let tab = openTabs.tabs.find(t => t.filePath === filePath);
         if (!tab) {
@@ -127,7 +127,7 @@ export const usePlayer = () => {
       });
 
       // Register tab open callback
-      newPlayer.getIdeTabPlayer().setOnTabOpen((filePath: string, content: string) => {
+      newPlayer.geEditorTabPlayer().setOnTabOpen((filePath: string) => {
         // Create and open new tab (content will be built by typing events)
         const newTab: ActiveFile = {
           filePath,
@@ -143,7 +143,7 @@ export const usePlayer = () => {
       });
 
       // Register tab close callback
-      newPlayer.getIdeTabPlayer().setOnTabClose((filePath: string) => {
+      newPlayer.geEditorTabPlayer().setOnTabClose((filePath: string) => {
         // Find the tab to close
         const tabIndex = openTabs.tabs.findIndex(t => t.filePath === filePath);
         if (tabIndex !== -1) {
@@ -162,7 +162,7 @@ export const usePlayer = () => {
       });
 
       // Register callback for getting current open tabs (used for snapshot restoration)
-      newPlayer.getIdeTabPlayer().setOnGetOpenTabs(() => {
+      newPlayer.geEditorTabPlayer().setOnGetOpenTabs(() => {
         return openTabs.tabs.map(t => t.filePath);
       });
 
@@ -423,21 +423,18 @@ export const usePlayer = () => {
   /**
    * Initialize the player with optional audio element
    */
-  const initializePlayer = (config?: PlayerConfig) => {
-    player.value = new Player(config);
+  const initializePlayer = () => {
+    player.value = new Player();
 
-    // Load persisted notes
     player.value.loadPersistedNotes();
     notes.value = player.value.getNotes();
 
-    // Set up state change listeners
     const unsubscribers = [
       player.value.onStateChange('idle', () => { playerState.value = 'idle'; }),
       player.value.onStateChange('loading', () => { playerState.value = 'loading'; }),
       player.value.onStateChange('ready', () => { playerState.value = 'ready'; }),
       player.value.onStateChange('playing', () => {
         playerState.value = 'playing';
-        // Sync notes after state changes (user might have saved a note)
         notes.value = player.value?.getNotes() || [];
       }),
       player.value.onStateChange('paused', () => { playerState.value = 'paused'; }),
@@ -463,35 +460,21 @@ export const usePlayer = () => {
       player.value.setAudioElement(element);
     } else {
       // If player doesn't exist yet, initialize with audio element
-      const config: PlayerConfig = { audioElement: element };
-      initializePlayer(config);
+      initializePlayer();
+      player.value!.setAudioElement(element);
     }
-  };
-
-  /**
-   * Load a timeline from NDJSON string
-   */
-  const loadFromNDJSON = async (ndjson: string): Promise<void> => {
-    if (!player.value) {
-      console.error('L Player not initialized. Call initializePlayer first.');
-      return;
-    }
-
-    await player.value.loadFromNDJSON(ndjson);
-    duration.value = player.value.getDuration();
-    currentTime.value = 0;
   };
 
   /**
    * Load a timeline from an array of events
    */
-  const loadFromEvents = async (events: AnyActionPacket[]): Promise<void> => {
+  const loadTimelineFromEvents = async (events: AnyActionPacket[]): Promise<void> => {
     if (!player.value) {
       console.error('L Player not initialized. Call initializePlayer first.');
       return;
     }
 
-    await player.value.loadFromEvents(events);
+    await player.value.loadTimelineFromEvents(events);
     duration.value = player.value.getDuration();
     currentTime.value = 0;
   };
@@ -589,16 +572,6 @@ export const usePlayer = () => {
       return;
     }
     player.value.setSocketClient(client);
-  };
-
-  /**
-   * Get the current ground truth state (UI + Workspace)
-   */
-  const getGroundTruthState = (): { ui: UIState | null; workspace: WorkspaceState | null } => {
-    if (!player.value) {
-      return { ui: null, workspace: null };
-    }
-    return player.value.getGroundTruthState();
   };
 
   /**
@@ -733,8 +706,7 @@ export const usePlayer = () => {
     initializePlayer,
     setAudioElement,
     setSocketClient,
-    loadFromNDJSON,
-    loadFromEvents,
+    loadFromEvents: loadTimelineFromEvents,
     play,
     pause,
     togglePlayPause,
@@ -742,7 +714,6 @@ export const usePlayer = () => {
     seekToPercentage,
     skipForward,
     skipBackward,
-    getGroundTruthState,
     formatTime,
     watchStateChanges,
   };

@@ -1,7 +1,7 @@
 /**
  * Core Player Class
  *
- * Reads the Action Log and audio file to replay a recorded session.
+ * Reads the events from NDJSON and audio file to replay a recorded session.
  * Manages playback state and provides seeking functionality.
  *
  * Based on the old proven architecture where:
@@ -10,41 +10,38 @@
  * - Each mouse position is a separate action
  */
 
-import type { AnyActionPacket, UIState, WorkspaceState, MousePathPayload, MouseClickPayload, MouseStylePayload, IDETabsOpenPayload, IDETabsClosePayload, IDETabsSwitchPayload, SnapshotPayload, FilesExpandPayload, FilesCreatePayload, FilesDeletePayload, FilesMovePayload, FilesCreateInputShowPayload, FilesCreateInputTypePayload, FilesCreateInputHidePayload, FilesRenameInputShowPayload, FilesRenameInputTypePayload, FilesRenameInputHidePayload, FilesPopoverShowPayload, FilesPopoverHidePayload, EditorScrollPayload, EditorScrollPathPayload, EditorTypePayload, EditorPastePayload, EditorSelectPayload } from '~/types/events';
-import { EventTypes, isFullSnapshot, isDeltaSnapshot } from '~/types/events';
+import { EventTypes, isDeltaSnapshot, type AnyActionPacket, type MousePathPayload, type MouseClickPayload, type MouseStylePayload, type EditorTabsOpenPayload, type EditorTabsClosePayload, type EditorTabsSwitchPayload, type SnapshotPayload, type FilesExpandPayload, type FilesCreatePayload, type FilesDeletePayload, type FilesMovePayload, type FilesCreateInputShowPayload, type FilesCreateInputTypePayload, type FilesCreateInputHidePayload, type FilesRenameInputShowPayload, type FilesRenameInputTypePayload, type FilesRenameInputHidePayload, type FilesPopoverShowPayload, type FilesPopoverHidePayload, type EditorScrollPathPayload, type EditorTypePayload, type EditorPastePayload, type EditorSelectPayload, isFullSnapshot, type PlayerNote, type MetaStartPayload, type ActionPacket } from "~/types/events.js";
 import { PlayerStateMachine } from './PlayerStateMachine';
 import { ActionTimelineScheduler, type ActionWithDelay } from './ActionTimelineScheduler';
 import { StateReconstructor } from './StateReconstructor';
-import { CursorMovementPlayer } from './CursorMovementPlayer';
-import { CursorInteractionPlayer } from './CursorInteractionPlayer';
-import { CursorStylePlayer } from './CursorStylePlayer';
-import { IdeTabPlayer } from './IdeTabPlayer';
-import { ResourcePlayer } from './ResourcePlayer';
-import { EditorScrollPlayer } from './EditorScrollPlayer';
-import { EditorInputPlayer } from './EditorInputPlayer';
-import type { PlayerConfig, PlayerState } from './types';
-import type { PlayerNote } from '~/types/events.ts';
+import { CursorMovementTrigger } from './CursorMovementTrigger';
+import { CursorInteractionTrigger } from './CursorInteractionTrigger';
+import { CursorStyleTrigger } from './CursorStyleTrigger';
+import { EditorTabTrigger } from './EditorTabTrigger';
+import { ResourceTrigger } from './ResourceTrigger';
+import { EditorScrollTrigger } from './EditorScrollTrigger';
+import { EditorInputTrigger } from './EditorInputTrigger';
+import type { PlayerState } from './types';
 
 export class Player {
-  private stateMachine: PlayerStateMachine;
+  private timeline: AnyActionPacket[] = [];
+  private duration: number = 0;
+  private audioElement: HTMLAudioElement | null = null;
+  private baselineTime: number = 0; // First event timestamp
+
+  // Internal manager
+  private playerStateMachine: PlayerStateMachine;
   private scheduler: ActionTimelineScheduler;
   private stateReconstructor: StateReconstructor;
-  private cursorPlayer: CursorMovementPlayer;
-  private clickPlayer: CursorInteractionPlayer;
-  private stylePlayer: CursorStylePlayer;
-  private ideTabPlayer: IdeTabPlayer;
-  private resourcePlayer: ResourcePlayer;
-  private editorScrollPlayer: EditorScrollPlayer;
-  private editorInputPlayer: EditorInputPlayer;
-  private timeline: AnyActionPacket[] = [];
-  private baselineTime: number = 0; // First event timestamp
-  private duration: number = 0;
 
-  // Audio element reference
-  private audioElement: HTMLAudioElement | null = null;
-
-  // File tree restoration callback
-  private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
+  // Triggers
+  private cursorMovementTrigger: CursorMovementTrigger;
+  private cursorInteractionTrigger: CursorInteractionTrigger;
+  private cursorStyleTrigger: CursorStyleTrigger;
+  private editorTabTrigger: EditorTabTrigger;
+  private editorScrollTrigger: EditorScrollTrigger;
+  private editorInputTrigger: EditorInputTrigger;
+  private resourceTrigger: ResourceTrigger;
 
   // Socket client for Git checkout commands
   private socketClient: any | null = null;
@@ -59,18 +56,21 @@ export class Player {
   private hydrationResolve: (() => void) | null = null;
   private hydrationPromise: Promise<void> | null = null;
 
-  constructor(config: PlayerConfig = {}) {
-    this.stateMachine = new PlayerStateMachine();
+  // File tree restoration callback
+  private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
+
+  constructor() {
+    this.playerStateMachine = new PlayerStateMachine();
     this.scheduler = new ActionTimelineScheduler();
     this.stateReconstructor = new StateReconstructor();
-    this.cursorPlayer = new CursorMovementPlayer();
-    this.clickPlayer = new CursorInteractionPlayer();
-    this.stylePlayer = new CursorStylePlayer();
-    this.ideTabPlayer = new IdeTabPlayer();
-    this.resourcePlayer = new ResourcePlayer();
-    this.editorScrollPlayer = new EditorScrollPlayer();
-    this.editorInputPlayer = new EditorInputPlayer();
-    this.audioElement = config.audioElement ?? null;
+
+    this.cursorMovementTrigger = new CursorMovementTrigger();
+    this.cursorInteractionTrigger = new CursorInteractionTrigger();
+    this.cursorStyleTrigger = new CursorStyleTrigger();
+    this.editorTabTrigger = new EditorTabTrigger();
+    this.resourceTrigger = new ResourceTrigger();
+    this.editorScrollTrigger = new EditorScrollTrigger();
+    this.editorInputTrigger = new EditorInputTrigger();
 
     // Link the style player to the cursor element (after it's created)
     this.setupStylePlayer();
@@ -83,31 +83,48 @@ export class Player {
   private initializeStateReconstructor(): void {
     if (this.onFileTreeRestoreCallback) {
       this.stateReconstructor.setUIPlayers(
-        this.cursorPlayer,
-        this.ideTabPlayer,
+        this.cursorMovementTrigger,
+        this.editorTabTrigger,
         this.onFileTreeRestoreCallback
       );
     }
   }
 
   /**
+   * Create the fake cursor element
+   */
+  private createCursorElement(): HTMLElement {
+    // Check if cursor already exists
+    const el = document.querySelector('.player-mouse');
+    if (el) {
+      return el as HTMLElement;
+    }
+
+    // Create new cursor element
+    const cursor = document.createElement('div');
+    cursor.className = 'player-mouse';
+    cursor.style.position = 'fixed';
+    cursor.style.pointerEvents = 'none';
+    cursor.style.zIndex = '9999';
+    cursor.style.display = 'none';
+
+    // Add inner light element
+    const light = document.createElement('div');
+    light.className = 'player-mouse-light';
+    cursor.appendChild(light);
+
+    document.body.appendChild(cursor);
+    return cursor as HTMLElement
+  }
+
+
+  /**
    * Setup the style player with cursor element reference
    */
   private setupStylePlayer(): void {
-    // The cursor element is created in CursorMovementPlayer constructor
-    // We need to get a reference to it
-    const cursorElement = document.querySelector('.player-mouse') as HTMLElement;
-    if (cursorElement) {
-      this.stylePlayer.setCursorElement(cursorElement);
-    } else {
-      // Retry after a short delay if element not ready yet
-      setTimeout(() => {
-        const el = document.querySelector('.player-mouse') as HTMLElement;
-        if (el) {
-          this.stylePlayer.setCursorElement(el);
-        }
-      }, 100);
-    }
+    const cursorElement = this.createCursorElement();
+    this.cursorStyleTrigger.setCursorElement(cursorElement);
+    this.cursorMovementTrigger.setCursorElement(cursorElement);
   }
 
   /**
@@ -115,35 +132,34 @@ export class Player {
    */
   setAudioElement(element: HTMLAudioElement): void {
     this.audioElement = element;
-    console.log('[Player] Audio element set/updated');
   }
 
   /**
    * Get the IDE tab player instance for components to register playback callbacks
    */
-  getIdeTabPlayer(): IdeTabPlayer {
-    return this.ideTabPlayer;
+  geEditorTabPlayer(): EditorTabTrigger {
+    return this.editorTabTrigger;
   }
 
   /**
    * Get the resource player instance for components to register playback callbacks
    */
-  getResourcePlayer(): ResourcePlayer {
-    return this.resourcePlayer;
+  getResourcePlayer(): ResourceTrigger {
+    return this.resourceTrigger;
   }
 
   /**
    * Get the editor scroll player instance for components to register scroll callbacks
    */
-  getEditorScrollPlayer(): EditorScrollPlayer {
-    return this.editorScrollPlayer;
+  getEditorScrollPlayer(): EditorScrollTrigger {
+    return this.editorScrollTrigger;
   }
 
   /**
    * Get the editor input player instance for components to register input callbacks
    */
-  getEditorInputPlayer(): EditorInputPlayer {
-    return this.editorInputPlayer;
+  getEditorInputPlayer(): EditorInputTrigger {
+    return this.editorInputTrigger;
   }
 
   /**
@@ -191,752 +207,26 @@ export class Player {
   }
 
   /**
-   * Wait for workspace hydration to complete (only on first pause)
+   * Checkout workspace to match the recording state at current timestamp
+   * Called from learn page after socket connects/reconnects
    */
-  private async waitForHydration(): Promise<void> {
-    if (this.workspaceHydrated) {
-      return; // Already hydrated
-    }
-
-    if (this.hydrationPromise) {
-      console.log('[Player] Waiting for workspace hydration...');
-      await this.hydrationPromise;
-      console.log('[Player] Hydration complete, proceeding with pause');
-    }
-  }
-
-  /**
-   * Perform Git checkout to restore workspace to a specific commit or branch
-   * Called during pause/seek operations and note loading
-   */
-  private async performGitCheckout(target: string): Promise<void> {
-    if (!this.socketClient) {
-      console.warn('[Player] No socket client available for Git checkout');
+  async checkoutWorkspaceAtCurrentTime(): Promise<void> {
+    if (!this.socketClient || !this.socketClient.isConnected) {
+      console.warn('[Player] Cannot checkout workspace: socket not connected');
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      console.log(`[Player] Performing Git checkout to: ${target.substring(0, 8)}`);
-
-      // Send system:checkout command to Worker
-      this.socketClient.instance?.send(JSON.stringify({
-        event: 'system:checkout',
-        data: { hash: target }
-      }));
-
-      // For now, just resolve immediately
-      // In a real implementation, you might want to wait for an acknowledgment
-      resolve();
-    });
+    // Setup interactive branch at current timestamp
+    // This handles both checkout and branch creation
+    await this.setupInteractiveBranchAtCurrentTime();
   }
 
   /**
-   * Create a new Git branch from a commit and check it out
-   * Called when user pauses to interact with the code
+   * Setup interactive branch for pause interaction
+   * Checks for existing notes at current timestamp, or creates a new branch
    */
-  private async performGitCreateBranch(commitHash: string, branchName: string): Promise<void> {
-    if (!this.socketClient) {
-      console.warn('[Player] No socket client available for Git branch creation');
-      return;
-    }
-
-    return new Promise((resolve, reject) => {
-      console.log(`[Player] Creating branch ${branchName} from commit: ${commitHash.substring(0, 8)}`);
-
-      // Send system:create-branch command to Worker
-      this.socketClient.instance?.send(JSON.stringify({
-        event: 'system:create-branch',
-        data: {
-          commitHash: commitHash,
-          branchName: branchName
-        }
-      }));
-
-      // For now, just resolve immediately
-      // In a real implementation, you might want to wait for an acknowledgment
-      resolve();
-    });
-  }
-
-  /**
-   * Commit interactive changes to the current branch
-   * Returns the commit hash
-   */
-  private async performGitCommit(message: string = 'Interactive changes'): Promise<string | null> {
-    if (!this.socketClient) {
-      console.warn('[Player] No socket client available for Git commit');
-      return null;
-    }
-
-    return new Promise((resolve, reject) => {
-      console.log(`[Player] Committing interactive changes: ${message}`);
-
-      // Set up one-time listener for the response
-      const handleMessage = (event: MessageEvent) => {
-        try {
-          const response = JSON.parse(event.data);
-          if (response.event === 'ack' && response.data?.status === 'committed') {
-            this.socketClient.instance?.removeEventListener('message', handleMessage);
-            resolve(response.data.commitHash || null);
-          }
-        } catch (error) {
-          // Ignore parse errors
-        }
-      };
-
-      this.socketClient.instance?.addEventListener('message', handleMessage);
-
-      // Send system:commit command to Worker
-      this.socketClient.instance?.send(JSON.stringify({
-        event: 'system:commit',
-        data: {
-          message: message,
-          ackID: `commit-${Date.now()}`
-        }
-      }));
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        this.socketClient.instance?.removeEventListener('message', handleMessage);
-        resolve(null);
-      }, 5000);
-    });
-  }
-
-  /**
-   * Load a timeline from NDJSON string
-   */
-  async loadFromNDJSON(ndjson: string): Promise<void> {
-    this.stateMachine.setState('loading');
-
-    try {
-      const lines = ndjson.trim().split('\n');
-      this.timeline = lines.map(line => JSON.parse(line) as AnyActionPacket);
-
-      if (this.timeline.length === 0) {
-        throw new Error('Timeline is empty');
-      }
-
-      // Set baseline time and duration
-      const firstEvent = this.timeline[0];
-      const lastEvent = this.timeline[this.timeline.length - 1];
-      this.baselineTime = firstEvent?.t!;
-      this.duration = lastEvent?.t! - firstEvent?.t!;
-
-      console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
-      console.log('[Player] Duration:', this.duration / 1000, 'seconds');
-
-      // Count event types
-      const eventTypes = this.timeline.reduce((acc, event) => {
-        acc[event.act] = (acc[event.act] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log('[Player] Event types:', eventTypes);
-
-      // Convert all events to actions
-      this.convertEventsToActions();
-
-      this.stateMachine.setState('ready');
-    } catch (error) {
-      console.error('[Player] Failed to load timeline:', error);
-      this.stateMachine.setState('error');
-      throw error;
-    }
-  }
-
-  /**
-   * Load a timeline from an array of events
-   */
-  async loadFromEvents(events: AnyActionPacket[]): Promise<void> {
-    this.stateMachine.setState('loading');
-
-    try {
-      this.timeline = events;
-
-      if (this.timeline.length === 0) {
-        throw new Error('Timeline is empty');
-      }
-
-      // Set baseline time and duration
-      const firstEvent = this.timeline[0];
-      const lastEvent = this.timeline[this.timeline.length - 1];
-      this.baselineTime = firstEvent?.t!;
-      this.duration = lastEvent?.t! - firstEvent?.t!;
-
-      console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
-      console.log('[Player] Duration:', this.duration / 1000, 'seconds');
-
-      // Count event types
-      const eventTypes = this.timeline.reduce((acc, event) => {
-        acc[event.act] = (acc[event.act] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log('[Player] Event types:', eventTypes);
-
-      // Convert all events to actions
-      this.convertEventsToActions();
-
-      this.stateMachine.setState('ready');
-    } catch (error) {
-      console.error('[Player] Failed to load timeline:', error);
-      this.stateMachine.setState('error');
-      throw error;
-    }
-  }
-
-  /**
-   * Convert timeline events to scheduler actions
-   * This is based on the old architecture where each event is converted up front
-   *
-   * @param fromTime - Only convert events from this absolute time onwards (optional)
-   */
-  private convertEventsToActions(fromTime?: number): void {
-    const actions: ActionWithDelay[] = [];
-
-    for (const event of this.timeline) {
-      // Skip events before the start time (for seeking)
-      if (fromTime !== undefined && event.t < fromTime) {
-        continue;
-      }
-
-      // Snapshots are not played as visual actions - they only update the current snapshot object
-      // This keeps the StateReconstructor's internal state up-to-date as events play
-      if (isFullSnapshot(event)) {
-        const snapshotPayload = event.p as SnapshotPayload;
-        this.stateReconstructor.setFullSnapshot(snapshotPayload);
-        continue; // Skip - snapshots are not converted to actions
-      }
-
-      // Delta snapshots also update the current snapshot object without visual playback
-      if (isDeltaSnapshot(event)) {
-        const snapshotPayload = event.p as SnapshotPayload;
-        this.stateReconstructor.applyDelta(snapshotPayload);
-        continue; // Skip - snapshots are not converted to actions
-      }
-
-      switch (event.act) {
-        case EventTypes.MOUSE_PATH:
-          // Schedule each position at its exact recorded time (no interpolation)
-          const payload = event.p as MousePathPayload;
-          if (payload && payload.positions) {
-            const positions = payload.positions;
-            if (positions.length === 0) break;
-
-            // Schedule each position at: event.t + position.timeOffset
-            positions.forEach((pos) => {
-              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
-
-              actions.push({
-                delay: actionDelay,
-                doAction: () => {
-                  this.cursorPlayer.setPosition(pos.x, pos.y);
-                  this.cursorPlayer.show();
-                },
-              });
-            });
-
-            // Add a dummy action to keep timer alive (like old architecture)
-            const lastPosition = positions[positions.length - 1];
-            if (lastPosition) {
-              actions.push({
-                delay: (event.t - this.baselineTime) - (lastPosition.timeOffset || 0),
-                doAction: () => {
-                  // Empty action to keep scheduler running
-                },
-              });
-            }
-
-            console.log(`[Player] Converted MOUSE_PATH with ${positions.length} positions using exact timeOffsets`);
-          }
-          break;
-
-        case EventTypes.MOUSE_CLICK:
-          // Schedule click animation
-          const clickPayload = event.p as MouseClickPayload;
-          if (clickPayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.clickPlayer.showClick(clickPayload.x, clickPayload.y, clickPayload.btn);
-              },
-            });
-            console.log(`[Player] Converted MOUSE_CLICK at (${clickPayload.x}, ${clickPayload.y}), button=${clickPayload.btn}`);
-          }
-          break;
-
-        case EventTypes.MOUSE_STYLE:
-          // Schedule cursor style change
-          const stylePayload = event.p as MouseStylePayload;
-          if (stylePayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.stylePlayer.setCursorStyle(stylePayload.s);
-              },
-            });
-            console.log(`[Player] Converted MOUSE_STYLE: ${stylePayload.s}`);
-          }
-          break;
-
-        case EventTypes.IDE_TABS_OPEN:
-          // Schedule tab open action
-          const tabOpenPayload = event.p as IDETabsOpenPayload;
-          if (tabOpenPayload && tabOpenPayload.path) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.ideTabPlayer.playTabOpen(tabOpenPayload.path!, tabOpenPayload.content ?? '');
-              },
-            });
-            console.log(`[Player] Converted IDE_TABS_OPEN: ${tabOpenPayload.path}`);
-          }
-          break;
-
-        case EventTypes.IDE_TABS_CLOSE:
-          // Schedule tab close action
-          const tabClosePayload = event.p as IDETabsClosePayload;
-          if (tabClosePayload && tabClosePayload.path) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.ideTabPlayer.playTabClose(tabClosePayload.path!);
-              },
-            });
-            console.log(`[Player] Converted IDE_TABS_CLOSE: ${tabClosePayload.path}`);
-          }
-          break;
-
-        case EventTypes.IDE_TABS_SWITCH:
-          // Schedule tab switch action
-          const tabSwitchPayload = event.p as IDETabsSwitchPayload;
-          if (tabSwitchPayload && tabSwitchPayload.path) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.ideTabPlayer.playTabSwitch(tabSwitchPayload.path!, tabSwitchPayload.content ?? '');
-              },
-            });
-            console.log(`[Player] Converted IDE_TABS_SWITCH: ${tabSwitchPayload.path}`);
-          }
-          break;
-
-        case EventTypes.FILES_EXPAND:
-          // Schedule folder expand/collapse action
-          const expandPayload = event.p as FilesExpandPayload;
-          if (expandPayload && expandPayload.path !== undefined) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playFolderExpand(expandPayload.path, expandPayload.expanded, expandPayload.content);
-              },
-            });
-            console.log(`[Player] Converted FILES_EXPAND: ${expandPayload.path} (${expandPayload.expanded ? 'expand' : 'collapse'})${expandPayload.content ? ` with ${expandPayload.content.length} items` : ''}`);
-          }
-          break;
-
-        case EventTypes.FILES_CREATE:
-          // Schedule file/folder creation action
-          const createPayload = event.p as FilesCreatePayload;
-          if (createPayload && createPayload.path) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playCreate(createPayload.path, createPayload.type);
-              },
-            });
-            if (createPayload.type === 'f') {
-              actions.push({
-                delay: actionDelay,
-                doAction: () => {
-                  this.ideTabPlayer.playTabOpen(createPayload.path!, '');
-                },
-              });
-            }
-            console.log(`[Player] Converted FILES_CREATE: ${createPayload.path} (${createPayload.type})`);
-          }
-          break;
-
-        case EventTypes.FILES_DELETE:
-          // Schedule file/folder deletion action
-          const deletePayload = event.p as FilesDeletePayload;
-          if (deletePayload && deletePayload.path) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playDelete(deletePayload.path);
-              },
-            });
-            console.log(`[Player] Converted FILES_DELETE: ${deletePayload.path}`);
-          }
-          break;
-
-        case EventTypes.FILES_MOVE:
-          // Schedule file/folder move action
-          const movePayload = event.p as FilesMovePayload;
-          if (movePayload && movePayload.from && movePayload.to) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playMove(movePayload.from, movePayload.to);
-              },
-            });
-            console.log(`[Player] Converted FILES_MOVE: ${movePayload.from} -> ${movePayload.to}`);
-          }
-          break;
-
-        case EventTypes.FILES_CREATE_INPUT_SHOW:
-          // Schedule create input show action
-          const inputShowPayload = event.p as FilesCreateInputShowPayload;
-          if (inputShowPayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playCreateInputShow(inputShowPayload.type, inputShowPayload.parentPath);
-              },
-            });
-            console.log(`[Player] Converted FILES_CREATE_INPUT_SHOW: ${inputShowPayload.type} in ${inputShowPayload.parentPath}`);
-          }
-          break;
-
-        case EventTypes.FILES_CREATE_INPUT_TYPE:
-          // Schedule create input type action
-          const inputTypePayload = event.p as FilesCreateInputTypePayload;
-          if (inputTypePayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playCreateInputType(inputTypePayload.text);
-              },
-            });
-            console.log(`[Player] Converted FILES_CREATE_INPUT_TYPE: "${inputTypePayload.text}"`);
-          }
-          break;
-
-        case EventTypes.FILES_CREATE_INPUT_HIDE:
-          // Schedule create input hide action
-          const inputHidePayload = event.p as FilesCreateInputHidePayload;
-          if (inputHidePayload !== undefined) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playCreateInputHide(inputHidePayload.cancelled);
-              },
-            });
-            console.log(`[Player] Converted FILES_CREATE_INPUT_HIDE: ${inputHidePayload.cancelled ? 'cancelled' : 'submitted'}`);
-          }
-          break;
-
-        case EventTypes.FILES_RENAME_INPUT_SHOW:
-          // Schedule rename input show action
-          const renameShowPayload = event.p as FilesRenameInputShowPayload;
-          if (renameShowPayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playRenameInputShow(renameShowPayload.path, renameShowPayload.currentName);
-              },
-            });
-            console.log(`[Player] Converted FILES_RENAME_INPUT_SHOW: ${renameShowPayload.path} (${renameShowPayload.currentName})`);
-          }
-          break;
-
-        case EventTypes.FILES_RENAME_INPUT_TYPE:
-          // Schedule rename input type action
-          const renameTypePayload = event.p as FilesRenameInputTypePayload;
-          if (renameTypePayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playRenameInputType(renameTypePayload.text);
-              },
-            });
-            console.log(`[Player] Converted FILES_RENAME_INPUT_TYPE: "${renameTypePayload.text}"`);
-          }
-          break;
-
-        case EventTypes.FILES_RENAME_INPUT_HIDE:
-          // Schedule rename input hide action
-          const renameHidePayload = event.p as FilesRenameInputHidePayload;
-          if (renameHidePayload !== undefined) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playRenameInputHide(renameHidePayload.cancelled);
-              },
-            });
-            console.log(`[Player] Converted FILES_RENAME_INPUT_HIDE: ${renameHidePayload.cancelled ? 'cancelled' : 'submitted'}`);
-          }
-          break;
-
-        case EventTypes.FILES_POPOVER_SHOW:
-          // Schedule popover show action
-          const popoverShowPayload = event.p as FilesPopoverShowPayload;
-          if (popoverShowPayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playPopoverShow(popoverShowPayload.path);
-              },
-            });
-            console.log(`[Player] Converted FILES_POPOVER_SHOW: ${popoverShowPayload.path}`);
-          }
-          break;
-
-        case EventTypes.FILES_POPOVER_HIDE:
-          // Schedule popover hide action
-          const popoverHidePayload = event.p as FilesPopoverHidePayload;
-          if (popoverHidePayload) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.resourcePlayer.playPopoverHide(popoverHidePayload.path);
-              },
-            });
-            console.log(`[Player] Converted FILES_POPOVER_HIDE: ${popoverHidePayload.path}`);
-          }
-          break;
-
-        case EventTypes.EDITOR_SCROLL:
-          // Schedule editor scroll action
-          const editorScrollPayload = event.p as EditorScrollPayload;
-          if (editorScrollPayload && editorScrollPayload.f) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.editorScrollPlayer.playScroll(editorScrollPayload.f, editorScrollPayload.top, editorScrollPayload.left);
-              },
-            });
-            console.log(`[Player] Converted EDITOR_SCROLL: ${editorScrollPayload.f} (${editorScrollPayload.top}, ${editorScrollPayload.left})`);
-          }
-          break;
-
-        case EventTypes.EDITOR_SCROLL_PATH:
-          // Schedule each scroll position at its exact recorded time (like mouse path)
-          const scrollPathPayload = event.p as EditorScrollPathPayload;
-          if (scrollPathPayload && scrollPathPayload.f && scrollPathPayload.positions) {
-            const filePath = scrollPathPayload.f;
-            const positions = scrollPathPayload.positions;
-            if (positions.length === 0) break;
-
-            // Schedule each position at: event.t + position.timeOffset
-            positions.forEach((pos) => {
-              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
-
-              actions.push({
-                delay: actionDelay,
-                doAction: () => {
-                  this.editorScrollPlayer.playScroll(filePath, pos.top, pos.left);
-                },
-              });
-            });
-
-            console.log(`[Player] Converted EDITOR_SCROLL_PATH: ${filePath} with ${positions.length} positions`);
-          }
-          break;
-
-        case EventTypes.EDITOR_TYPE:
-          // Schedule editor typing action
-          const editorTypePayload = event.p as EditorTypePayload;
-          if (editorTypePayload && editorTypePayload.f) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.editorInputPlayer.playType(editorTypePayload.f, editorTypePayload.c);
-              },
-            });
-            console.log(`[Player] Converted EDITOR_TYPE: ${editorTypePayload.f} (${editorTypePayload.c.length} chars)`);
-          }
-          break;
-
-        case EventTypes.EDITOR_PASTE:
-          // Schedule editor paste action
-          const editorPastePayload = event.p as EditorPastePayload;
-          if (editorPastePayload && editorPastePayload.f) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.editorInputPlayer.playPaste(editorPastePayload.f, editorPastePayload.c, editorPastePayload.pos);
-              },
-            });
-            console.log(`[Player] Converted EDITOR_PASTE: ${editorPastePayload.f} (${editorPastePayload.c.length} chars)`);
-          }
-          break;
-
-        case EventTypes.EDITOR_SELECT:
-          // Schedule editor selection action
-          const editorSelectPayload = event.p as EditorSelectPayload;
-          if (editorSelectPayload && editorSelectPayload.f) {
-            const actionDelay = event.t - this.baselineTime;
-            actions.push({
-              delay: actionDelay,
-              doAction: () => {
-                this.editorInputPlayer.playSelect(editorSelectPayload.f, editorSelectPayload.s, editorSelectPayload.e);
-              },
-            });
-            console.log(`[Player] Converted EDITOR_SELECT: ${editorSelectPayload.f} [${editorSelectPayload.s.join(',')}] to [${editorSelectPayload.e.join(',')}]`);
-          }
-          break;
-
-        // TODO: Handle other event types
-        default:
-          // For now, just log unhandled events
-          const delay = event.t - this.baselineTime;
-          actions.push({
-            delay,
-            doAction: () => {
-              console.log('[Player] Unhandled event type:', event.act);
-            },
-          });
-          break;
-      }
-    }
-
-    const startLabel = fromTime !== undefined ? `from ${fromTime}ms` : 'all';
-    console.log(`[Player] Converted ${startLabel}: ${this.timeline.length} events to ${actions.length} actions`);
-    this.scheduler.addActions(actions);
-  }
-
-  /**
-   * Start or resume playback
-   */
-  async play(): Promise<void> {
-    if (!this.stateMachine.canPlay()) {
-      console.warn('[Player] Cannot play in current state:', this.stateMachine.getState());
-      return;
-    }
-
-    const previousState = this.stateMachine.getState();
-    this.stateMachine.setState('playing');
-
-    // Determine if we're starting fresh or resuming
-    const isResumingFromPause = previousState === 'paused';
-
-    if (isResumingFromPause) {
-      // Fire commit and save in background (non-blocking)
-      if (this.activePauseBranch) {
-        // Start commit and save operations asynchronously without waiting
-        (async () => {
-          try {
-            // Commit any changes made during pause
-            const commitHash = await this.performGitCommit(`Interactive changes at ${this.scheduler.getCurrentTime() / 1000}s`);
-
-            // Update the commit hash if changes were committed
-            if (commitHash) {
-              this.activePauseCommitHash = commitHash;
-              console.log('[Player] Committed interactive changes:', commitHash.substring(0, 8));
-            }
-
-            // Save as note
-            this.saveCurrentBranchAsNote();
-          } catch (error) {
-            console.error('[Player] Failed to commit/save during resume:', error);
-          }
-        })();
-      }
-
-      // Immediately proceed with checkout and resume (don't wait for commit/save)
-      // Reconstruct state to get the commit hash from snapshot
-      const currentTime = this.scheduler.getCurrentTime();
-      const absoluteTime = this.baselineTime + currentTime;
-      await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
-
-      // Checkout the commit from snapshot (restore main timeline)
-      const timelineCommitHash = this.stateReconstructor.getCommitHash();
-      if (timelineCommitHash) {
-        await this.performGitCheckout(timelineCommitHash);
-        console.log('[Player] Checked out timeline commit:', timelineCommitHash.substring(0, 8));
-      }
-
-      // Apply the reconstructed UI state
-      this.stateReconstructor.applyReconstructedStateToUI();
-
-      // Clear the active pause branch
-      this.activePauseBranch = null;
-      this.activePauseCommitHash = null;
-
-      // Resume from current timeOffset (don't reset to 0)
-      this.scheduler.resume();
-      console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
-    } else {
-      // First play - start from beginning
-      // Find the first full snapshot after meta:start to use as starting point
-      const firstSnapshot = this.timeline.find(event => isFullSnapshot(event));
-      const initialTime = firstSnapshot ? firstSnapshot.t : this.baselineTime;
-
-      // Reconstruct state at the first snapshot (starting point)
-      await this.stateReconstructor.reconstructStateAtTime(this.timeline, initialTime);
-      const initialCommitHash = this.stateReconstructor.getCommitHash();
-
-      if (initialCommitHash) {
-        await this.performGitCheckout(initialCommitHash);
-        console.log('[Player] Checked out initial commit:', initialCommitHash.substring(0, 8));
-      }
-
-      // Apply the initial UI state from the first snapshot (starting point)
-      this.stateReconstructor.applyReconstructedStateToUI();
-      console.log('[Player] Applied initial UI state from first snapshot after meta:start');
-
-      this.scheduler.start();
-      console.log('[Player] Starting playback from beginning');
-    }
-
-    // Sync audio if available
-    if (this.audioElement) {
-      this.audioElement.currentTime = this.scheduler.getCurrentTime() / 1000;
-      this.audioElement.play();
-    }
-
-    // Show cursor for playback
-    this.cursorPlayer.show();
-  }
-
-  /**
-   * Pause playback
-   */
-  async pause(): Promise<void> {
-    if (!this.stateMachine.canPause()) {
-      console.warn('[Player] Cannot pause in current state:', this.stateMachine.getState());
-      return;
-    }
-
-    this.stateMachine.setState('paused');
-
-    // Pause scheduler
-    this.scheduler.pause();
-
-    // Pause audio if available
-    if (this.audioElement) {
-      this.audioElement.pause();
-    }
-
-    // Hide cursor
-    this.cursorPlayer.hide();
-
+  private async setupInteractiveBranchAtCurrentTime(): Promise<void> {
     const currentTime = this.scheduler.getCurrentTime();
-    console.log('[Player] Playback paused at', currentTime / 1000, 'seconds');
-
-    // Wait for workspace hydration to complete (only on first pause)
-    await this.waitForHydration();
 
     // Check if a note already exists at this timestamp
     const existingNote = this.notes.find(n => Math.abs(n.timestamp - currentTime) < 100); // Within 100ms
@@ -980,26 +270,630 @@ export class Player {
   }
 
   /**
+   * Wait for workspace hydration to complete (only on first pause)
+   */
+  private async waitForHydration(): Promise<void> {
+    if (this.workspaceHydrated) {
+      return; // Already hydrated
+    }
+
+    if (this.hydrationPromise) {
+      console.log('[Player] Waiting for workspace hydration...');
+      await this.hydrationPromise;
+      console.log('[Player] Hydration complete, proceeding with pause');
+    }
+  }
+
+  /**
+   * Perform Git checkout to restore workspace to a specific commit or branch
+   * Called during pause/seek operations and note loading
+   */
+  private async performGitCheckout(target: string): Promise<void> {
+    if (!this.socketClient) {
+      console.warn('[Player] No socket client available for Git checkout');
+      return;
+    }
+
+    if (!this.socketClient.isConnected) {
+      console.warn('[Player] Socket not connected, cannot perform Git checkout');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log(`[Player] Performing Git checkout to: ${target.substring(0, 8)}`);
+
+      // Send system:checkout command to Worker
+      this.socketClient.instance?.send(JSON.stringify({
+        event: 'system:checkout',
+        data: { hash: target }
+      }));
+
+      // For now, just resolve immediately
+      // In a real implementation, you might want to wait for an acknowledgment
+      resolve();
+    });
+  }
+
+  /**
+   * Create a new Git branch from a commit and check it out
+   * Called when user pauses to interact with the code
+   */
+  private async performGitCreateBranch(commitHash: string, branchName: string): Promise<void> {
+    if (!this.socketClient) {
+      console.warn('[Player] No socket client available for Git branch creation');
+      return;
+    }
+
+    if (!this.socketClient.isConnected) {
+      console.warn('[Player] Socket not connected, cannot create Git branch');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log(`[Player] Creating branch ${branchName} from commit: ${commitHash.substring(0, 8)}`);
+
+      // Send system:create-branch command to Worker
+      this.socketClient.instance?.send(JSON.stringify({
+        event: 'system:create-branch',
+        data: {
+          commitHash: commitHash,
+          branchName: branchName
+        }
+      }));
+
+      // For now, just resolve immediately
+      // In a real implementation, you might want to wait for an acknowledgment
+      resolve();
+    });
+  }
+
+  /**
+   * Load a timeline from an array of events
+   */
+  async loadTimelineFromEvents(events: AnyActionPacket[]): Promise<void> {
+    this.playerStateMachine.setState('loading');
+
+    try {
+      this.timeline = events;
+
+      if (this.timeline.length === 0) {
+        throw new Error('Timeline is empty');
+      }
+
+      // Set baseline time and duration
+      const firstEvent = this.timeline[0];
+      const lastEvent = this.timeline[this.timeline.length - 1];
+      this.baselineTime = firstEvent?.t!;
+      this.duration = lastEvent?.t! - firstEvent?.t!;
+
+      // Convert all events to actions
+      this.convertEventsToActions();
+
+      this.playerStateMachine.setState('ready');
+      console.log('[Player] Timeline loaded:', this.timeline.length, 'events');
+    } catch (error) {
+      console.error('[Player] Failed to load timeline:', error);
+      this.playerStateMachine.setState('error');
+      throw error;
+    }
+  }
+
+  /**
+   * Convert events from the timeline into triggerable actions in the scheduler
+   */
+  private convertEventsToActions(fromTime?: number): void {
+    const actions: ActionWithDelay[] = [];
+
+    for (const event of this.timeline) {
+      // Skip events before the start time (for seeking)
+      if (fromTime !== undefined && event.t < fromTime) {
+        continue;
+      }
+
+      if (isFullSnapshot(event)) {
+        const snapshotPayload = event.p as SnapshotPayload;
+        this.stateReconstructor.setFullSnapshot(snapshotPayload);
+        continue; // Skip - snapshots are not converted to actions
+      }
+
+      if (isDeltaSnapshot(event)) {
+        const snapshotPayload = event.p as SnapshotPayload;
+        this.stateReconstructor.applyDelta(snapshotPayload);
+        continue; // Skip - snapshots are not converted to actions
+      }
+
+      switch (event.act) {
+        case EventTypes.MOUSE_PATH:
+          const mousePathPayload = event.p as MousePathPayload;
+          if (mousePathPayload && mousePathPayload.positions && mousePathPayload.positions.length !== 0) {
+            const positions = mousePathPayload.positions;
+
+            // Schedule each position at: event.t + position.timeOffset
+            positions.forEach((pos) => {
+              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
+
+              actions.push({
+                delay: actionDelay,
+                triggerAction: () => {
+                  this.cursorMovementTrigger.setPosition(pos.x, pos.y);
+                  this.cursorMovementTrigger.show();
+                },
+              });
+            });
+
+            // TODO: Find a way to keep timer alive other tan adding a dummy action
+            // Add a dummy action to keep timer alive (like old architecture)
+            // const lastPosition = positions[positions.length - 1];
+            // if (lastPosition) {
+            //   actions.push({
+            //     delay: (event.t - this.baselineTime) - (lastPosition.timeOffset || 0),
+            //     triggerAction: () => {
+            //       // Empty action to keep scheduler running
+            //     },
+            //   });
+            // }
+          }
+          break;
+
+        case EventTypes.MOUSE_CLICK:
+          const mouseClickPayload = event.p as MouseClickPayload;
+          if (mouseClickPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule click animation
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.cursorInteractionTrigger.showClick(mouseClickPayload.x, mouseClickPayload.y, mouseClickPayload.btn);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.MOUSE_STYLE:
+          const mouseStylePayload = event.p as MouseStylePayload;
+          if (mouseStylePayload) {
+            // Schedule cursor style change
+            const actionDelay = event.t - this.baselineTime;
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.cursorStyleTrigger.setCursorStyle(mouseStylePayload.s);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_EXPAND:
+          const expandPayload = event.p as FilesExpandPayload;
+          if (expandPayload && expandPayload.path !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule folder expand/collapse action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playFolderExpand(expandPayload.path, expandPayload.expanded, expandPayload.content);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_CREATE:
+          const createPayload = event.p as FilesCreatePayload;
+          if (createPayload && createPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule file/folder creation action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playCreate(createPayload.path, createPayload.type);
+              },
+            });
+            if (createPayload.type === 'f') {
+              actions.push({
+                delay: actionDelay,
+                triggerAction: () => {
+                  this.editorTabTrigger.playTabOpen(createPayload.path!);
+                },
+              });
+            }
+          }
+          break;
+
+        case EventTypes.FILES_DELETE:
+          const deletePayload = event.p as FilesDeletePayload;
+          if (deletePayload && deletePayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule file/folder deletion action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playDelete(deletePayload.path);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_MOVE:
+          const movePayload = event.p as FilesMovePayload;
+          if (movePayload && movePayload.from && movePayload.to) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule file/folder move action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playMove(movePayload.from, movePayload.to);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_SHOW:
+          const inputShowPayload = event.p as FilesCreateInputShowPayload;
+          if (inputShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule create input show action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playCreateInputShow(inputShowPayload.type, inputShowPayload.parentPath);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_TYPE:
+          const inputTypePayload = event.p as FilesCreateInputTypePayload;
+          if (inputTypePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule create input type action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playCreateInputType(inputTypePayload.text);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_CREATE_INPUT_HIDE:
+          const inputHidePayload = event.p as FilesCreateInputHidePayload;
+          if (inputHidePayload !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule create input hide action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playCreateInputHide(inputHidePayload.cancelled);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_SHOW:
+          const renameShowPayload = event.p as FilesRenameInputShowPayload;
+          if (renameShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule rename input show action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playRenameInputShow(renameShowPayload.path, renameShowPayload.currentName);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_TYPE:
+          const renameTypePayload = event.p as FilesRenameInputTypePayload;
+          if (renameTypePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule rename input type action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playRenameInputType(renameTypePayload.text);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_RENAME_INPUT_HIDE:
+          const renameHidePayload = event.p as FilesRenameInputHidePayload;
+          if (renameHidePayload !== undefined) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule rename input hide action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playRenameInputHide(renameHidePayload.cancelled);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_POPOVER_SHOW:
+          const popoverShowPayload = event.p as FilesPopoverShowPayload;
+          if (popoverShowPayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule popover show action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playPopoverShow(popoverShowPayload.path);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.FILES_POPOVER_HIDE:
+          const popoverHidePayload = event.p as FilesPopoverHidePayload;
+          if (popoverHidePayload) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule popover hide action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.resourceTrigger.playPopoverHide(popoverHidePayload.path);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_SCROLL:
+          const scrollPathPayload = event.p as EditorScrollPathPayload;
+          if (scrollPathPayload && scrollPathPayload.f && scrollPathPayload.positions && scrollPathPayload.positions.length !== 0) {
+            const filePath = scrollPathPayload.f;
+            const positions = scrollPathPayload.positions;
+
+            // Schedule each position at: event.t + position.timeOffset
+            positions.forEach((pos) => {
+              const actionDelay = (event.t - this.baselineTime) + pos.timeOffset;
+
+              actions.push({
+                delay: actionDelay,
+                triggerAction: () => {
+                  this.editorScrollTrigger.playScroll(filePath, pos.top, pos.left);
+                },
+              });
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_TYPE:
+          const editorTypePayload = event.p as EditorTypePayload;
+          if (editorTypePayload && editorTypePayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule editor typing action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorInputTrigger.playType(editorTypePayload.f, editorTypePayload.c);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_PASTE:
+          const editorPastePayload = event.p as EditorPastePayload;
+          if (editorPastePayload && editorPastePayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule editor paste action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorInputTrigger.playPaste(editorPastePayload.f, editorPastePayload.c, editorPastePayload.pos);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_SELECT:
+          const editorSelectPayload = event.p as EditorSelectPayload;
+          if (editorSelectPayload && editorSelectPayload.f) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule editor selection action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorInputTrigger.playSelect(editorSelectPayload.f, editorSelectPayload.s, editorSelectPayload.e);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_TABS_OPEN:
+          const tabOpenPayload = event.p as EditorTabsOpenPayload;
+          if (tabOpenPayload && tabOpenPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule tab open action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorTabTrigger.playTabOpen(tabOpenPayload.path!);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_TABS_CLOSE:
+          const tabClosePayload = event.p as EditorTabsClosePayload;
+          if (tabClosePayload && tabClosePayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule tab close action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorTabTrigger.playTabClose(tabClosePayload.path!);
+              },
+            });
+          }
+          break;
+
+        case EventTypes.EDITOR_TABS_SWITCH:
+          const tabSwitchPayload = event.p as EditorTabsSwitchPayload;
+          if (tabSwitchPayload && tabSwitchPayload.path) {
+            const actionDelay = event.t - this.baselineTime;
+            // Schedule tab switch action
+            actions.push({
+              delay: actionDelay,
+              triggerAction: () => {
+                this.editorTabTrigger.playTabSwitch(tabSwitchPayload.path!);
+              },
+            });
+          }
+          break;
+
+        // TODO: Handle other event types
+        default:
+          // For now, just log unhandled events
+          const delay = event.t - this.baselineTime;
+          actions.push({
+            delay,
+            triggerAction: () => {
+              console.log('[Player] Unhandled event type:', event.act);
+            },
+          });
+          break;
+      }
+    }
+
+    const startLabel = fromTime !== undefined ? `from ${fromTime}ms` : 'all';
+    console.log(`[Player] Converted ${startLabel}: ${this.timeline.length} events to ${actions.length} actions`);
+    this.scheduler.addActions(actions);
+  }
+
+  /**
+   * Start or resume playback
+   */
+  async play(): Promise<void> {
+    if (!this.playerStateMachine.canPlay()) {
+      console.warn('[Player] Cannot play in current state:', this.playerStateMachine.getState());
+      return;
+    }
+
+    const previousState = this.playerStateMachine.getState();
+    this.playerStateMachine.setState('playing');
+
+    const isResumingFromPause = previousState === 'paused';
+
+    if (isResumingFromPause) {
+      if (this.activePauseBranch) {
+        try {
+          this.saveCurrentBranchAsNote();
+        } catch (error) {
+          console.error('[Player] Failed to commit/save during resume:', error);
+          // Continue with playback even if commit/save fails
+        }
+      }
+
+      // Proceed with checkout and resume after commit/save completes
+      // Reconstruct state to get the commit hash from snapshot
+      const currentTime = this.scheduler.getCurrentTime();
+      const absoluteTime = this.baselineTime + currentTime;
+      await this.stateReconstructor.reconstructStateAtTime(this.timeline, absoluteTime);
+
+      // Checkout the commit from snapshot (restore main timeline)
+      const timelineCommitHash = this.stateReconstructor.getCommitHash();
+      if (timelineCommitHash) {
+        await this.performGitCheckout(timelineCommitHash);
+        console.log('[Player] Checked out timeline commit:', timelineCommitHash.substring(0, 8));
+      }
+
+      // Apply the reconstructed UI state
+      this.stateReconstructor.applyReconstructedStateToUI();
+
+      // Clear the active pause branch
+      this.activePauseBranch = null;
+      this.activePauseCommitHash = null;
+
+      // Resume from current timeOffset (don't reset to 0)
+      this.scheduler.resume();
+      console.log('[Player] Resuming playback from', this.scheduler.getCurrentTime() / 1000, 'seconds');
+    } else {
+      // First play - start from beginning
+      const metaStartEvent = this.timeline[0] as ActionPacket<MetaStartPayload>;
+      const initialSnapshot = metaStartEvent.p.initialSnapshot;
+
+      await this.stateReconstructor.setFullSnapshot(initialSnapshot);
+      const initialCommitHash = this.stateReconstructor.getCommitHash();
+
+      if (initialCommitHash) {
+        await this.performGitCheckout(initialCommitHash);
+        console.log('[Player] Checked out initial commit:', initialCommitHash.substring(0, 8));
+      }
+
+      this.stateReconstructor.applyReconstructedStateToUI();
+
+      this.scheduler.start();
+      console.log('[Player] Starting playback from beginning');
+    }
+
+    if (this.audioElement) {
+      this.audioElement.currentTime = this.scheduler.getCurrentTime() / 1000;
+      this.audioElement.play();
+    }
+
+    // Show cursor for playback
+    this.cursorMovementTrigger.show();
+  }
+
+  /**
+   * Pause playback
+   */
+  async pause(): Promise<void> {
+    if (!this.playerStateMachine.canPause()) {
+      console.warn('[Player] Cannot pause in current state:', this.playerStateMachine.getState());
+      return;
+    }
+
+    this.playerStateMachine.setState('paused');
+
+    this.scheduler.pause();
+
+    // Pause audio if available
+    if (this.audioElement) {
+      this.audioElement.pause();
+    }
+
+    // Hide cursor
+    this.cursorMovementTrigger.hide();
+
+    const currentTime = this.scheduler.getCurrentTime();
+    console.log('[Player] Playback paused at', currentTime / 1000, 'seconds');
+
+    // Wait for workspace hydration to complete (only on first pause)
+    await this.waitForHydration();
+
+    // Setup interactive branch for pause interaction (only if socket is connected)
+    // If socket is not connected, this will be done when socket connects via checkoutWorkspaceAtCurrentTime()
+    if (this.socketClient && this.socketClient.isConnected) {
+      await this.setupInteractiveBranchAtCurrentTime();
+    } else {
+      console.log('[Player] Socket not connected during pause, Git operations will be performed when socket connects');
+    }
+  }
+
+  /**
    * Seek to a specific time
    * @param time - Relative time from start (in ms)
    * @param options - Optional configuration for seek behavior
    *   - resumePlayback: Whether to resume playback after seeking if it was playing before (default: true)
    */
   async seek(time: number, options: { resumePlayback?: boolean } = {}): Promise<void> {
-    if (!this.stateMachine.canSeek()) {
-      console.warn('[Player] Cannot seek in current state:', this.stateMachine.getState());
+    if (!this.playerStateMachine.canSeek()) {
+      console.warn('[Player] Cannot seek in current state:', this.playerStateMachine.getState());
       return;
     }
 
     const { resumePlayback = true } = options;
-    const wasPlaying = this.stateMachine.getState() === 'playing';
+    const wasPlaying = this.playerStateMachine.getState() === 'playing';
 
     // Pause if playing
     if (wasPlaying) {
       this.pause();
     }
 
-    this.stateMachine.setState('seeking');
+    this.playerStateMachine.setState('seeking');
 
     console.log('[Player] Seeking to', time / 1000, 'seconds');
 
@@ -1035,7 +929,7 @@ export class Player {
         this.audioElement.currentTime = time / 1000;
       }
 
-      this.stateMachine.setState('paused');
+      this.playerStateMachine.setState('paused');
 
       // Resume playback if it was playing before AND resumePlayback is true
       if (wasPlaying && resumePlayback) {
@@ -1045,7 +939,7 @@ export class Player {
       console.log('[Player] Seek completed', resumePlayback ? '(preserving playback state)' : '(staying paused)');
     } catch (error) {
       console.error('[Player] Seek failed:', error);
-      this.stateMachine.setState('error');
+      this.playerStateMachine.setState('error');
       throw error;
     }
   }
@@ -1068,24 +962,14 @@ export class Player {
    * Get the current state
    */
   getState(): PlayerState {
-    return this.stateMachine.getState();
-  }
-
-  /**
-   * Get the ground truth state (only valid after seek or pause)
-   */
-  getGroundTruthState(): { ui: UIState | null; workspace: WorkspaceState | null } {
-    return {
-      ui: this.stateReconstructor.getUIState(),
-      workspace: null // Workspace state is now managed by Git
-    };
+    return this.playerStateMachine.getState();
   }
 
   /**
    * Subscribe to state changes
    */
   onStateChange(state: PlayerState, callback: () => void): () => void {
-    return this.stateMachine.onStateChange(state, callback);
+    return this.playerStateMachine.onStateChange(state, callback);
   }
 
   /**
@@ -1134,7 +1018,7 @@ export class Player {
     console.log('[Player] Loading note:', note);
 
     // Pause playback if playing
-    if (this.stateMachine.getState() === 'playing') {
+    if (this.playerStateMachine.getState() === 'playing') {
       this.pause();
     }
 
@@ -1185,7 +1069,7 @@ export class Player {
    */
   destroy(): void {
     // Stop playback
-    if (this.stateMachine.getState() === 'playing') {
+    if (this.playerStateMachine.getState() === 'playing') {
       this.pause();
     }
 
@@ -1193,19 +1077,19 @@ export class Player {
     this.scheduler.clear();
 
     // Destroy cursor players
-    this.cursorPlayer.destroy();
-    this.clickPlayer.destroy();
-    this.stylePlayer.destroy();
+    this.cursorMovementTrigger.destroy();
+    this.cursorInteractionTrigger.destroy();
+    this.cursorStyleTrigger.destroy();
 
     // Destroy IDE tab player
-    this.ideTabPlayer.destroy();
+    this.editorTabTrigger.destroy();
 
     // Destroy resource player
-    this.resourcePlayer.destroy();
+    this.resourceTrigger.destroy();
 
     // Destroy editor players
-    this.editorScrollPlayer.destroy();
-    this.editorInputPlayer.destroy();
+    this.editorScrollTrigger.destroy();
+    this.editorInputTrigger.destroy();
 
     console.log('[Player] Destroyed');
   }

@@ -16,12 +16,12 @@ import { SnapshotManager } from './SnapshotManager';
 import { CursorMovementWatcher } from './CursorMovementWatcher';
 import { CursorInteractionWatcher } from './CursorInteractionWatcher';
 import { CursorStyleWatcher } from './CursorStyleWatcher';
-import { IdeTabWatcher } from './IdeTabWatcher';
 import { ResourceWatcher } from './ResourceWatcher';
 import { CommitHashTracker } from './CommitHashTracker';
+import { EditorTabWatcher } from './EditorTabWatcher';
 import { EditorScrollWatcher } from './EditorScrollWatcher';
 import { EditorInputWatcher } from './EditorInputWatcher';
-import type { RecorderConfig, IDEStateCapture, RecorderStatus } from './types';
+import type { RecorderConfig, UIStateTracker, RecorderStatus } from './types';
 
 export class Recorder {
   private eventsTimeLine: AnyActionPacket[] = [];
@@ -35,34 +35,18 @@ export class Recorder {
   // Configuration
   private config: Required<RecorderConfig>;
 
-  // State capture interface
-  private stateCapture: IDEStateCapture | null = null;
-
   // Snapshot manager
   private snapshotManager: SnapshotManager;
-
-  // Cursor movement watcher
-  private cursorWatcher: CursorMovementWatcher;
-
-  // Cursor interaction watcher (clicks)
-  private clickWatcher: CursorInteractionWatcher;
-
-  // Cursor style watcher (cursor appearance changes)
-  private styleWatcher: CursorStyleWatcher;
-
-  // IDE tab watcher (tab open/close/switch events)
-  private ideTabWatcher: IdeTabWatcher;
-
-  // Resource watcher (file/folder operations)
-  private resourceWatcher: ResourceWatcher;
-
-  // Commit hash tracker (Git commit tracking + snapshot triggers)
+  private uiStateTracker: UIStateTracker | null = null;
   private commitHashTracker: CommitHashTracker;
 
-  // Editor scroll watcher (editor scroll position changes)
+  // Event watchers
+  private cursorMovementWatcher: CursorMovementWatcher;
+  private cursorInteractionWatcher: CursorInteractionWatcher;
+  private cursorStyleWatcher: CursorStyleWatcher;
+  private ideTabWatcher: EditorTabWatcher;
+  private resourceWatcher: ResourceWatcher;
   private editorScrollWatcher: EditorScrollWatcher;
-
-  // Editor input watcher (typing, paste, selection)
   private editorInputWatcher: EditorInputWatcher;
 
   constructor(config: RecorderConfig = {}) {
@@ -73,30 +57,30 @@ export class Recorder {
     };
     this.addNewEvent = this.addNewEvent.bind(this);
     this.snapshotManager = new SnapshotManager();
-    this.cursorWatcher = new CursorMovementWatcher(this.addNewEvent);
-    this.clickWatcher = new CursorInteractionWatcher(this.addNewEvent);
-    this.styleWatcher = new CursorStyleWatcher(this.addNewEvent);
-    this.ideTabWatcher = new IdeTabWatcher(this.addNewEvent);
+    this.cursorMovementWatcher = new CursorMovementWatcher(this.addNewEvent);
+    this.cursorInteractionWatcher = new CursorInteractionWatcher(this.addNewEvent);
+    this.cursorStyleWatcher = new CursorStyleWatcher(this.addNewEvent);
+    this.ideTabWatcher = new EditorTabWatcher(this.addNewEvent);
     this.resourceWatcher = new ResourceWatcher(this.addNewEvent);
+    this.editorScrollWatcher = new EditorScrollWatcher(this.addNewEvent);
+    this.editorInputWatcher = new EditorInputWatcher(this.addNewEvent);
     // CommitHashTracker triggers delta snapshots on every commit
     this.commitHashTracker = new CommitHashTracker((hash: string) => {
       this.takeDeltaSnapshot();
     });
-    this.editorScrollWatcher = new EditorScrollWatcher(this.addNewEvent);
-    this.editorInputWatcher = new EditorInputWatcher(this.addNewEvent);
   }
 
   /**
    * Sets the state capture interface that provides IDE and workspace state
    */
-  setStateCapture(capture: IDEStateCapture): void {
-    this.stateCapture = capture;
+  setUIStateTracker(capture: UIStateTracker): void {
+    this.uiStateTracker = capture;
   }
 
   /**
    * Get the IDE tab watcher instance for components to record tab events
    */
-  getIdeTabWatcher(): IdeTabWatcher {
+  getIdeTabWatcher(): EditorTabWatcher {
     return this.ideTabWatcher;
   }
 
@@ -142,28 +126,32 @@ export class Recorder {
     this.eventsTimeLine = [];
     this.snapshotManager.reset();
 
-    // Add the meta:start event
-    this.addNewEvent<MetaStartPayload>(
-      'meta',
-      EventTypes.META_START,
-      {
-        version: this.config.version,
-        timestamp: this.startTime,
-      }
-    );
-
     // Take an immediate full snapshot to establish baseline
-    this.takeFullSnapshot();
+    const fullSnapShot = this.takeFullSnapshot();
 
-    // Start periodic snapshot intervals
-    this.startSnapshotIntervals();
+    if (fullSnapShot) {
+      // Add the meta:start event
+      this.addNewEvent<MetaStartPayload>(
+        'meta',
+        EventTypes.META_START,
+        {
+          version: this.config.version,
+          timestamp: this.startTime,
+          initialSnapshot: fullSnapShot,
+        }
+      );
 
-    // Start watchers
-    this.cursorWatcher.watch();
-    this.clickWatcher.watch();
-    this.styleWatcher.watch();
+      // Start watchers
+      this.cursorMovementWatcher.watch();
+      this.cursorInteractionWatcher.watch();
+      this.cursorStyleWatcher.watch();
 
-    console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
+      // Start periodic snapshot intervals
+      this.startSnapshotIntervals();
+      console.log('[Recorder] Recording started at', new Date(this.startTime).toISOString());
+    } else {
+      console.log("[Recorder] Can't create first full snapshot")
+    }
   }
 
   /**
@@ -176,9 +164,9 @@ export class Recorder {
     }
 
     // Stop watchers
-    this.cursorWatcher.stop();
-    this.clickWatcher.stop();
-    this.styleWatcher.stop();
+    this.cursorMovementWatcher.stop();
+    this.cursorInteractionWatcher.stop();
+    this.cursorStyleWatcher.stop();
 
     // Flush any pending editor input events
     this.editorInputWatcher.cleanup();
@@ -187,22 +175,25 @@ export class Recorder {
     this.stopSnapshotIntervals();
 
     // Take a final full snapshot
-    this.takeFullSnapshot();
+    const fullSnapShot = this.takeFullSnapshot();
 
-    // Add the meta:end event
-    const endTime = Date.now();
-    this.addNewEvent<MetaEndPayload>(
-      'meta',
-      EventTypes.META_END,
-      {
-        timestamp: endTime,
-      }
-    );
+    if (fullSnapShot) {
+      // Add the meta:end event
+      const endTime = Date.now();
+      this.addNewEvent<MetaEndPayload>(
+        'meta',
+        EventTypes.META_END,
+        {
+          timestamp: endTime,
+          lastSnapshot: fullSnapShot,
+        }
+      );
 
-    this.isRecording = false;
+      this.isRecording = false;
 
-    console.log('[Recorder] Recording stopped. Duration:', (endTime - this.startTime) / 1000, 'seconds');
-    console.log('[Recorder] Total events:', this.eventsTimeLine.length);
+      console.log('[Recorder] Recording stopped. Duration:', (endTime - this.startTime) / 1000, 'seconds');
+      console.log('[Recorder] Total events:', this.eventsTimeLine.length);
+    }
   }
 
   /**
@@ -221,36 +212,32 @@ export class Recorder {
   /**
    * Takes a full snapshot of the current IDE and workspace state
    */
-  takeFullSnapshot(): void {
-    if (!this.stateCapture) {
+  takeFullSnapshot(): SnapshotPayload | void {
+    if (!this.uiStateTracker) {
       console.warn('[Recorder] Cannot take snapshot: state capture not configured');
       return;
     }
 
-    const uiState = this.stateCapture.getUIState();
+    const uiState = this.uiStateTracker.getUIState();
     const commitHash = this.commitHashTracker.getLatestCommitHash();
 
     const snapshotPayload = this.snapshotManager.createFullSnapshot(uiState, commitHash);
 
-    this.addNewEvent<SnapshotPayload>(
-      'state',
-      EventTypes.STATE_SNAPSHOT_FULL,
-      snapshotPayload
-    );
-
     console.log('[Recorder] Full snapshot taken at', Date.now(), 'with commit:', commitHash.substring(0, 8));
+
+    return snapshotPayload
   }
 
   /**
    * Takes a delta snapshot (only changes since last snapshot)
    */
   takeDeltaSnapshot(): void {
-    if (!this.stateCapture) {
+    if (!this.uiStateTracker) {
       console.warn('[Recorder] Cannot take snapshot: state capture not configured');
       return;
     }
 
-    const currentUIState = this.stateCapture.getUIState();
+    const currentUIState = this.uiStateTracker.getUIState();
     const commitHash = this.commitHashTracker.getLatestCommitHash();
 
     const deltaPayload = this.snapshotManager.createDeltaSnapshot(
@@ -311,6 +298,7 @@ export class Recorder {
    * Export the timeline as NDJSON string
    */
   exportAsNDJSON(): string {
+    // TODO: Compress the file on backend side to reduce the size
     return this.eventsTimeLine.map(event => JSON.stringify(event)).join('\n');
   }
 

@@ -25,7 +25,7 @@ export class CommitHashTracker {
    */
   recordCommit(hash: string, message: string): void {
     // Track the latest commit hash
-    this.latestCommitHash = hash;
+    this.setCommitHash(hash);
 
     // Trigger delta snapshot immediately when commit happens
     // This captures state exactly when workspace changes
@@ -46,8 +46,7 @@ export class CommitHashTracker {
    * Set the initial commit hash
    * Called when recording starts with an existing repository
    */
-  setInitialCommitHash(hash: string): void {
+  setCommitHash(hash: string): void {
     this.latestCommitHash = hash;
-    console.log(`[CommitHashTracker] Initial commit hash set: ${hash.substring(0, 8)}`);
   }
 }

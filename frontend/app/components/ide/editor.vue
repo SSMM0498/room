@@ -4,7 +4,6 @@
 			class="flex items-center flex-nowrap w-full rounded-t-lg border-b border-gray-200 dark:border-gray-700 text-sm justify-start gap-1 mb-1">
 			<UIcon name="i-ph-code" class="size-4 mx-2" />
 			<h5>Editor</h5>
-			{{ }}
 			<div class="ml-1 flex items-center justify-center cursor-pointer border-r p-1 border-gray-200 dark:border-gray-800 hover:bg-black/10"
 				:class="{ active: openTab.filePath === activeTab.filePath }" v-for="(openTab, key) in openTabs.tabs"
 				:key="openTab.filePath">

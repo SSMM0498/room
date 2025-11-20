@@ -1,12 +1,11 @@
 /**
- * EditorScrollPlayer - Plays back editor scroll events
+ * EditorScrollTrigger - Plays back editor scroll events
  *
  * Receives callbacks from the editor component and triggers scroll actions
  * during playback. Sets positions directly like cursor movement - no animation.
- * The Player scheduler handles timing, similar to CursorMovementPlayer.
  */
 
-export class EditorScrollPlayer {
+export class EditorScrollTrigger {
   private onScrollCallback: ((filePath: string, top: number, left: number) => void) | null = null;
 
   /**
@@ -16,7 +15,7 @@ export class EditorScrollPlayer {
    */
   setOnScroll(callback: (filePath: string, top: number, left: number) => void): void {
     this.onScrollCallback = callback;
-    console.log('[EditorScrollPlayer] Scroll callback registered');
+    console.log('[EditorScrollTrigger] Scroll callback registered');
   }
 
   /**
@@ -29,12 +28,12 @@ export class EditorScrollPlayer {
    */
   playScroll(filePath: string, top: number, left: number): void {
     if (!this.onScrollCallback) {
-      console.warn('[EditorScrollPlayer] Callback not registered');
+      console.warn('[EditorScrollTrigger] Callback not registered');
       return;
     }
 
     // Set scroll position immediately - no animation
-    // The Player's scheduler ensures this happens at the right time
+    // The Trigger's scheduler ensures this happens at the right time
     this.onScrollCallback(filePath, top, left);
   }
 
@@ -43,6 +42,6 @@ export class EditorScrollPlayer {
    */
   destroy(): void {
     this.onScrollCallback = null;
-    console.log('[EditorScrollPlayer] Destroyed');
+    console.log('[EditorScrollTrigger] Destroyed');
   }
 }
