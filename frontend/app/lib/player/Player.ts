@@ -51,9 +51,6 @@ export class Player {
   private activePauseBranch: string | null = null;
   private activePauseCommitHash: string | null = null;
 
-  // Callback for when save-branch completes and socket can be disconnected
-  private onSaveBranchCompleteCallback: (() => void) | null = null;
-
   // File tree restoration callback
   private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
 
@@ -177,13 +174,6 @@ export class Player {
     console.log('[Player] Socket client set for Git operations');
   }
 
-  /**
-   * Set callback to be called when save-branch completes
-   * This signals that it's safe to disconnect the socket
-   */
-  setOnSaveBranchComplete(callback: () => void): void {
-    this.onSaveBranchCompleteCallback = callback;
-  }
 
   /**
    * Checkout workspace to match the recording state at current timestamp
@@ -287,57 +277,21 @@ export class Player {
       return null;
     }
 
-    // Enter isolation mode - socket will only handle save-branch events
-    this.socketClient.enterSaveBranchMode();
+    console.log(`[Player] Saving branch for timestamp: ${timestampSeconds}s`);
 
-    return new Promise((resolve, reject) => {
-      const ackID = `save-branch-${Date.now()}`;
-      console.log(`[Player] Saving branch for timestamp: ${timestampSeconds}s`);
-
-      // Set up listener for response
-      const handleResponse = (event: MessageEvent) => {
-        try {
-          const response = JSON.parse(event.data);
-          if (response.event === 'system:save-branch' && response.data?.ackID === ackID) {
-            this.socketClient.instance?.removeEventListener('message', handleResponse);
-
-            if (response.data.error) {
-              console.error('[Player] Save branch failed:', response.data.error);
-              resolve(null);
-            } else {
-              console.log('[Player] Branch saved:', response.data.branchName, response.data.commitHash?.substring(0, 8));
-              resolve({
-                branchName: response.data.branchName,
-                commitHash: response.data.commitHash
-              });
-            }
-          }
-        } catch (error) {
-          // Ignore parse errors
+    return new Promise((resolve) => {
+      this.socketClient.saveBranch(timestampSeconds, (response: { branchName: string; commitHash: string; error?: string } | null) => {
+        if (!response || response.error) {
+          console.error('[Player] Save branch failed:', response?.error);
+          resolve(null);
+        } else {
+          console.log('[Player] Branch saved:', response.branchName, response.commitHash?.substring(0, 8));
+          resolve({
+            branchName: response.branchName,
+            commitHash: response.commitHash
+          });
         }
-      };
-
-      this.socketClient.instance?.addEventListener('message', handleResponse);
-
-      // Send system:save-branch command to Worker
-      this.socketClient.instance?.send(JSON.stringify({
-        event: 'system:save-branch',
-        data: {
-          timestamp: timestampSeconds,
-          ackID: ackID
-        }
-      }));
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        this.socketClient.instance?.removeEventListener('message', handleResponse);
-        console.warn('[Player] Save branch timeout');
-        // Exit isolation mode on timeout
-        if (this.socketClient) {
-          this.socketClient.exitSaveBranchMode();
-        }
-        resolve(null);
-      }, 5000);
+      });
     });
   }
 
@@ -802,13 +756,6 @@ export class Player {
           }
         }).catch((error) => {
           console.error('[Player] Save-branch error:', error);
-        }).finally(() => {
-          // Signal that save-branch is complete (success, failure, or timeout)
-          // It's now safe to disconnect the socket
-          if (this.onSaveBranchCompleteCallback) {
-            console.log('[Player] Save-branch complete, signaling safe to disconnect');
-            this.onSaveBranchCompleteCallback();
-          }
         });
       }
 

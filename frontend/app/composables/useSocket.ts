@@ -20,6 +20,7 @@ class SocketClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect: boolean = true; // Flag to control auto-reconnection
   private isSavingBranch: boolean = false; // Flag to isolate socket during save-branch
+  private saveBranchCallback: ((response: { branchName: string; commitHash: string; error?: string } | null) => void) | null = null;
 
   /**
    * Initializes the socket connection.
@@ -71,12 +72,6 @@ class SocketClient {
               this.ackCallbacks.delete(message.ack);
             }
             return;
-          }
-
-          // If it's system:save-branch response, exit save-branch mode
-          if (message.event === 'system:save-branch') {
-            this.isSavingBranch = false;
-            console.log('[Socket] Save-branch response received, exiting isolation mode');
           }
 
           const handlers = this.eventHandlers.get(message.event) || [];
@@ -345,6 +340,44 @@ class SocketClient {
 
   handleWorkspaceCommit(handle: (data: { hash: string; message: string }) => void) {
     this.on('workspace:commit', handle);
+  }
+
+  saveBranch(timestamp: number, callback?: (response: { branchName: string; commitHash: string; error?: string } | null) => void) {
+    // Store the callback
+    this.saveBranchCallback = callback || null;
+
+    // Set up one-time listener for save-branch response
+    const handleSaveBranchResponse = (data: any) => {
+      // Exit isolation mode when response is received
+      this.exitSaveBranchMode();
+
+      // Call the stored callback
+      if (this.saveBranchCallback) {
+        this.saveBranchCallback(data);
+        this.saveBranchCallback = null;
+      }
+
+      // Remove this handler after use
+      const handlers = this.eventHandlers.get('system:save-branch');
+      if (handlers) {
+        const index = handlers.indexOf(handleSaveBranchResponse);
+        if (index > -1) {
+          handlers.splice(index, 1);
+        }
+      }
+
+      // Disconnect after save-branch completes
+      this.disconnect();
+    };
+
+    // Register the response handler
+    this.on('system:save-branch', handleSaveBranchResponse);
+
+    // Enter isolation mode before sending
+    this.enterSaveBranchMode();
+
+    // Send the save-branch request
+    this.emit('system:save-branch', { timestamp });
   }
 
   disconnect() {

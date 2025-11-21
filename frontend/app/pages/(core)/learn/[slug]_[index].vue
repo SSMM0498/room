@@ -105,7 +105,6 @@ const {
   formattedCurrentTime,
   formattedDuration,
   watchStateChanges,
-  setOnSaveBranchComplete,
   volume,
   isMuted,
   setVolume,
@@ -256,17 +255,6 @@ onMounted(async () => {
   // Initialize player
   initializePlayer();
   watchStateChanges();
-
-  // Set up callback for when save-branch completes (safe to disconnect socket)
-  // IMPORTANT: Must be called AFTER initializePlayer() so player instance exists
-  setOnSaveBranchComplete(() => {
-    if (socketClient.isConnected) {
-      console.log('[Learn] Save-branch complete, now disconnecting socket');
-      socketClient.disconnect();
-      isConnected.value = false;
-      setSocketConnected(false);
-    }
-  });
 
   const index = parseInt(route.params.index as string, 10);
 
@@ -505,10 +493,8 @@ watch(isPlaying, async (playing) => {
   console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value, 'isSocketConnected', socketClient.isConnected);
 
   if (playing) {
-    // Note: Socket will NOT disconnect immediately
-    // It will disconnect when save-branch completes (via callback above)
-    // This allows save-branch to complete even though playback has resumed
     console.log('[Learn] Playing - waiting for save-branch to complete before disconnecting socket');
+    setSocketConnected(false);
   } else if (isReady.value) {
     // Paused - need workspace for interaction
     if (!workspaceInitialized.value && lessonCourseId.value) {
