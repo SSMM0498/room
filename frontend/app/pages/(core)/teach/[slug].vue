@@ -347,8 +347,6 @@ const startWorkspace = async (courseId: string) => {
     const k8sName = `${workspace.name}`;
     const workspaceWsUrl = getSocketUrl(k8sName);
 
-    console.log(`[Teach] Connecting to WebSocket at: ${workspaceWsUrl}`);
-
     // Initialize the socket connection
     socketClient.initialize(workspaceWsUrl);
 

@@ -44,7 +44,6 @@ class SocketClient {
       this.socket = new WebSocket(this.url);
 
       this.socket.onopen = () => {
-        console.log('[Socket] Connected');
         this.reconnectAttempts = 0;
 
         // Trigger connect event handlers

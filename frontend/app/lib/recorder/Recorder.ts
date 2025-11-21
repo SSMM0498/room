@@ -263,7 +263,14 @@ export class Recorder {
   private startSnapshotIntervals(): void {
     // Full snapshot interval
     this.fullSnapshotIntervalId = window.setInterval(() => {
-      this.takeFullSnapshot();
+      const fullSnapshot = this.takeFullSnapshot();
+      if (fullSnapshot) {
+        this.addNewEvent<SnapshotPayload>(
+          'state',
+          EventTypes.STATE_SNAPSHOT_FULL,
+          fullSnapshot
+        );
+      }
     }, this.config.fullSnapshotInterval);
 
     // Delta snapshot interval

@@ -141,16 +141,16 @@ export class SnapshotManager {
    * Compare two scroll states for equality
    */
   private areScrollsEqual(a: ScrollState, b: ScrollState): boolean {
-    const aKeys = Object.keys(a) as ComponentId[];
-    const bKeys = Object.keys(b) as ComponentId[];
+    const aKeys = Object.keys(a!) as ComponentId[];
+    const bKeys = Object.keys(b!) as ComponentId[];
 
     if (aKeys.length !== bKeys.length) {
       return false;
     }
 
     return aKeys.every((key) => {
-      const bScroll = b.get(key);
-      const aScroll = a.get(key);
+      const bScroll = b!.get(key);
+      const aScroll = a!.get(key);
       if (!aScroll || !bScroll) {
         return false;
       }
