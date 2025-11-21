@@ -575,6 +575,17 @@ export const usePlayer = () => {
   };
 
   /**
+   * Set callback to be called when save-branch completes
+   */
+  const setOnSaveBranchComplete = (callback: () => void) => {
+    if (!player.value) {
+      console.error('[usePlayer] Cannot set save-branch callback: Player not initialized');
+      return;
+    }
+    player.value.setOnSaveBranchComplete(callback);
+  };
+
+  /**
    * Format time in MM:SS format
    */
   const formatTime = (ms: number): string => {
@@ -706,7 +717,8 @@ export const usePlayer = () => {
     initializePlayer,
     setAudioElement,
     setSocketClient,
-    loadFromEvents: loadTimelineFromEvents,
+    setOnSaveBranchComplete,
+    loadTimelineFromEvents,
     play,
     pause,
     togglePlayPause,

@@ -51,6 +51,9 @@ export class Player {
   private activePauseBranch: string | null = null;
   private activePauseCommitHash: string | null = null;
 
+  // Callback for when save-branch completes and socket can be disconnected
+  private onSaveBranchCompleteCallback: (() => void) | null = null;
+
   // File tree restoration callback
   private onFileTreeRestoreCallback: ((expandedPaths: string[], tree: any | null) => void) | null = null;
 
@@ -175,6 +178,14 @@ export class Player {
   }
 
   /**
+   * Set callback to be called when save-branch completes
+   * This signals that it's safe to disconnect the socket
+   */
+  setOnSaveBranchComplete(callback: () => void): void {
+    this.onSaveBranchCompleteCallback = callback;
+  }
+
+  /**
    * Checkout workspace to match the recording state at current timestamp
    * Called from learn page after socket connects/reconnects
    */
@@ -276,6 +287,9 @@ export class Player {
       return null;
     }
 
+    // Enter isolation mode - socket will only handle save-branch events
+    this.socketClient.enterSaveBranchMode();
+
     return new Promise((resolve, reject) => {
       const ackID = `save-branch-${Date.now()}`;
       console.log(`[Player] Saving branch for timestamp: ${timestampSeconds}s`);
@@ -318,6 +332,10 @@ export class Player {
       setTimeout(() => {
         this.socketClient.instance?.removeEventListener('message', handleResponse);
         console.warn('[Player] Save branch timeout');
+        // Exit isolation mode on timeout
+        if (this.socketClient) {
+          this.socketClient.exitSaveBranchMode();
+        }
         resolve(null);
       }, 5000);
     });
@@ -752,37 +770,50 @@ export class Player {
     const isResumingFromPause = previousState === 'paused';
 
     if (isResumingFromPause) {
-      // Save branch if socket is connected (BEFORE changing state to 'playing')
+      // Save branch if socket is connected (NON-BLOCKING)
       if (this.socketClient && this.socketClient.isConnected) {
         const currentTime = this.scheduler.getCurrentTime();
         const currentTimeSeconds = Math.floor(currentTime / 1000);
+        const expectedBranchName = `interactive-${currentTimeSeconds}s`;
 
-        try {
-          // Save branch with all changes from pause session
-          const result = await this.performSaveBranch(currentTimeSeconds);
+        // Create note immediately (optimistic)
+        const note: PlayerNote = {
+          id: `note-${Date.now()}`,
+          timestamp: currentTimeSeconds,
+          branchName: expectedBranchName,
+          commitHash: '', // Will be updated when response arrives
+          createdAt: Date.now()
+        };
 
+        this.notes.push(note);
+        this.persistNotes();
+        console.log('[Player] Created note (pending save-branch):', note);
+
+        // Send save-branch (non-blocking) and handle response in background
+        this.performSaveBranch(currentTimeSeconds).then((result) => {
           if (result) {
-            // Save as note with branch info
-            const note: PlayerNote = {
-              id: `note-${Date.now()}`,
-              timestamp: currentTimeSeconds,
-              branchName: result.branchName,
-              commitHash: result.commitHash,
-              createdAt: Date.now()
-            };
-
-            this.notes.push(note);
+            // Update note with actual commit hash
+            note.commitHash = result.commitHash;
+            note.branchName = result.branchName;
             this.persistNotes();
-            console.log('[Player] Saved note:', note);
+            console.log('[Player] Note confirmed with commit hash:', result.commitHash.substring(0, 8));
+          } else {
+            console.warn('[Player] Save-branch failed or timed out, note remains with pending status');
           }
-        } catch (error) {
-          console.error('[Player] Failed to save branch during resume:', error);
-          // Continue with playback even if save fails
-        }
+        }).catch((error) => {
+          console.error('[Player] Save-branch error:', error);
+        }).finally(() => {
+          // Signal that save-branch is complete (success, failure, or timeout)
+          // It's now safe to disconnect the socket
+          if (this.onSaveBranchCompleteCallback) {
+            console.log('[Player] Save-branch complete, signaling safe to disconnect');
+            this.onSaveBranchCompleteCallback();
+          }
+        });
       }
 
-      // NOW set state to playing (after save-branch completes)
-      // This triggers socket disconnection in learn page
+      // Set state to playing IMMEDIATELY (non-blocking)
+      // This allows video to resume without waiting for save-branch
       this.playerStateMachine.setState('playing');
 
       // Proceed with checkout and resume after save completes

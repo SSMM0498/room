@@ -19,6 +19,7 @@ class SocketClient {
   private ackCounter: number = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect: boolean = true; // Flag to control auto-reconnection
+  private isSavingBranch: boolean = false; // Flag to isolate socket during save-branch
 
   /**
    * Initializes the socket connection.
@@ -57,6 +58,12 @@ class SocketClient {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
 
+          // During save-branch phase, only handle system:save-branch and ack responses
+          if (this.isSavingBranch && message.event !== 'system:save-branch' && !message.ack) {
+            console.log('[Socket] Ignoring event during save-branch:', message.event);
+            return;
+          }
+
           if (message.ack && this.ackCallbacks.has(message.ack)) {
             const callback = this.ackCallbacks.get(message.ack);
             if (callback) {
@@ -64,6 +71,12 @@ class SocketClient {
               this.ackCallbacks.delete(message.ack);
             }
             return;
+          }
+
+          // If it's system:save-branch response, exit save-branch mode
+          if (message.event === 'system:save-branch') {
+            this.isSavingBranch = false;
+            console.log('[Socket] Save-branch response received, exiting isolation mode');
           }
 
           const handlers = this.eventHandlers.get(message.event) || [];
@@ -150,6 +163,12 @@ class SocketClient {
       return;
     }
 
+    // Block other events during save-branch isolation
+    if (this.isSavingBranch && event !== 'system:save-branch') {
+      console.warn('[Socket] Blocking event during save-branch isolation:', event);
+      return;
+    }
+
     const message: WebSocketMessage = { event, data };
 
     if (callback) {
@@ -159,6 +178,23 @@ class SocketClient {
     }
 
     this.socket.send(JSON.stringify(message));
+  }
+
+  /**
+   * Enter save-branch isolation mode
+   * During this mode, only system:save-branch events can be sent/received
+   */
+  enterSaveBranchMode() {
+    this.isSavingBranch = true;
+    console.log('[Socket] Entering save-branch isolation mode');
+  }
+
+  /**
+   * Exit save-branch isolation mode
+   */
+  exitSaveBranchMode() {
+    this.isSavingBranch = false;
+    console.log('[Socket] Exiting save-branch isolation mode');
   }
 
   private on(event: string, handler: MessageHandler) {

@@ -54,7 +54,8 @@ const progressPercent = computed(() => {
 // Calculate note position as percentage
 const getNotePosition = (note: PlayerNote): number => {
   if (!props.duration || props.duration === 0) return 0;
-  return (note.timestamp / props.duration) * 100;
+  const timestampMs = note.timestamp * 1000; // Convert seconds to milliseconds
+  return (timestampMs / props.duration) * 100;
 };
 
 // Format milliseconds to time string (m:ss or h:mm:ss)
@@ -131,7 +132,7 @@ const showNoteTooltip = (note: PlayerNote, e: MouseEvent) => {
 
   tooltip.visible = true;
   tooltip.x = x;
-  tooltip.time = formatTime(note.timestamp);
+  tooltip.time = formatTime(note.timestamp * 1000); // Convert seconds to milliseconds
   tooltip.description = note.description || 'Interactive note';
 };
 
@@ -227,7 +228,7 @@ onUnmounted(() => {
   background: rgb(234, 8, 8);
   border: 1px solid white;
   border-radius: 50%;
-  transition: transform 0.2s ease;
+  transition: transform 0.125s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -237,7 +238,7 @@ onUnmounted(() => {
 }
 
 .note-marker:hover .note-dot {
-  transform: scale(1.3);
+  transform: scale(2);
 }
 
 .timeline-tooltip {

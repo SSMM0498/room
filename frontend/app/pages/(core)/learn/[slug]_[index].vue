@@ -91,7 +91,7 @@ const {
   initializePlayer,
   setAudioElement,
   setSocketClient,
-  loadFromEvents,
+  loadTimelineFromEvents,
   pause,
   togglePlayPause,
   seek,
@@ -105,6 +105,7 @@ const {
   formattedCurrentTime,
   formattedDuration,
   watchStateChanges,
+  setOnSaveBranchComplete,
   volume,
   isMuted,
   setVolume,
@@ -256,6 +257,17 @@ onMounted(async () => {
   initializePlayer();
   watchStateChanges();
 
+  // Set up callback for when save-branch completes (safe to disconnect socket)
+  // IMPORTANT: Must be called AFTER initializePlayer() so player instance exists
+  setOnSaveBranchComplete(() => {
+    if (socketClient.isConnected) {
+      console.log('[Learn] Save-branch complete, now disconnecting socket');
+      socketClient.disconnect();
+      isConnected.value = false;
+      setSocketConnected(false);
+    }
+  });
+
   const index = parseInt(route.params.index as string, 10);
 
   // Fetch course data
@@ -300,7 +312,7 @@ onMounted(async () => {
 
       // Download and load timeline
       const events = await downloadTimeline(courseContent);
-      await loadFromEvents(events);
+      await loadTimelineFromEvents(events);
 
       // Get audio URL and create audio element if audio exists
       const audioUrl = getAudioUrl(courseContent);
@@ -486,22 +498,17 @@ const setupFileWatching = () => {
 // Watch player state and manage socket connection
 // Flow:
 // - On pause: Connect socket → Checkout workspace to current timestamp
-// - On resume: Player saves branch FIRST (while socket still connected) →
-//              THEN state changes to 'playing' → Socket disconnects here
+// - On resume: Player saves branch (non-blocking) → Video resumes immediately →
+//              When save-branch completes → Socket disconnects
 // - First pause: Start workspace, then connect socket
 watch(isPlaying, async (playing) => {
   console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value, 'isSocketConnected', socketClient.isConnected);
 
   if (playing) {
-    // Disconnect socket during playback - we're using recorded events
-    // Note: This happens AFTER Player.play() completes save-branch operation
-    if (socketClient.isConnected) {
-      console.log('[Learn] Disconnecting socket during playback (after save-branch)');
-      socketClient.disconnect();
-      isConnected.value = false;
-      setSocketConnected(false);
-      // Socket client will be cleared by onDisconnect handler
-    }
+    // Note: Socket will NOT disconnect immediately
+    // It will disconnect when save-branch completes (via callback above)
+    // This allows save-branch to complete even though playback has resumed
+    console.log('[Learn] Playing - waiting for save-branch to complete before disconnecting socket');
   } else if (isReady.value) {
     // Paused - need workspace for interaction
     if (!workspaceInitialized.value && lessonCourseId.value) {
