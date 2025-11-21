@@ -490,7 +490,7 @@ const setupFileWatching = () => {
 //              THEN state changes to 'playing' → Socket disconnects here
 // - First pause: Start workspace, then connect socket
 watch(isPlaying, async (playing) => {
-  console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value);
+  console.log('[Learn] isPlaying changed:', playing, 'isReady:', isReady.value, 'workspaceInitialized:', workspaceInitialized.value, 'isSocketConnected', socketClient.isConnected);
 
   if (playing) {
     // Disconnect socket during playback - we're using recorded events

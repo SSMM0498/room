@@ -11,7 +11,6 @@ interface WebSocketMessage {
 class SocketClient {
   private socket: WebSocket | null = null;
   private url: string = '';
-  private authToken?: string;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 1000;
@@ -19,13 +18,17 @@ class SocketClient {
   private ackCallbacks: Map<string, (data: any) => void> = new Map();
   private ackCounter: number = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private shouldReconnect: boolean = true; // Flag to control auto-reconnection
 
   /**
    * Initializes the socket connection.
    * @param url - The URL of the Bridge WebSocket server.
    * @param authToken - (Optional) A JWT for authenticating the connection.
    */
-  initialize(url: string, authToken?: string) {
+  initialize(url: string) {
+    // Enable auto-reconnection when intentionally connecting
+    this.shouldReconnect = true;
+
     if (this.socket?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -35,7 +38,6 @@ class SocketClient {
     }
 
     this.url = url;
-    this.authToken = authToken;
     this.createConnection();
   }
 
@@ -77,7 +79,12 @@ class SocketClient {
         const handlers = this.eventHandlers.get('disconnect') || [];
         handlers.forEach(handler => handler({ code: event.code, reason: event.reason }));
 
-        this.attemptReconnect();
+        // Only attempt reconnect if it wasn't an intentional disconnect
+        if (this.shouldReconnect) {
+          this.attemptReconnect();
+        } else {
+          console.log('[Socket] Intentional disconnect - not reconnecting');
+        }
       };
 
       this.socket.onerror = (error: Event) => {
@@ -130,7 +137,7 @@ class SocketClient {
   }
 
   get isConnected(): boolean {
-    return this.socket?.readyState === WebSocket.OPEN;
+    return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
   get instance(): WebSocket | null {
@@ -305,6 +312,9 @@ class SocketClient {
   }
 
   disconnect() {
+    // Set flag to prevent auto-reconnection on intentional disconnect
+    this.shouldReconnect = false;
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -317,6 +327,7 @@ class SocketClient {
 
     this.eventHandlers.clear();
     this.ackCallbacks.clear();
+    console.log("[Socket] Intentionally disconnecting", this.socket, this.reconnectTimer, this.isConnected);
   }
 }
 
