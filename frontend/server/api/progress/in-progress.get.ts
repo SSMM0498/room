@@ -1,11 +1,11 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
 
-  if (!pb.authStore.isValid) {
+  if (event.context.authFailed) {
     throw createError({
       statusCode: 401,
-      statusMessage: 'Unauthorized. Please log in.',
-    });
+      statusMessage: 'Authentication required'
+    })
   }
 
   const userId = pb.authStore.record?.id;

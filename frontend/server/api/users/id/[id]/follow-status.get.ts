@@ -1,8 +1,14 @@
 export default defineEventHandler(async (event) => {
-    const pb = createPocketBaseInstance(event);
+    const pb = await createPocketBaseInstance(event);
+    if (event.context.authFailed) {
+        throw createError({
+            statusCode: 401,
+            statusMessage: 'Authentication required'
+        })
+    }
     const profileUserId = event.context.params?.id as string;
 
-    const authUserId = pb.authStore.isValid ? pb.authStore.model?.id : null;
+    const authUserId = pb.authStore.isValid ? pb.authStore.record?.id : null;
 
     try {
         const followersResult = await pb.collection('followers').getList(1, 1, {

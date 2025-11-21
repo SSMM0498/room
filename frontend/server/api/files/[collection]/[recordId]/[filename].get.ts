@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
 
   const { collection, recordId, filename } = event.context.params as Record<string, string>;
 

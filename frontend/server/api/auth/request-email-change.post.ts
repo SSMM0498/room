@@ -1,6 +1,11 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
-  if (!pb.authStore.isValid) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
+  const pb = await createPocketBaseInstance(event);
+  if (event.context.authFailed) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Authentication required'
+    })
+  }
 
   const { newEmail } = await readBody(event);
   try {

@@ -1,8 +1,13 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
   const itemId = event.context.params?.itemId as string;
 
-  if (!pb.authStore.isValid) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
+  if (event.context.authFailed) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Authentication required'
+    })
+  }
 
   const itemToDelete = await pb.collection('course_items').getOne(itemId, { expand: 'cursus' });
   if (itemToDelete.expand?.cursus.author !== pb.authStore.record?.id) {

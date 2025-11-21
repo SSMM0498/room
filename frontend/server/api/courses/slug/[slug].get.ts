@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
   const slug = event.context.params?.slug as string;
 
   try {

@@ -1,7 +1,7 @@
 import { ClientResponseError } from 'pocketbase';
 
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
 
   const { email } = await readBody(event);
 
@@ -15,7 +15,6 @@ export default defineEventHandler(async (event) => {
   try {
     await pb.collection('users').requestPasswordReset(email);
 
-    // Return a generic success message.
     return {
       success: true,
       message: 'If an account exists with this email, you will receive a password reset link.',

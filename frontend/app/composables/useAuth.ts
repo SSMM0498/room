@@ -14,12 +14,16 @@ export const useAuth = () => {
    * @returns The authenticated user model.
    */
   const login = async (credentials: { email?: string; password?: string }) => {
-    const response = await $fetch<AuthResponse>('/api/auth/login', {
-      method: 'POST',
-      body: credentials,
-    });
-    setUser(response.user);
-    return response.user;
+    try {
+      const response = await $fetch<AuthResponse>('/api/auth/login', {
+        method: 'POST',
+        body: credentials,
+      });
+      setUser(response.user);
+      return response.user;
+    } catch (error: any) {
+      throw error
+    }
   };
 
   /**
@@ -28,29 +32,39 @@ export const useAuth = () => {
    * @returns The newly created user model.
   */
   const register = async (details: Record<string, any>) => {
-    const response = await $fetch<AuthResponse>('/api/auth/register', {
-      method: 'POST',
-      body: details,
-    });
-    setUser(response.user);
-    return response.user;
+    try {
+      const response = await $fetch<AuthResponse>('/api/auth/register', {
+        method: 'POST',
+        body: details,
+      });
+      setUser(response.user);
+      return response.user;
+    } catch (error: any) {
+      throw error
+    }
   };
 
   /**
    * Logs out the current user by calling the server endpoint.
   */
   const logout = async () => {
-    await $fetch('/api/auth/logout', {
-      method: 'POST',
-    });
-    setUser(null);
+    try {
+      await $fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+    } catch (error: any) {
+      // Even if logout fails, clear local state
+      console.warn('Logout request failed, but clearing local state:', error)
+    } finally {
+      setUser(null);
+    }
   };
 
   /**
    * Fetches the current user from the server to validate the session.
    * This is the key to synchronizing the client state with the server.
    */
-  const me = async (): Promise<AuthModel | null> => {
+  const checkAuth = async (): Promise<AuthModel | null> => {
     try {
       const response = await $fetch<AuthResponse>('/api/auth/me');
       // Update the local persisted state with the fresh user data from the server.
@@ -70,13 +84,17 @@ export const useAuth = () => {
    * @returns The updated user model.
    */
   const updateProfile = async (data: Partial<UserModel> | FormData) => {
-    const response = await $fetch<AuthResponse>('/api/auth/profile', {
-      method: 'PATCH',
-      body: data,
-    });
+    try {
+      const response = await $fetch<AuthResponse>('/api/auth/profile', {
+        method: 'PATCH',
+        body: data,
+      });
 
-    setUser(response.user);
-    return response.user;
+      setUser(response.user);
+      return response.user;
+    } catch (error: any) {
+      throw error
+    }
   };
 
   /**
@@ -85,11 +103,15 @@ export const useAuth = () => {
    * * This function does not return the updated user model, as the response is not needed.
    */
   const changePassword = async (passwords: Record<string, any>) => {
-    // We don't need the response, but fetching it confirms success.
-    await $fetch<AuthResponse>('/api/auth/change-password', {
-      method: 'POST',
-      body: passwords,
-    });
+    try {
+      // We don't need the response, but fetching it confirms success.
+      await $fetch<AuthResponse>('/api/auth/change-password', {
+        method: 'POST',
+        body: passwords,
+      });
+    } catch (error: any) {
+      throw error
+    }
   };
 
   /**
@@ -98,30 +120,38 @@ export const useAuth = () => {
    * @returns A success message indicating the request was sent.
    */
   const requestEmailChange = async (newEmail: string) => {
-    return await $fetch<{ success: boolean; message: string }>('/api/auth/request-email-change', {
-      method: 'POST',
-      body: { newEmail },
-    });
+    try {
+      return await $fetch<{ success: boolean; message: string }>('/api/auth/request-email-change', {
+        method: 'POST',
+        body: { newEmail },
+      });
+    } catch (error: any) {
+      throw error
+    }
   };
 
   /**
    * Permanently deletes the user's account.
    */
   const deleteAccount = async () => {
-    const response = await $fetch('/api/auth/delete-account', {
-      method: 'DELETE',
-    });
-    // On success, clear local state and redirect
-    setUser(null);
-    await navigateTo('/');
-    return response;
+    try {
+      const response = await $fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+      // On success, clear local state and redirect
+      setUser(null);
+      await navigateTo('/');
+      return response;
+    } catch (error: any) {
+      throw error
+    }
   };
 
 
   // Expose the user state and auth functions
   return {
     setUser,
-    me,
+    checkAuth,
     login,
     register,
     logout,

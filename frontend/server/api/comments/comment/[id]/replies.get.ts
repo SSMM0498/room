@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
   const commentId = event.context.params?.id as string;
   pb.autoCancellation(false);
 

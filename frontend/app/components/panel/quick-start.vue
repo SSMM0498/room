@@ -65,24 +65,24 @@ const displayedCourses = computed<CourseCard[]>(() => {
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/catalog')">
-          <i class="i-heroicons-academic-cap-20-solid mr-2"></i>{{ $t("quick_start.join_school") }}
+          <UIcon name="i-heroicons-academic-cap-20-solid" class="mr-2"/>{{ $t("quick_start.join_school") }}
         </nuxt-link>
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/catalog')">
-          <i class="i-heroicons-magnifying-glass-20-solid mr-2"></i>{{ $t("quick_start.find_room") }}
+          <UIcon name="i-heroicons-magnifying-glass-20-solid" class="mr-2" />{{ $t("quick_start.find_room") }}
         </nuxt-link>
       </section>
       <section class="flex w-full gap-2 items-start justify-start">
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
           :to="localePath('/teach/new')">
-          <i class="i-heroicons-squares-2x2-20-solid mr-2"></i>{{ $t("quick_start.start_room") }}
+          <UIcon name="i-heroicons-squares-2x2-20-solid" class="mr-2" />{{ $t("quick_start.start_room") }}
         </nuxt-link>
         <nuxt-link
           class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg">
           <!-- :to="localePath('/create/school')"> -->
-          <i class="i-heroicons-plus-circle-20-solid mr-2"></i>{{ $t("quick_start.create_school") }}
+          <UIcon name="i-heroicons-plus-circle-20-solid" class="mr-2" />{{ $t("quick_start.create_school") }}
         </nuxt-link>
       </section>
     </section>

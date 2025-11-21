@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-    const pb = createPocketBaseInstance(event);
+    const pb = await createPocketBaseInstance(event);
     try {
         const courses = await pb.collection('courses').getFullList({
             filter: 'status = "public"',

@@ -1,7 +1,7 @@
 <template>
   <article
     v-if="!(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId !== course.id)"
-    :class="{ 'before:absolute before:top-0 before:left-0 hover:before:h-full hover:before:w-full before:rounded-[5px] before:bg-elevated before:transition-transform before:duration-100 hover:before:scale-106 before:-z-100': !(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id), 'py-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }" class="relative"
+    :class="{ 'before:absolute before:top-0 before:left-0 hover:before:h-full hover:before:w-full before:rounded-[10px] before:bg-elevated before:transition-transform before:duration-100 hover:before:scale-106 before:-z-100': !(uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id), 'py-4': uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id, 'cursus pr-3': course.type === 'cursus', 'live': course.type === 'live', 'live run': course.type === 'live run' }" class="relative"
     :id="`${course.section.toLowerCase()}-${course.id}`">
     <UButton
       v-if="uiStore.articleOpened && uiStore.currentSection === course.section && uiStore.currentCourseId === course.id"
@@ -19,7 +19,7 @@
         uiStore.scrollToCurrentSection()
       }">
       <button class="icon">
-        <i class="ri-play-circle-line ri-2x"></i>
+        <UIcon name="i-ri-play-circle-line" class="text-dimmed size-10"/>
       </button>
       <div class="techs">
         <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name" />

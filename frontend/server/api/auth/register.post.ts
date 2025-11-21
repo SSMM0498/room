@@ -1,7 +1,7 @@
 import { ClientResponseError } from 'pocketbase';
 
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
 
   const { email, username, password, passwordConfirm } = await readBody(event);
 

@@ -2,7 +2,7 @@ import { defineEventHandler, setResponseStatus } from 'h3';
 
 export default defineEventHandler(async (event) => {
   try {
-    const pb = createPocketBaseInstance(event);
+    const pb = await createPocketBaseInstance(event);
 
     const health = await pb.health.check();
 

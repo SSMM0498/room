@@ -3,8 +3,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { V1DeleteOptions } from '@kubernetes/client-node';
 
-// --- HELPER FUNCTIONS ---
-
 /**
  * Reads the YAML template file and replaces all occurrences of 'service_name'.
  * @param filePath - Path to the template file.
@@ -67,13 +65,15 @@ async function deleteExistingResources(k8sName: string, namespace: string): Prom
 
 // --- MAIN EVENT HANDLER ---
 export default defineEventHandler(async (event) => {
-    const pb = createPocketBaseInstance(event);
+    const pb = await createPocketBaseInstance(event);
     const config = useRuntimeConfig();
     const env = config.ENV || 'DEV';
 
-    if (!pb.authStore.isValid) {
-        console.warn(`[AUTH] Unauthorized request received.`);
-        throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
+    if (event.context.authFailed) {
+        throw createError({
+            statusCode: 401,
+            statusMessage: 'Authentication required'
+        })
     }
     const ownerId = pb.authStore.record?.id;
 
@@ -114,7 +114,7 @@ export default defineEventHandler(async (event) => {
     console.log(`[K8S] Cleaning up any existing resources for ${workspace.name}...`);
     await deleteExistingResources(workspace.name, namespace);
 
-    const templatePath = path.join(process.cwd(), '..' ,'docker', 'service.yaml');
+    const templatePath = path.join(process.cwd(), '..', 'docker', 'service.yaml');
     console.log(`[K8S] Reading Kubernetes manifest template from: ${templatePath}`);
     const manifests = await readAndParseKubeYaml(templatePath, workspace.name);
     console.log(`[K8S] Parsed ${manifests.length} manifest(s) from template for ${workspace.name}`);

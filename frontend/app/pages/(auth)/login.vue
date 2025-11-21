@@ -54,11 +54,11 @@
           <USeparator label="OR" class="my-4" />
           <div class="flex flex-col w-full gap-2">
             <UButton size="lg" block variant="outline" color="neutral">
-              <i class="i-flat-color-icons:google"></i>
+              <UIcon name="i-logos:google-icon" />
               {{ $t("login.sign_in_with_google") }}
             </UButton>
             <UButton type="submit" size="lg" block variant="outline" color="neutral">
-              <i class="i-logos:microsoft-icon"></i>
+              <UIcon name="i-logos:microsoft-icon" />
               {{ $t("login.sign_in_with_microsoft") }}
             </UButton>
           </div>

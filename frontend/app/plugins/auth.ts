@@ -1,10 +1,10 @@
 export default defineNuxtPlugin(async () => {
-  const { me } = useAuth();
+  const { checkAuth } = useAuth();
   const user = useAuthUser();
-  const { getOrCreateSchool } = useSchools()
 
-  if (user.value && !user.value.school) {
-    await me();
+  if (import.meta.client && user.value && !user.value.school) {
+    await checkAuth();
+    const { getOrCreateSchool } = useSchools()
     const school = await getOrCreateSchool();
     user.value!.school = school;
   }

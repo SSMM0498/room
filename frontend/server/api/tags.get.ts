@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const pb = createPocketBaseInstance(event);
+  const pb = await createPocketBaseInstance(event);
 
   try {
     // Fetch all records from the 'tags' collection, sorting by name

@@ -5,7 +5,7 @@
  * Returns the most recent course_contents record for the given course
  */
 export default defineEventHandler(async (event) => {
-    const pb = createPocketBaseInstance(event);
+    const pb = await createPocketBaseInstance(event);
     const courseId = getRouterParam(event, 'courseId');
 
     if (!courseId) {
