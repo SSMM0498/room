@@ -1,5 +1,5 @@
 <template>
-  <UBadge class="tag rounded-full mr-2" :size="size" color="neutral" variant="subtle" @click="link && uiStore.scrollToSection(link)">
+  <UBadge class="tag rounded-full mr-2 before:content-['#'] before:font-bold before:text-primary before:mr-0.5 cursor-pointer" :size="size" color="neutral" variant="subtle" @click="link && uiStore.scrollToSection(link)">
     <slot></slot>
   </UBadge>
 </template>
@@ -27,7 +27,6 @@ const uiStore = useSectionUIStore();
 @reference "tailwindcss";
 
 .tag {
-  @apply before:content-["#"] before:font-bold before:text-blue-600 before:mr-0.5 cursor-pointer;
   font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
 }
 </style>

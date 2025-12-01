@@ -1,7 +1,5 @@
-@tailwind base;
-@tailwind components;
+@import "tailwindcss/preflight";
 @tailwind utilities;
-@tailwind directive;
 
 @layer base {
   header > img.avatar {
@@ -9,7 +7,7 @@
   }
 
   img.avatar {
-    @apply w-10 h-10 transition-all duration-[0.25s] ease-[ease-in-out] border-[color:var(--gray)] rounded-[100px] rounded-full border-solid hover:cursor-pointer hover:border-[color:var(--white)] hover:scale-110;
+    @apply w-10 h-10 transition-all duration-[0.25s] ease-[ease-in-out] border-[color:var(--gray)] rounded-full border-solid hover:cursor-pointer hover:border-[color:var(--white)] hover:scale-110;
   }
 
   img.avatar.big {

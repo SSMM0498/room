@@ -1,3 +1,5 @@
+@reference "tailwindcss";
+
 html {
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
@@ -9,12 +11,12 @@ html {
 
 ::-moz-selection {
     color: white;
-    background: #2563eb;
+    @apply bg-primary;
 }
 
 ::selection {
     color: white;
-    background: #2563eb;
+    @apply bg-primary;
 }
 
 *::-webkit-scrollbar {
@@ -34,7 +36,7 @@ html {
 }
 
 *::-webkit-scrollbar-thumb {
-    background-color: #2563eb;
+    @apply bg-primary;
 }
 
 *::-webkit-scrollbar-thumb:hover {

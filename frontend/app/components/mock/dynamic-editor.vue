@@ -11,13 +11,12 @@
 
             <!-- Floating Webcam Feed with dynamic image -->
             <template #floating-bottom-left>
-                <div class="w-48 h-56 transform rotate-2 -translate-x-8 translate-y-8">
-                    <div class="absolute inset-0 rounded-lg shadow-lg border-2 border-black"
-                        :style="{ backgroundColor: scenario.colors.accent }"></div>
+                <div class="w-40 h-50 transform rotate-2 translate-y-4">
+                    <div class="absolute inset-0 rounded-lg shadow-lg border-2 border-gray-950 dark:border-white"></div>
                     <img :src="scenario.instructor.avatarUrl" :alt="scenario.instructor.name"
-                        class="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-cover rounded">
+                        class="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-cover rounded border-2 border-gray-950 dark:border-white grayscale hover:grayscale-0">
                     <div
-                        class="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white border-2 border-black rounded-full px-4 py-2 shadow-md -rotate-10">
+                        class="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white rounded-full px-4 py-2 shadow-md -rotate-10 border-2 border-gray-950 dark:border-white">
                         <UIcon name="i-heroicons-microphone" class="h-5 w-5 text-black" />
                         <UIcon name="i-heroicons-video-camera-slash" class="h-5 w-5 text-black" />
                         <UIcon name="i-heroicons-phone-arrow-up-right" class="h-5 w-5 text-red-500" />
@@ -28,11 +27,11 @@
             <!-- Floating Chat Bubbles with dynamic text -->
             <template #floating-bottom-right>
                 <div
-                    class="absolute bottom-16 -right-16 w-64 bg-gray-800 text-white p-4 rounded-lg shadow-lg border-2 border-black transform -rotate-2">
+                    class="absolute bottom-16 -right-16 w-64 dark:bg-gray-950 bg-white text-black dark:text-white p-4 rounded-lg shadow-lg transform -rotate-2 border-2 border-gray-950 dark:border-white">
                     <p class="text-sm">{{ scenario.chatMessages[0] }}</p>
                 </div>
                 <div
-                    class="absolute -bottom-5 right-4 w-48 bg-white text-black p-3 rounded-lg shadow-lg border-2 border-black transform rotate-3">
+                    class="absolute -bottom-5 right-4 w-48 dark:bg-gray-950 bg-white text-black dark:text-white p-3 rounded-lg shadow-lg transform rotate-3 border-2 border-gray-950 dark:border-white">
                     <p class="text-sm">{{ scenario.chatMessages[1] }}</p>
                 </div>
             </template>
@@ -52,12 +51,11 @@ const props = defineProps({
 });
 
 const colorPalettes = [
-  { bg: '#E9D5FF', tab: '#FACC15', panel: '#86EFAC', accent: '#FDE047' },
-  { bg: '#BAE6FD', tab: '#06B6D4', panel: '#818CF8', accent: '#22D3EE' },
-  { bg: '#BBF7D0', tab: '#84CC16', panel: '#FACC15', accent: '#A3E635' },
-  { bg: '#FED7AA', tab: '#FB923C', panel: '#E5E7EB', accent: '#F97316' },
+  { bg: '#F9FAFB', tab: '#E5E7EB', panel: '#D1D5DB', accent: '#9CA3AF' },
+  { bg: '#F3F4F6', tab: '#D1D5DB', panel: '#E5E7EB', accent: '#6B7280' },
+  { bg: '#E5E7EB', tab: '#9CA3AF', panel: '#F9FAFB', accent: '#4B5563' },
+  { bg: '#FFFFFF', tab: '#F3F4F6', panel: '#E5E7EB', accent: '#6B7280' },
 ]
-
 
 const instructors = [
     { name: 'Samantha', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=256&auto=format&fit=crop' },

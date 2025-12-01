@@ -30,11 +30,10 @@
       </UDropdownMenu>
     </template>
     <div class="flex w-[350px] items-center " v-else>
-      <UButton type="submit" variant="outline" :to="localePath('/login')" color="neutral"
-        class="w-full items-center justify-center mr-2">
+      <UButton type="submit" variant="outline" color="neutral" :to="localePath('/login')" class="w-full items-center justify-center border-3 mr-2">
         {{ $t("sign_in") }}
       </UButton>
-      <UButton type="submit" color="neutral" :to="localePath('/register')" class="w-full items-center justify-center">
+      <UButton type="submit" variant="link" color="neutral" :to="localePath('/register')" class="w-full items-center justify-center">
         {{ $t("sign_up") }}
       </UButton>
     </div>

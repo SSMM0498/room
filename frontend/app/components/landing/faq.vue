@@ -7,9 +7,9 @@
             </div>
 
             <div class="text-center">
-                <UBadge :label="$t('faq.pre_header')" variant="subtle" size="lg"
+                <UBadge :label="$t('faq.pre_header')" variant="subtle" size="md"
                     class="tracking-wider rounded-full px-4 py-1.5" />
-                <h2 class="dark:text-white text-black mt-4 text-4xl lg:text-5xl font-bold tracking-tighter">{{
+                <h2 class="dark:text-white text-black mt-4 text-3xl lg:text-4xl font-bold tracking-tighter">{{
                     $t('faq.title') }}</h2>
             </div>
 
@@ -32,9 +32,9 @@
             </div>
 
             <div class="mt-10 flex items-center justify-center gap-4">
-                <UButton :label="$t('faq.button_more')" to="#" size="lg" variant="outline" color="neutral" />
+                <UButton :label="$t('faq.button_more')" to="#" size="lg" variant="outline" color="neutral" class="border-3" />
                 <UButton :label="$t('faq.button_contact')" :to="localePath('/contact')" size="lg" color="neutral"
-                    variant="solid" />
+                    variant="subtle" />
             </div>
         </div>
     </section>

@@ -1,14 +1,15 @@
 <template>
     <div class="code-editor-section">
         <div class="flex w-full select-none lg:px-14">
-            <div class="relative mx-auto aspect-[16/9] w-full max-w-3xl border-3 border-gray-0 rounded-md">
+            <div class="relative mx-auto aspect-[16/9] w-full max-w-3xl rounded-md">
                 <!-- Main Editor Container -->
-                <div class="flex h-full w-full overflow-hidden shadow-2xl rounded-md dark:bg-gray-800 bg-white">
+                <div
+                    class="flex h-full w-full overflow-hidden shadow-2xl rounded-md dark:bg-gray-900 bg-white border-2 border-gray-950 dark:border-white">
                     <!-- Left Panel - Code Editor -->
                     <div class="flex flex-[60%] flex-col">
                         <!-- Tab Bar -->
-                        <div class="flex border-b-5 bg-gray-800 text-[min(1.6vw,10px)] lg:text-[min(0.8vw,11px)]"
-                            :style="{ borderColor: editorBgColor }">
+                        <div
+                            class="flex border-b-2 border-gray-950 dark:border-white text-[min(1.6vw,10px)] lg:text-[min(0.8vw,11px)]">
                             <!-- Window Controls -->
                             <div class="flex w-[20%] items-center justify-center gap-[15%] px-[4%] py-[2%]">
                                 <div class="aspect-square w-2.5 rounded-full bg-red-500"></div>
@@ -17,9 +18,11 @@
                             </div>
                             <!-- File Tabs -->
                             <div v-for="(file, index) in files" :key="index"
-                                class="w-fit translate-y-px border-none px-[4%] py-[2%] cursor-pointer rounded-t-lg text-black"
-                                :style="{
-                                    backgroundColor: currentFileIndex === index ? props.tabBgColor : '#e5e7eb',
+                                class="w-fit translate-y-px border-none px-[4%] py-[1%] cursor-pointer rounded-t-lg text-black mt-1"
+                                :class="{
+                                    'bg-gray-950 dark:bg-white text-inverted': currentFileIndex === index,
+                                    '#e5e7eb': currentFileIndex === index
+                                }" :style="{
                                     fontWeight: currentFileIndex === index ? '600' : 'normal'
                                 }" @click="switchFile(index)">
                                 {{ file.name }}
@@ -30,14 +33,13 @@
                             class="flex gap-[2.5%] font-mono text-[min(2vw,14px)] tracking-tight lg:text-[min(1vw,14px)]">
                             <!-- Line Numbers -->
                             <div class="flex flex-col">
-                                <span v-for="(line, index) in displayedLines" :key="index" class="h-full px-1.5"
-                                    :class="darkMode ? 'dark:bg-gray-700 dark:text-gray-100 bg-gray-50 text-gray-400' : 'bg-gray-50 text-gray-400'">
+                                <span v-for="(_, index) in displayedLines" :key="index"
+                                    class="h-full px-1.5 dark:bg-gray-950/30 dark:text-gray-100 bg-gray-50 text-gray-400 text-gray-400">
                                     {{ String(index + startLineNumber).padStart(2, '0') }}
                                 </span>
                             </div>
                             <!-- Code Display -->
-                            <code class="flex flex-col p-3"
-                                :class="darkMode ? 'dark:text-gray-100 text-gray-600' : 'text-gray-600'"
+                            <code class="flex flex-col p-3 dark:text-gray-100 text-gray-600"
                                 style="text-align:left;white-space:pre;word-spacing:normal;word-break:normal;tab-size:4;hyphens:none;overflow-wrap:normal">
                                 <span v-for="(line, index) in displayedLines" :key="index"
                                     v-html="highlightSyntax(line, index)">
@@ -46,34 +48,8 @@
                         </div>
                     </div>
                     <!-- Right Panel -->
-                    <div class="flex flex-[40%] flex-col text-[min(2vw,14px)] lg:text-[min(1vw,14px)]"
-                        :class="darkMode ? 'dark:border-gray-700 border-gray-200 dark:border-gray-800' : 'border-gray-200 dark:border-gray-800'">
-                        <!-- Right Panel Header -->
-                        <div class="flex h-[10%] border-b items-center"
-                            :class="darkMode ? 'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-800 bg-white text-gray-500' : 'border-gray-200 dark:border-gray-800 bg-white text-gray-500'">
-                            <svg stroke="currentColor" fill="currentColor" stroke-width="0.5" viewBox="0 0 16 16"
-                                class="aspect-1 ml-[5%] h-auto w-[7%]" height="1em" width="1em">
-                                <path fill-rule="evenodd"
-                                    d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8">
-                                </path>
-                            </svg>
-                        </div>
-                        <!-- Right Panel Content -->
-                        <div class="animate-fade-in relative flex flex-1 items-center justify-center opacity-100">
-                            <slot name="right-panel">
-                                <!-- Default Right Panel Content -->
-                                <span class="absolute inset-0 flex items-center justify-center">
-                                    <span class="font-mono text-lg font-bold tracking-wide">{{ rightPanelTitle }}</span>
-                                </span>
-                                <!-- Grid Pattern (if showGrid is true) -->
-                                <div v-if="showGrid"
-                                    class="grid w-full grid-cols-12 [&_span]:ring-1 [&_span]:ring-inset [&_span]:ring-gray-100">
-                                    <span v-for="(color, index) in gridColors" :key="index"
-                                        class="aspect-1 h-full w-full" :class="color || 'bg-transparent !ring-0'">
-                                    </span>
-                                </div>
-                            </slot>
-                        </div>
+                    <div
+                        class="flex flex-[40%] flex-col text-[min(2vw,14px)] lg:text-[min(1vw,14px)] dark:bg-gray-950/30 bg-gray-50 border-l-2 border-gray-950 dark:border-white">
                     </div>
                 </div>
                 <div v-if="$slots['floating-top-left']" class="absolute -left-5 -top-10 z-10">

@@ -1,17 +1,15 @@
 <template>
-    <section id="learn" class="flex w-full items-center justify-center">
-        <div class="relative w-full bg-black text-center flex items-center justify-center p-10">
+    <section id="learn" class="flex w-full items-center justify-center overflow-hidden">
+        <div class="relative w-full text-center flex items-center justify-center p-10">
             <div class="flex flex-wrap justify-center items-center gap-8 w-full">
                 <widget-tag v-for="tag in customTags" :key="tag.name" :link="tag.link" :size="'xl'">
                     {{ tag.name }}
                 </widget-tag>
             </div>
-            <div class="absolute flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm rounded-md p-5">
-                <h2 class="text-white text-4xl lg:text-5xl font-bold tracking-tighter">{{ $t('learn.title') }}</h2>
-                <p class="text-white mt-4 text-lg max-w-2xl mx-auto">{{ $t('learn.subtitle') }}</p>
-                <UButton color="neutral" variant="subtle" class="mt-8" :to="$localePath('/catalog/')" size="lg">
-                    {{ $t('community.start_learning') }}
-                </UButton>
+            <div
+                class="absolute flex flex-col items-end justify-center before:content-[''] before:absolute before:inset-0 before:bg-white/95 dark:before:bg-gray-900/95 before:transition hover:before:translate-x-[100%] top-0 bottom-0 left-0 before:translate-x-[50%] right-0 before:w-full before:h-full hover:backdrop-blur-none transition-5">
+                <h2 class="text-gray-950 dark:text-white text-4xl lg:text-5xl font-bold tracking-tighter z-10 bg-white dark:bg-gray-900 text-right py-2 pr-10">{{ $t('learn.title') }}</h2>
+                <p class="text-gray-950 dark:text-white text-lg max-w-2xl pr-10 text-right z-10 bg-white dark:bg-gray-900 py-5">{{ $t('learn.subtitle') }}</p>
             </div>
         </div>
     </section>
@@ -34,7 +32,8 @@ const customTags = [
     { name: 'Swift', link: 'swift' },
     { name: 'Kotlin', link: 'kotlin' },
     { name: 'TypeScript', link: 'typescript' },
-    { name: 'HTML/CSS', link: 'html-css' },
+    { name: 'HTML', link: 'html' },
+    { name: 'CSS', link: 'css' },
     { name: 'SQL', link: 'sql' },
     { name: 'Shell Scripting', link: 'shell-scripting' },
     { name: 'Dart', link: 'dart' },

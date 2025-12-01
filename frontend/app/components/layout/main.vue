@@ -1,6 +1,6 @@
 <template>
   <main
-    class="bg-base m-0 p-0 overflow-hidden flex flex-row justify-center items-start"
+    class="bg-base m-0 p-0 overflow-hidden flex flex-row justify-center items-start w-full"
     :style="{
       '--content-size': sectionUI.contentSize.toString()
     }"

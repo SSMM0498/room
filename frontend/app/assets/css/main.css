@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "@nuxt/ui";
 @import "./reset.css";
 @import "./mouse.css";
+
+@source "../../../content/**/*";

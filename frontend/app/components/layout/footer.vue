@@ -8,7 +8,7 @@
       <nuxt-link class="me-6 hover:underline" :to="localePath('/terms')">{{ $t('terms') }}</nuxt-link>
       <nuxt-link class="me-6 hover:underline" :to="localePath('/contact')">{{ $t('help') }}</nuxt-link>
     </nav>
-    Copyright ©️ 2024 | Made with <span mx-1 class="heart">❤️</span> and ☕ by ArkadSquad
+    Copyright ©️ 2024 | Made with <span class="heart mx-1">❤️</span> and ☕ by ArkadSquad
   </footer>
 </template>
 
@@ -29,7 +29,7 @@ footer {
   }
 
   50% {
-    transform: scale(1.25);
+    transform: translateY(-4px) scale(1.4);
   }
 }
 
@@ -39,7 +39,7 @@ footer {
   }
 
   50% {
-    transform: scale(1.25);
+    transform: translateY(-4px) scale(1.4);
   }
 }
 
