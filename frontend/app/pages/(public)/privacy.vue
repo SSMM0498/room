@@ -1,7 +1,15 @@
 <template>
-  <article class="w-full py-10 prose h-full of-auto overflow-y-scroll">
-    <ContentRenderer class="w-300 px-50" v-if="page" :prose="true" :dir="localeProperties?.dir ?? 'ltr'" :value="page" />
-  </article>
+  <div class="w-full h-full flex items-start justify-start">
+    <template v-if="page?.body?.toc?.links?.length">
+      <UContentNavigation highlight highlight-color="primary" color="neutral" :links="page.body.toc.links" />
+    </template>
+    <template v-else>
+      {{ page }}
+    </template>
+    <article class="prose of-auto overflow-y-scroll h-full w-full pt-10 px-10">
+      <ContentRenderer v-if="page" :prose="true" :dir="localeProperties?.dir ?? 'ltr'" :value="page" />
+    </article>
+  </div>
 </template>
 
 <script lang="ts" setup>

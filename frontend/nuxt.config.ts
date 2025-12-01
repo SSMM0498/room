@@ -2,17 +2,28 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
+  routeRules: {
+    '/': { ssr: true },
+    '/about': { ssr: true },
+    '/contact': { ssr: true },
+    '/terms': { ssr: true },
+    '/privacy': { ssr: true },
+    '/fr/': { ssr: true },
+    '/fr/about': { ssr: true },
+    '/fr/contact': { ssr: true },
+    '/fr/terms': { ssr: true },
+    '/fr/privacy': { ssr: true }
+  },
   devtools: { enabled: true },
 
   modules: [
-    '@nuxtjs/color-mode',
+    '@nuxt/ui',
     '@nuxt/content',
+    '@nuxtjs/color-mode',
     '@nuxtjs/i18n',
     '@nuxt/eslint',
     '@pinia/nuxt',
-    '@nuxtjs/mdc',
-    '@vueuse/nuxt',
-    '@nuxt/ui'
+    '@vueuse/nuxt'
   ],
 
   i18n: {
