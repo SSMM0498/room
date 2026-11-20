@@ -12,7 +12,8 @@ import type { CourseCard, SimpleCourse } from '~~/types/ui';
 export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
     const tags = record.expand?.tags || [];
 
-    const durationInMinutes = record.duration ? Math.round(record.duration / 60) : 0;
+    const durationSeconds = record.duration ?? 0;
+    const durationInMinutes = durationSeconds ? Math.round(durationSeconds / 60) : 0;
     const durationFormatted = `${durationInMinutes} min`;
 
     const createdDate = record.created
@@ -31,11 +32,18 @@ export const parseCourseRecordToCard = (record: RecordModel): CourseCard => {
         type: record.type,
         status: record.status,
         createdDate,
+        createdAt: record.created ?? '',
         section: '',
         durationFormatted,
+        durationSeconds,
+        // Engagement counters attached by the server listing endpoints; absent on
+        // single-course reads, where nothing sorts on them.
+        participants: record.participants ?? 0,
+        rating: record.rating ?? 0,
         tags,
         items: record.items || [],
         author: record.expand?.author, // Embed the expanded author record
+        school: record.expand?.school, // Embed the expanded school record
         price: record.price,
     };
 };
@@ -155,6 +163,32 @@ export const useCourses = () => {
         return updatedCourse;
     });
 
+    /**
+     * Changes the publication state of a course (publish, unpublish, archive).
+     * The server refuses to make a course visible before it has something to play,
+     * so callers should surface `error` when this returns null.
+     */
+    const setCourseStatus = async (id: string, status: string) => _handleRequest(async () => {
+        const updatedCourse = await $fetch<RecordModel>(`/api/courses/${id}/status`, {
+            method: 'PATCH',
+            body: { status },
+        });
+        const index = courses.value.findIndex(c => c.id === id);
+        if (index !== -1) {
+            courses.value[index] = parseCourseRecordToCard(updatedCourse);
+        }
+        if (currentCourse.value?.id === id) {
+            currentCourse.value = { ...currentCourse.value, status: updatedCourse.status };
+        }
+        return updatedCourse;
+    });
+
+    /** Clears the shared course state, so a new creation flow doesn't inherit the previous course. */
+    const resetCurrentCourse = () => {
+        currentCourse.value = null;
+        currentItemIndex.value = 0;
+    };
+
     const deleteCourse = async (id: string) => _handleRequest(async () => {
         await $fetch(`/api/courses/${id}`, { method: 'delete' });
         courses.value = courses.value.filter(c => c.id !== id);
@@ -223,6 +257,8 @@ export const useCourses = () => {
         fetchUserCoursesList,
         createCourse,
         updateCourse,
+        setCourseStatus,
+        resetCurrentCourse,
         deleteCourse,
         generateSlug,
         toggleCourseType,

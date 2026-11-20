@@ -1,19 +1,37 @@
-import type { School } from '~~/types/ui';
+import type { RecordModel } from 'pocketbase';
+import type { CourseCard, DashboardCourse, School, SchoolDashboardData, SchoolPageData } from '~~/types/ui';
+import { parseCourseRecordToCard } from '~/composables/useCourses';
+
+/**
+ * Parses a raw course record coming from the dashboard endpoint, which annotates
+ * each course with its recording and cursus information.
+ */
+const parseDashboardCourse = (record: RecordModel): DashboardCourse => ({
+    ...parseCourseRecordToCard(record),
+    updatedDate: record.updated
+        ? new Date(record.updated).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        : '',
+    latestRecordingAt: record.latestRecordingAt ?? null,
+    itemsCount: record.itemsCount ?? 0,
+});
 
 export const useSchools = () => {
-    // --- State ---
-    const currentSchool = ref<School | null>(null);
-    const pending = ref(false);
-    const error = ref<Error | null>(null);
+    // --- State (shared, so the page and its side panel read the same school) ---
+    const authUser = useAuthUser();
+    const currentSchool = useState<School | null>('school-current', () => null);
+    const schoolCourses = useState<CourseCard[]>('school-courses', () => []);
+    const dashboardCourses = useState<DashboardCourse[]>('school-dashboard-courses', () => []);
+    const pending = useState<boolean>('school-pending', () => false);
+    const errorMessage = useState<string | null>('school-error', () => null);
 
     // --- Helper for API Requests ---
-    const _handleRequest = async <T>(request: () => Promise<T>): Promise<T | null> => {
+    const _handleRequest = async <T>(request: () => Promise<T>, fallbackError: string): Promise<T | null> => {
         pending.value = true;
-        error.value = null;
+        errorMessage.value = null;
         try {
             return await request();
-        } catch (err: any) {
-            error.value = err;
+        } catch (err) {
+            errorMessage.value = getApiErrorMessage(err, fallbackError);
             return null;
         } finally {
             pending.value = false;
@@ -23,14 +41,47 @@ export const useSchools = () => {
     // --- School Management ---
 
     /**
-     * Fetches a single school by its ID.
+     * Fetches a school and its public courses.
      * @param id The ID of the school to fetch.
      */
-    // const getSchoolById = (id: string) => _handleRequest(async () => {
-    //     const school = await $fetch<School>(`/api/schools/${id}`);
-    //     currentSchool.value = school;
-    //     return school;
-    // });
+    const fetchSchool = (id: string) => _handleRequest(async () => {
+        const raw = await $fetch<{ school: School; courses: RecordModel[] }>(`/api/schools/${id}`);
+        currentSchool.value = raw.school;
+        schoolCourses.value = raw.courses.map(parseCourseRecordToCard);
+        return { school: raw.school, courses: schoolCourses.value } as SchoolPageData;
+    }, 'Could not load this school.');
+
+    /**
+     * Fetches the owner-only dashboard data: the school plus every course the
+     * instructor authored in it, drafts included.
+     * @param id The ID of the school.
+     */
+    const fetchDashboard = (id: string) => _handleRequest(async () => {
+        const raw = await $fetch<{ school: School; courses: RecordModel[] }>(`/api/schools/${id}/dashboard`);
+        currentSchool.value = raw.school;
+        dashboardCourses.value = raw.courses.map(parseDashboardCourse);
+        return { school: raw.school, courses: dashboardCourses.value } as SchoolDashboardData;
+    }, 'Could not load the dashboard.');
+
+    /**
+     * Updates a school. The payload is multipart so it can carry the logo and banner files.
+     * @param id The ID of the school to update.
+     * @param data The form data holding the fields to update.
+     */
+    const updateSchool = (id: string, data: FormData) => _handleRequest(async () => {
+        const school = await $fetch<School>(`/api/schools/${id}`, {
+            method: 'PATCH',
+            body: data,
+        });
+        currentSchool.value = school;
+
+        // Keep the copy carried by the session in sync (the header and the course flow read it).
+        if (authUser.value?.school?.id === school.id) {
+            authUser.value.school = school;
+        }
+
+        return school;
+    }, 'Failed to update the school.');
 
     /**
      * Finds the school owned by the current user, or creates a new one if it doesn't exist.
@@ -42,75 +93,37 @@ export const useSchools = () => {
         });
         currentSchool.value = school;
         return school;
-    });
-
-    // --- Course Management (in the context of the current school) ---
+    }, 'Could not load your school.');
 
     /**
-     * Creates a new course and associates it with a specific school.
-     * @param schoolId The ID of the school to which the course will belong.
-     * @param courseData The data for the new course.
+     * Returns the school of the logged-in user, creating it on the fly if the session
+     * doesn't carry one yet (it is only attached on app start, not right after a login).
      */
-    // const createCourseInSchool = (schoolId: string, courseData: Omit<CourseCard, 'id'>) => _handleRequest(async () => {
-    //     // This endpoint encapsulates the logic of creating a course and linking it to the school.
-    //     const newCourse = await $fetch<RecordModel>(`/api/schools/${schoolId}/courses`, {
-    //         method: 'POST',
-    //         body: courseData,
-    //     });
-        
-    //     // Optionally, refresh the school data to include the new course
-    //     await getSchoolById(schoolId);
-        
-    //     return newCourse;
-    // });
+    const ensureUserSchool = async (): Promise<School | null> => {
+        if (authUser.value?.school?.id) {
+            return authUser.value.school as School;
+        }
 
-    /**
-     * Updates an existing course.
-     * Note: This often redirects to the main course API, but is provided here for convenience.
-     * @param courseId The ID of the course to update.
-     * @param courseData The data to update.
-     */
-    // const updateCourse = (courseId: string, courseData: Partial<CourseCard>) => _handleRequest(async () => {
-    //     // This typically proxies to the main course endpoint.
-    //     const updatedCourse = await $fetch<RecordModel>(`/api/courses/${courseId}`, {
-    //         method: 'PATCH',
-    //         body: courseData,
-    //     });
-    //     // Refresh school data if needed
-    //     if (currentSchool.value) {
-    //         await getSchoolById(currentSchool.value.id);
-    //     }
-    //     return updatedCourse;
-    // });
-
-    /**
-     * Deletes a course.
-     * Note: This also often redirects to the main course API.
-     * @param courseId The ID of the course to delete.
-     */
-    // const deleteCourse = (courseId: string) => _handleRequest(async () => {
-    //     await $fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
-    //     // Refresh school data to remove the course from the list
-    //     if (currentSchool.value) {
-    //         await getSchoolById(currentSchool.value.id);
-    //     }
-    //     return true;
-    // });
-
+        const school = await getOrCreateSchool();
+        if (school && authUser.value) {
+            authUser.value.school = school;
+        }
+        return school;
+    };
 
     return {
         // State
-        // currentSchool,
+        currentSchool,
+        schoolCourses,
+        dashboardCourses,
         pending,
-        error,
+        errorMessage,
 
         // School Methods
-        // getSchoolById,
+        fetchSchool,
+        fetchDashboard,
+        updateSchool,
         getOrCreateSchool,
-        
-        // Course Methods (scoped to a school context)
-        // createCourseInSchool,
-        // updateCourse,
-        // deleteCourse,
+        ensureUserSchool,
     };
 };

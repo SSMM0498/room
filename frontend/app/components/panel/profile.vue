@@ -27,7 +27,10 @@
 
 
             <div v-if="profileData?.school" class="mt-4">
-                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ profileData?.school.name }}</p>
+                <NuxtLink :to="localePath(`/school/${profileData.school.id}`)"
+                    class="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:underline">
+                    {{ profileData?.school.name }}
+                </NuxtLink>
                 <div v-if="schoolTags && schoolTags.length > 0" class="mt-2 flex flex-wrap gap-2">
                     <UBadge v-for="tag in schoolTags" :key="tag.id" variant="outline" color="neutral">
                         {{ tag.name }}
@@ -37,7 +40,6 @@
             </div>
 
             <div class="mt-6 flex items-center gap-2" v-if="!isOwner">
-                {{ isFollowing }}
                 <UButton v-if="isFollowing" @click="handleUnfollow" :label="$t('user_profile.following')" icon="i-heroicons-check"
                     color="neutral" variant="solid" block />
                 <UButton v-else @click="handleFollow" :label="$t('user_profile.follow')" color="primary" block />
