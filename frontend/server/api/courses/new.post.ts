@@ -1,19 +1,16 @@
 export default defineEventHandler(async (event) => {
     const pb = await createPocketBaseInstance(event);
 
-    if (event.context.authFailed) {
-        throw createError({
-            statusCode: 401,
-            statusMessage: 'Authentication required'
-        })
-    }
+    // A request without a session must be answered 401, not crash further down
+    // and surface as "Failed to create the course".
+    const user = requireAuthUser(event, pb);
 
     try {
         const body = await readBody(event);
 
         const dataToCreate = {
             ...body,
-            author: pb.authStore.record!.id,
+            author: user.id,
         };
 
         const newCourseRecord = await pb.collection('courses').create(dataToCreate, {
