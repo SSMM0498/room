@@ -195,6 +195,15 @@
                                     </template>
                                 </draggable>
                             </div>
+
+                            <div
+                                class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
+                                <UButton variant="link" color="neutral" @click="currentStep--">Back</UButton>
+                                <UButton :disabled="cursusItems.length === 0" icon="i-heroicons-rocket-launch"
+                                    @click="goToPublishStep">
+                                    Continue to publish
+                                </UButton>
+                            </div>
                         </div>
 
                         <!-- Placeholder for Live Configuration -->
@@ -236,8 +245,8 @@
                     </UCard>
                 </template>
 
-                <!-- Step 4 (Conditional): Launch Environment for 'single' type -->
-                <template #launch>
+                <!-- Step 4 (Conditional): Record the lesson in the cloud IDE, for 'single' type -->
+                <template #record>
                     <UCard>
                         <template #header>
                             <h3 class="text-lg font-semibold">{{ steps[3]!.description }}</h3>
@@ -250,15 +259,70 @@
                                 <p class="text-sm text-gray-500 mt-2">Please do not navigate away from this page.</p>
                             </div>
                             <div v-else class="flex flex-col items-start gap-4">
-                                <div class="flex items-center gap-2 text-green-500">
+                                <div v-if="hasRecording" class="flex items-center gap-2 text-green-500">
                                     <UIcon name="i-heroicons-check-circle-20-solid" class="h-6 w-6" />
-                                    <p class="font-semibold">Workspace is configured and ready to launch.</p>
+                                    <p class="font-semibold">Lesson recorded on {{ recordedOn }}.</p>
                                 </div>
-                                <UButton @click="() => handleStartWorkspace()" size="lg"
-                                    icon="i-heroicons-arrow-right-end-on-rectangle">
-                                    Start and Enter IDE
+                                <div v-else class="flex items-start gap-2 text-gray-500 dark:text-gray-400">
+                                    <UIcon name="i-heroicons-microphone" class="h-6 w-6 shrink-0" />
+                                    <p>The recorder runs inside the cloud IDE: hit <b>Record</b>, teach your lesson,
+                                        then stop it to save the recording to this course.</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <UButton variant="link" color="neutral" @click="currentStep--">Back</UButton>
+                                    <UButton size="lg" :loading="isStarting"
+                                        :icon="hasRecording ? 'i-heroicons-arrow-path' : 'i-heroicons-arrow-right-end-on-rectangle'"
+                                        @click="() => handleStartWorkspace()">
+                                        {{ hasRecording ? 'Record again' : 'Start and Enter IDE' }}
+                                    </UButton>
+                                    <UButton v-if="hasRecording" size="lg" variant="soft"
+                                        icon="i-heroicons-rocket-launch" @click="goToPublishStep">
+                                        Continue to publish
+                                    </UButton>
+                                </div>
+                            </div>
+                        </div>
+                    </UCard>
+                </template>
+
+                <!-- Final step: review what the course holds, then make it visible -->
+                <template #publish>
+                    <UCard>
+                        <template #header>
+                            <h3 class="text-lg font-semibold">Review and publish</h3>
+                        </template>
+                        <div class="space-y-6">
+                            <ul class="space-y-3">
+                                <li v-for="check in publishChecks" :key="check.label" class="flex items-start gap-2">
+                                    <UIcon
+                                        :name="check.done ? 'i-heroicons-check-circle-20-solid' : 'i-heroicons-exclamation-circle-20-solid'"
+                                        class="h-5 w-5 mt-0.5 shrink-0"
+                                        :class="check.done ? 'text-green-500' : 'text-amber-500'" />
+                                    <div>
+                                        <p class="font-medium">{{ check.label }}</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ check.detail }}</p>
+                                    </div>
+                                </li>
+                            </ul>
+
+                            <UFormField label="Visibility" name="visibility">
+                                <URadioGroup v-model="visibility" :items="visibilityOptions" />
+                            </UFormField>
+
+                            <div class="flex items-center gap-2">
+                                <UButton variant="link" color="neutral" @click="currentStep--">Back</UButton>
+                                <UButton color="neutral" variant="outline" :to="localePath('/dashboard')">
+                                    Save as draft
+                                </UButton>
+                                <UButton :loading="publishing" :disabled="!isReadyToPublish"
+                                    icon="i-heroicons-rocket-launch" @click="handlePublish">
+                                    {{ isPublished ? 'Update visibility' : 'Publish course' }}
                                 </UButton>
                             </div>
+
+                            <p v-if="!isReadyToPublish" class="text-sm text-amber-500">
+                                Finish the steps above before publishing.
+                            </p>
                         </div>
                     </UCard>
                 </template>
@@ -275,26 +339,40 @@
 
 <script setup lang="ts">
 import draggable from 'vuedraggable';
-import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import { z } from 'zod';
 import { type RecordModel } from 'pocketbase';
 import type { StepperItem } from '#ui/types';
 import type { CourseCard } from '~~/types/ui';
+import type { CourseContentRecord } from '~/composables/useCourseContent';
 
-definePageMeta({ middleware: 'auth' });
+definePageMeta({
+    middleware: 'auth',
+    alias: ['/course/new'],
+    name: 'teach-new'
+});
 
 type CourseType = 'single' | 'cursus' | 'live';
 
-const { createCourse, currentCourse, pending: coursePending, fetchUserCoursesList, userCoursesList, addCourseToCursus, removeCourseFromCursus, updateCursusOrder } = useCourses();
-const { createWorkspace, startWorkspace, isStarting } = useWorkspace();
-const { tags } = useTags();
+// A course is visible to someone other than its author under any of these statuses.
+const PUBLISHED_STATUSES = ['public', 'unlisted', 'private', 'student'];
+
+const { createCourse, updateCourse, setCourseStatus, resetCurrentCourse, fetchCourseById, currentCourse, pending: coursePending, error: courseError, fetchUserCoursesList, userCoursesList, addCourseToCursus, removeCourseFromCursus, updateCursusOrder } = useCourses();
+const { createWorkspace, startWorkspace, fetchWorkspaceByCourse, isStarting } = useWorkspace();
+const { fetchCourseContent } = useCourseContent();
+const { ensureUserSchool } = useSchools();
+const { tags, fetchTags } = useTags();
 const toast = useToast();
 const user = useAuthUser();
+const route = useRoute();
 const localePath = useLocalePath();
 
 const createdWorkspace = ref<RecordModel | null>(null);
 const workspacePending = ref(false);
 const currentStep = ref(0)
+const recording = ref<CourseContentRecord | null>(null);
+const publishing = ref(false);
+const visibility = ref<'public' | 'unlisted'>('public');
 const selectedCourseToAdd = ref<string>('');
 const cursusItems = computed({
     get() {
@@ -310,7 +388,7 @@ const cursusItems = computed({
 });
 
 const coursePreview = computed<CourseCard>(() => {
-    const selectedTags = tags.value.filter(tag => courseState.tags.includes(tag.id));
+    const selectedTags = tags.value.filter(tag => courseState.tags.some(selected => selected.value === tag.id));
 
     return {
         id: 'preview',
@@ -324,6 +402,7 @@ const coursePreview = computed<CourseCard>(() => {
             collectionId: user.value?.collectionId,
             collectionName: user.value?.collectionName
         },
+        school: user.value?.school, // Same pairing as the catalog cards
         durationFormatted: '',
         createdDate: 'Today',
         section: 'preview',
@@ -344,7 +423,7 @@ const steps = computed<StepperItem[]>(() => {
         case 'single':
             dynamicSteps = [
                 { slot: 'workspace', label: 'Workspace', icon: 'i-heroicons-computer-desktop', description: 'Configure the recording environment', disabled: !currentCourse.value },
-                { slot: 'launch', label: 'Launch', icon: 'i-heroicons-rocket-launch', description: 'Start the cloud IDE', disabled: !createdWorkspace.value }
+                { slot: 'record', label: 'Record', icon: 'i-uim:record-audio', description: 'Record your lesson in the cloud IDE', disabled: !createdWorkspace.value }
             ];
             break;
         case 'cursus':
@@ -359,10 +438,18 @@ const steps = computed<StepperItem[]>(() => {
             break;
     }
 
-    return [...baseSteps, ...dynamicSteps];
+    const publishStep: StepperItem = {
+        slot: 'publish',
+        label: 'Publish',
+        icon: 'i-heroicons-rocket-launch',
+        description: 'Review and make your course visible',
+        disabled: !currentCourse.value,
+    };
+
+    return [...baseSteps, ...dynamicSteps, publishStep];
 });
 
-const liveDate = ref(new CalendarDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()));
+const liveDate = ref(today(getLocalTimeZone()));
 const liveTime = reactive({ hours: 18, minutes: 0 });
 
 const courseState = reactive({
@@ -388,15 +475,20 @@ const liveSchema = z.object({
     // We validate the combined date in the submit handler
 }).refine(() => {
     // Combine date and time for validation
-    const combinedDate = liveDate.value.toDate(getLocalTimeZone());
-    combinedDate.setHours(liveTime.hours, liveTime.minutes, 0, 0);
-    return combinedDate.getMilliseconds() > new Date().getMilliseconds();
+    return scheduledDate().getTime() > Date.now();
 }, {
     message: "Scheduled date must be in the future.",
     path: ["scheduled_date"], // This will show the error on the date field
 });
 
 const tagOptions = computed(() => tags.value.map(tag => ({ label: tag.name, value: tag.id })));
+
+/** The live session date and time, as a single Date. */
+function scheduledDate() {
+    const combinedDate = liveDate.value.toDate(getLocalTimeZone());
+    combinedDate.setHours(liveTime.hours, liveTime.minutes, 0, 0);
+    return combinedDate;
+}
 
 function handleSelectType(type: CourseType) {
     courseState.type = type;
@@ -406,37 +498,21 @@ function handleSelectType(type: CourseType) {
     }
 }
 
-function handleFinishCreation() {
-    if (currentCourse.value?.slug) {
-        toast.add({ title: 'Course creation complete!', color: 'success', icon: 'i-heroicons-party-popper' });
-        navigateTo(`/catalog/course/${currentCourse.value.slug}`);
-    } else {
-        toast.add({ title: 'Could not find course to navigate to.', color: 'error' });
-    }
-}
-
 async function handleSaveLiveSession() {
     if (!currentCourse.value) return;
 
-    // 1. Combine date and time into a single Date object for saving
-    const combinedDate = liveDate.value.toDate(getLocalTimeZone());
-    combinedDate.setHours(liveTime.hours, liveTime.minutes, 0, 0);
-    courseState.scheduled_date = combinedDate;
+    courseState.scheduled_date = scheduledDate();
 
-    // 2. Persist the data using the updateCourse function
-    // const result = await updateCourse(currentCourse.value.id, {
-    //     scheduled_date: courseState.scheduled_date,
-    //     max_participants: courseState.max_participants,
-    //     duration: courseState.duration,
-    // });
+    // The live-only fields (scheduled_date, max_participants) are not part of the courses
+    // schema yet, so they are kept in the page state until the collection gains them.
+    const result = await updateCourse(currentCourse.value.id, { duration: courseState.duration * 60 });
 
-    handleFinishCreation();
-    // 3. If successful, finish the process
-    // if (result) {
-    //     handleFinishCreation();
-    // } else {
-    //     toast.add({ title: 'Failed to save live session details.', color: 'red' });
-    // }
+    if (!result) {
+        toast.add({ title: 'Failed to save live session details.', color: 'error' });
+        return;
+    }
+
+    goToPublishStep();
 }
 
 function removeTag(e: any, itemLabel: string) {
@@ -446,23 +522,43 @@ function removeTag(e: any, itemLabel: string) {
 }
 
 async function handleCreateCourse() {
-    const result = await createCourse({
+    const details = {
         title: courseState.title,
         description: courseState.description,
         tags: courseState.tags.map((t) => t.value),
         type: courseState.type as string,
-        school: user.value!.school.id
-    });
-    if (result) {
+    };
+
+    if (currentCourse.value) {
+        // Editing an existing draft: going back and forth must not create a second course.
+        const updated = await updateCourse(currentCourse.value.id, details);
+        if (!updated) {
+            toast.add({ title: 'Error saving the course.', color: 'error' });
+            return;
+        }
+        // Reload so the cursus items and expanded relations stay available.
+        await fetchCourseById(currentCourse.value.id);
+        toast.add({ title: 'Course details saved.', color: 'success' });
+    } else {
+        const school = await ensureUserSchool();
+        if (!school) {
+            toast.add({ title: 'Could not find your school.', description: 'Please try again.', color: 'error' });
+            return;
+        }
+
+        const result = await createCourse({ ...details, school: school.id });
+        if (!result) {
+            toast.add({ title: 'Error creating course.', color: 'error' });
+            return;
+        }
         workspaceState.name = result.slug;
         toast.add({ title: 'Step 1 Complete: Course created!', color: 'success' });
-        if (courseState.type === 'cursus') {
-            await fetchUserCoursesList('single');
-        }
-        currentStep.value = 2
-    } else {
-        toast.add({ title: 'Error creating course.', color: 'error' });
     }
+
+    if (courseState.type === 'cursus') {
+        await fetchUserCoursesList('single');
+    }
+    currentStep.value = 2
 }
 
 const userCourseOptions = computed(() => {
@@ -537,4 +633,152 @@ async function handleStartWorkspace(id?: string) {
         toast.add({ title: 'Error starting workspace.', description: 'Please check the logs and try again.', color: 'error' });
     }
 }
+
+// --- Publishing ---
+
+const hasRecording = computed(() => !!recording.value);
+const recordedOn = computed(() => recording.value
+    ? new Date(recording.value.created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '');
+const isPublished = computed(() => PUBLISHED_STATUSES.includes(currentCourse.value?.status ?? ''));
+const publishStepIndex = computed(() => steps.value.length - 1);
+
+const visibilityOptions = [
+    { label: 'Public', value: 'public', description: 'Listed in the catalog and on your school page.' },
+    { label: 'Unlisted', value: 'unlisted', description: 'Only reachable by people who have the link.' },
+];
+
+/** What the course still needs before it can be published. */
+const publishChecks = computed(() => {
+    const checks = [{
+        label: 'Course details',
+        detail: `${courseState.title || 'Untitled'} · ${courseState.tags.length} tag${courseState.tags.length === 1 ? '' : 's'}`,
+        done: !!currentCourse.value && !!courseState.title && !!courseState.description && courseState.tags.length > 0,
+    }];
+
+    if (courseState.type === 'single') {
+        checks.push({
+            label: 'Lesson recorded',
+            detail: hasRecording.value ? `Recorded on ${recordedOn.value}` : 'Record your lesson in the cloud IDE first.',
+            done: hasRecording.value,
+        });
+    }
+
+    if (courseState.type === 'cursus') {
+        const count = cursusItems.value.length;
+        checks.push({
+            label: 'At least one course in the path',
+            detail: `${count} course${count === 1 ? '' : 's'} added`,
+            done: count > 0,
+        });
+    }
+
+    if (courseState.type === 'live') {
+        checks.push({
+            label: 'Session scheduled',
+            detail: scheduledDate().toLocaleString('en-US'),
+            done: scheduledDate().getTime() > Date.now(),
+        });
+    }
+
+    return checks;
+});
+
+const isReadyToPublish = computed(() => publishChecks.value.every(check => check.done));
+
+function goToPublishStep() {
+    currentStep.value = publishStepIndex.value;
+}
+
+/** Loads the recording saved for the current course, if any. */
+async function refreshRecording() {
+    if (!currentCourse.value || courseState.type !== 'single') {
+        recording.value = null;
+        return;
+    }
+    recording.value = await fetchCourseContent(currentCourse.value.id);
+}
+
+async function handlePublish() {
+    if (!currentCourse.value) return;
+
+    publishing.value = true;
+    const result = await setCourseStatus(currentCourse.value.id, visibility.value);
+    publishing.value = false;
+
+    if (!result) {
+        toast.add({
+            title: 'Could not publish the course',
+            description: getApiErrorMessage(courseError.value, 'Please try again.'),
+            color: 'error',
+            icon: 'i-heroicons-exclamation-triangle',
+        });
+        return;
+    }
+
+    toast.add({
+        title: isPublished.value ? 'Visibility updated!' : 'Course published!',
+        color: 'success',
+        icon: 'i-heroicons-rocket-launch',
+    });
+    await navigateTo(localePath(`/catalog/course/${currentCourse.value.slug}`));
+}
+
+// --- Resuming an existing draft (?course=<id>) ---
+
+/** Where to drop the instructor when they come back to a course they already started. */
+function resolveResumeStep() {
+    if (route.query.step === 'publish') return publishStepIndex.value;
+    if (courseState.type !== 'single') return 2;
+    if (!createdWorkspace.value) return 2;
+    return hasRecording.value ? publishStepIndex.value : 3;
+}
+
+async function resumeExistingCourse(courseId: string) {
+    const course = await fetchCourseById(courseId);
+
+    if (!course) {
+        toast.add({ title: 'Course not found.', color: 'error' });
+        return;
+    }
+
+    if (course.author !== user.value?.id) {
+        toast.add({ title: 'This course is not yours.', color: 'error' });
+        await navigateTo(localePath('/dashboard'));
+        return;
+    }
+
+    courseState.title = course.title;
+    courseState.description = course.description;
+    courseState.type = course.type as CourseType;
+    courseState.tags = (course.expand?.tags ?? []).map((tag: RecordModel) => ({ label: tag.name, value: tag.id }));
+    workspaceState.name = course.slug;
+    if (course.duration) courseState.duration = Math.round(course.duration / 60);
+    if (course.status === 'unlisted') visibility.value = 'unlisted';
+
+    if (course.type === 'single') {
+        const workspace = await fetchWorkspaceByCourse(course.id);
+        if (workspace) {
+            createdWorkspace.value = workspace;
+            workspaceState.language = workspace.language;
+        }
+        await refreshRecording();
+    } else if (course.type === 'cursus') {
+        await fetchUserCoursesList('single');
+    }
+
+    currentStep.value = resolveResumeStep();
+}
+
+onMounted(async () => {
+    await fetchTags();
+
+    const resumedCourseId = route.query.course as string | undefined;
+    if (resumedCourseId) {
+        await resumeExistingCourse(resumedCourseId);
+    } else {
+        // The course state is shared app-wide; a fresh flow must not inherit the previous course.
+        resetCurrentCourse();
+    }
+});
 </script>

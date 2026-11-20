@@ -67,6 +67,7 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const localePath = useLocalePath();
 
 const { currentCourse, fetchCourseBySlug } = useCourses();
 const {
@@ -164,11 +165,21 @@ onMounted(() => {
 
       if (result) {
         console.log('✅ Upload completed successfully');
+        const recordedCourseId = currentCourse.value.id;
         toast.add({
           title: 'Recording Saved',
           description: 'Your lesson has been saved successfully',
           color: 'success',
-          icon: 'i-heroicons-check-circle'
+          icon: 'i-heroicons-check-circle',
+          actions: [{
+            label: 'Continue to publish',
+            color: 'neutral',
+            variant: 'outline',
+            onClick: () => navigateTo(localePath({
+              path: '/teach/new',
+              query: { course: recordedCourseId, step: 'publish' },
+            })),
+          }],
         });
         return true;
       } else {

@@ -36,9 +36,15 @@ export const useWorkspace = () => {
         method: 'POST',
         body: { workspaceId },
       });
-      // After a successful start, you might want to refetch the workspace to get the 'active' status
-      const updatedWorkspace = await $fetch<RecordModel>(`/api/workspaces/${workspaceId}`); // Assuming you have a get-by-id endpoint
-      currentWorkspace.value = updatedWorkspace;
+
+      // Refresh the record to pick up the new status. The workspace is already started at
+      // this point, so a failure here must not be reported as a failed start.
+      try {
+        currentWorkspace.value = await $fetch<RecordModel>(`/api/workspace/${workspaceId}`);
+      } catch (refreshError) {
+        console.warn('[useWorkspace] Workspace started but could not be refreshed:', refreshError);
+      }
+
       return response;
     } catch (err: any) {
       error.value = err;

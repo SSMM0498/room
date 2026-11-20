@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
         };
 
         const newCourseRecord = await pb.collection('courses').create(dataToCreate, {
-            expand: 'author,tags',
+            expand: 'author,tags,school',
         });
 
         setResponseStatus(event, 201);

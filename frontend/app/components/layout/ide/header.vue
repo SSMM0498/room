@@ -70,6 +70,13 @@
       <!-- Go to Player -->
       <UButton size="xs" class="text-gray-700" icon="i-heroicons:play-circle" variant="link"
         :to="localePath(`/learn/${currentCourse?.slug}_0`)" />
+
+      <!-- Back to the creation flow, on the publish step -->
+      <UButton v-if="currentCourse && !recording.isRecording.value" size="xs" class="text-gray-700"
+        icon="i-heroicons:rocket-launch" variant="link"
+        :to="localePath({ path: '/teach/new', query: { course: currentCourse.id, step: 'publish' } })">
+        Publish
+      </UButton>
     </nav>
     <div class="flex items-center justify-center">
       <div class="relative">
