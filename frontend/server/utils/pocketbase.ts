@@ -1,6 +1,28 @@
-import PocketBase from 'pocketbase';
+import PocketBase, { ClientResponseError } from 'pocketbase';
+import type { RecordModel } from 'pocketbase';
 import { type H3Event } from 'h3';
 import { useRuntimeConfig } from '#imports';
+
+/**
+ * True when a PocketBase call failed because nothing matched.
+ *
+ * Do not test `error.response.status`: when `getFirstListItem` finds no record it throws a
+ * synthetic error whose body carries `code` instead of `status`, so that check silently misses
+ * the most common "not found" of all. The top-level `status` is set in both cases.
+ */
+export const isNotFoundError = (error: unknown): boolean =>
+  error instanceof ClientResponseError && error.status === 404;
+
+/**
+ * Returns the authenticated user record, or throws a 401 if the session is missing or expired.
+ */
+export const requireAuthUser = (event: H3Event, pb: PocketBase): RecordModel => {
+  const user = pb.authStore.record;
+  if (event.context.authFailed || !pb.authStore.isValid || !user) {
+    throw createError({ statusCode: 401, statusMessage: 'Authentication required' });
+  }
+  return user;
+};
 
 export const createPocketBaseInstance = async (event: H3Event) => {
   const config = useRuntimeConfig();

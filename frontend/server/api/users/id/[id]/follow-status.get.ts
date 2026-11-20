@@ -31,9 +31,9 @@ export default defineEventHandler(async (event) => {
                 );
                 isFollowing = true;
                 followRecordId = followRecord.id;
-            } catch (error: any) {
-                if (error.response?.status !== 404) {
-                }
+            } catch (error) {
+                // No follow record simply means they are not following yet.
+                if (!isNotFoundError(error)) throw error;
             }
         }
 
