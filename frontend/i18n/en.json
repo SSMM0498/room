@@ -1,5 +1,40 @@
 {
   "search": "Seach",
+  "filters": {
+    "title": "Filters",
+    "reset": "Reset filters",
+    "clear_search": "Clear the search",
+    "no_results": "No course matches your filters.",
+    "type": {
+      "label": "Room Type",
+      "all": "All",
+      "cursus": "Cursus",
+      "live": "Live",
+      "single": "Single"
+    },
+    "price": {
+      "label": "Pricing",
+      "all": "All",
+      "free": "Free",
+      "under5": "<5$",
+      "under10": "<10$",
+      "under20": "<20$"
+    },
+    "duration": {
+      "label": "Duration",
+      "all": "All",
+      "short": "Short",
+      "medium": "Medium",
+      "long": "Long"
+    },
+    "sort": {
+      "label": "Sort by",
+      "relevance": "Relevance",
+      "recent": "Upload date",
+      "participation": "Participation",
+      "rating": "Rating"
+    }
+  },
   "catalog": "Catalog",
   "about": "About",
   "privacy-policy": "Privacy Policy",
@@ -41,6 +76,10 @@
   "all": "See all",
   "overview": "Overview",
   "course-content": "Course Content",
+  "cursus": {
+    "count": "No course | 1 course | {count} courses",
+    "empty": "This cursus does not group any course yet."
+  },
   "feedback": "Feedback",
   "welcome": "Welcome 👋!",
   "quick-start": "Quick start",
@@ -67,6 +106,7 @@
   },
   "profile": "Profile",
   "student_dashboard": "Student Dashboard",
+  "my_school": "My School",
   "instructor_dashboard": "Instructor Dashboard",
   "user_profile": {
     "edit_profile": "Edit Profile",

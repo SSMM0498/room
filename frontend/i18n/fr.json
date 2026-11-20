@@ -1,5 +1,40 @@
 {
   "search": "Rechercher",
+  "filters": {
+    "title": "Filtres",
+    "reset": "Réinitialiser les filtres",
+    "clear_search": "Effacer la recherche",
+    "no_results": "Aucun cours ne correspond à vos filtres.",
+    "type": {
+      "label": "Type de room",
+      "all": "Tous",
+      "cursus": "Cursus",
+      "live": "Live",
+      "single": "Unique"
+    },
+    "price": {
+      "label": "Prix",
+      "all": "Tous",
+      "free": "Gratuit",
+      "under5": "<5$",
+      "under10": "<10$",
+      "under20": "<20$"
+    },
+    "duration": {
+      "label": "Durée",
+      "all": "Toutes",
+      "short": "Courte",
+      "medium": "Moyenne",
+      "long": "Longue"
+    },
+    "sort": {
+      "label": "Trier par",
+      "relevance": "Pertinence",
+      "recent": "Date de publication",
+      "participation": "Participation",
+      "rating": "Note"
+    }
+  },
   "catalog": "Catalogue",
   "about": "À propos",
   "privacy-policy": "Politique de confidentialité",
@@ -41,6 +76,10 @@
   "all": "Voir tous",
   "overview": "Aperçu",
   "course-content": "Contenu du cours",
+  "cursus": {
+    "count": "Aucun cours | 1 cours | {count} cours",
+    "empty": "Ce cursus ne regroupe encore aucun cours."
+  },
   "feedback": "Retour",
   "welcome": "Bienvenue 👋!",
   "quick-start": "Démarrage rapide",
@@ -67,6 +106,7 @@
   },
   "profile": "Profil",
   "student_dashboard": "Dashboard étudiant",
+  "my_school": "Mon école",
   "instructor_dashboard": "Dashboard instructeur",
   "user_profile": {
     "edit_profile": "Modifier le profil",
