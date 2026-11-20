@@ -43,10 +43,11 @@ export async function copyMinioFolder(source: string, destination: string) {
 export const workspaceS3Path = (workspaceId: string): string => `workspaces/${workspaceId}`;
 
 /**
- * Gives a workspace its starting files: the template of its language.
+ * Gives a workspace its starting files: those of `templates/<template>/`, where
+ * the template is its environment (or its language tag when it has none).
  * A workspace that already has files is left untouched.
  */
-export async function seedWorkspaceFiles(workspaceId: string, languageName: string) {
+export async function seedWorkspaceFiles(workspaceId: string, template: string) {
     const minioClient = createMinioClient();
     const bucketName = useRuntimeConfig().MINIO_BUCKET;
     const destination = `${workspaceS3Path(workspaceId)}/`;
@@ -54,5 +55,5 @@ export async function seedWorkspaceFiles(workspaceId: string, languageName: stri
     for await (const _existing of minioClient.listObjectsV2(bucketName, destination, true)) return;
 
     // Trailing slashes keep `templates/go/` from also matching `templates/golang/`.
-    await copyMinioFolder(`templates/${languageName.toLowerCase()}/`, destination);
+    await copyMinioFolder(`templates/${template.toLowerCase()}/`, destination);
 }

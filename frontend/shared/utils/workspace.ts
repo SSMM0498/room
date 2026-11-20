@@ -39,3 +39,24 @@ export const subdomainOfHost = (hostname: string, domain: string): string | null
     const subdomain = hostname.slice(0, -(domain.length + 1));
     return isWorkspaceSubdomain(subdomain) ? subdomain : null;
 };
+
+/**
+ * Environments a workspace can run in. Each one has its own worker image with
+ * the toolchain already installed (`docker/environments/<id>/`, built by
+ * `make build-environments`) and its starter files in `templates/<id>/`.
+ */
+export const WORKSPACE_ENVIRONMENTS = [
+    { id: 'golang', label: 'Go' },
+] as const;
+
+export type WorkspaceEnvironment = typeof WORKSPACE_ENVIRONMENTS[number]['id'];
+
+export const isWorkspaceEnvironment = (value: unknown): value is WorkspaceEnvironment =>
+    WORKSPACE_ENVIRONMENTS.some(environment => environment.id === value);
+
+/**
+ * Image of the worker container of a workspace. A workspace without an
+ * environment runs the generic image, which only has a shell and Git.
+ */
+export const workerImage = (environment: unknown): string =>
+    isWorkspaceEnvironment(environment) ? `mrsedok/worker-${environment}:latest` : 'mrsedok/worker-image:latest';

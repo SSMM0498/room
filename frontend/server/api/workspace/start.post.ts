@@ -56,14 +56,14 @@ export default defineEventHandler(async (event) => {
     // The pod is hydrated from MinIO. A workspace that has no files there yet still
     // starts, with an empty folder, so a storage problem does not block the IDE.
     try {
-        await seedWorkspaceFiles(workspace.id, workspace.expand?.language?.name);
+        await seedWorkspaceFiles(workspace.id, workspace.environment || workspace.expand?.language?.name);
     } catch (error: any) {
         console.warn(`[WORKSPACE START] Could not prepare the files of ${k8sName}:`, error.message || error.code || error);
     }
 
     try {
         await deleteWorkspaceResources(k8sName);
-        await deployWorkspace(k8sName, subdomain);
+        await deployWorkspace(k8sName, subdomain, workspace.environment);
 
         const url = `ws://${subdomain}.${config.public.WORKSPACE_DOMAIN}/ws`;
         console.log(`[WORKSPACE START] ✅ ${k8sName} is running at ${url}`);

@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    let { name, language, course } = await readBody(event);
+    let { name, language, course, environment } = await readBody(event);
     const ownerId = pb.authStore.record?.id;
 
     if (config.ENV === 'DEV') {
@@ -25,6 +25,11 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, statusMessage: 'Missing required fields: name, language.' });
     }
 
+    // Optional: without an environment the workspace runs the generic worker image.
+    if (environment && !isWorkspaceEnvironment(environment)) {
+        throw createError({ statusCode: 400, statusMessage: `Unknown environment: ${environment}.` });
+    }
+
     try {
         const newWorkspaceData = {
             name,
@@ -32,6 +37,7 @@ export default defineEventHandler(async (event) => {
             owner: ownerId,
             status: 'sleeping',
             language,
+            environment: environment || '',
         };
         const newWorkspaceRecord = await pb.collection('workspaces').create(newWorkspaceData, {
             expand: 'language',
@@ -40,9 +46,11 @@ export default defineEventHandler(async (event) => {
 
         // Not awaited: the workspace is usable without its template, and it is
         // seeded again when it starts if this copy did not go through.
-        const languageTag = newWorkspaceRecord.expand!.language;
-        seedWorkspaceFiles(newWorkspaceRecord.id, languageTag.name)
-            .then(() => console.log(`[MINIO] Seeded ${workspaceS3Path(newWorkspaceRecord.id)} with the ${languageTag.name} template`))
+        // The starter files are those of the environment, or of the language tag
+        // for a workspace that has none.
+        const template = environment || newWorkspaceRecord.expand!.language.name;
+        seedWorkspaceFiles(newWorkspaceRecord.id, template)
+            .then(() => console.log(`[MINIO] Seeded ${workspaceS3Path(newWorkspaceRecord.id)} with the ${template} template`))
             .catch(error => console.error(`[MINIO] Could not seed workspace ${newWorkspaceRecord.id}:`, error.message || error.code || error));
 
         setResponseStatus(event, 201);

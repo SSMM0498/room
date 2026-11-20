@@ -8,9 +8,10 @@ export const useWorkspace = () => {
   const error = ref<Error | null>(null);
 
   /**
-   * Creates a new workspace record in PocketBase and copies the MinIO template.
+   * Creates a new workspace record in PocketBase and copies its starter files.
+   * `environment` picks the worker image and the starter files (see WORKSPACE_ENVIRONMENTS).
    */
-  const createWorkspace = async (data: { name: string; language: string, course: string }) => {
+  const createWorkspace = async (data: { name: string; language: string, course: string, environment?: string }) => {
     error.value = null;
     try {
       const newWorkspace = await $fetch<RecordModel>('/api/workspace', {

@@ -74,7 +74,7 @@ function relaxForLocalCluster(manifest: any): void {
  * Builds the manifests of a workspace from the `docker/service.yaml` template,
  * whose placeholders are documented at the top of that file.
  */
-async function renderWorkspaceManifests(k8sName: string, subdomain: string): Promise<any[]> {
+async function renderWorkspaceManifests(k8sName: string, subdomain: string, environment: unknown): Promise<any[]> {
     const templatePath = path.join(process.cwd(), '..', 'docker', 'service.yaml');
     const domain = useRuntimeConfig().public.WORKSPACE_DOMAIN;
 
@@ -90,6 +90,14 @@ async function renderWorkspaceManifests(k8sName: string, subdomain: string): Pro
     } catch (error) {
         console.error(`[K8S] Error reading or parsing YAML file at ${templatePath}:`, error);
         throw new Error('Failed to process Kubernetes template.');
+    }
+
+    // The template names the generic worker image; a workspace with an
+    // environment runs the image that has its toolchain installed.
+    for (const manifest of manifests) {
+        const worker = manifest.kind === 'Deployment'
+            && manifest.spec.template.spec.containers.find((container: any) => container.name === 'worker');
+        if (worker) worker.image = workerImage(environment);
     }
 
     if (isLocalCluster()) manifests.forEach(relaxForLocalCluster);
@@ -167,12 +175,12 @@ export async function isWorkspaceRunning(k8sName: string): Promise<boolean> {
 }
 
 /**
- * Creates the resources of a workspace, reachable on `<subdomain>.<domain>`, and
- * waits until its pod accepts connections, so the IDE can connect as soon as
- * this resolves.
+ * Creates the resources of a workspace, reachable on `<subdomain>.<domain>` and
+ * running the worker image of its environment, then waits until its pod accepts
+ * connections, so the IDE can connect as soon as this resolves.
  */
-export async function deployWorkspace(k8sName: string, subdomain: string): Promise<void> {
-    const manifests = await renderWorkspaceManifests(k8sName, subdomain);
+export async function deployWorkspace(k8sName: string, subdomain: string, environment?: unknown): Promise<void> {
+    const manifests = await renderWorkspaceManifests(k8sName, subdomain, environment);
     const { appsV1Api, coreV1Api, networkingV1Api, batchV1Api } = createK8sClients();
 
     for (const manifest of manifests) {

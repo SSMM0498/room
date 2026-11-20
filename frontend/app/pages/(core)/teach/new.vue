@@ -131,6 +131,11 @@
                                     </USelectMenu>
                                 </UFormField>
                             </div>
+                            <UFormField label="Environment" name="environment"
+                                help="The tools installed in the workspace. Without an environment it only has a shell and Git.">
+                                <USelect class="w-full" v-model="workspaceState.environment" :items="environmentOptions"
+                                    value-key="value" size="lg" />
+                            </UFormField>
                             <div class="flex w-full items-center justify-start gap-2">
                                 <UButton class="w-1/6" @click="(e: MouseEvent) => { currentStep-- }" variant="link"
                                     color="neutral">
@@ -603,13 +608,26 @@ async function handleRemoveItemFromCursus(itemId: string) {
 const workspaceSchema = z.object({
     name: z.string(),
     language: z.string({ required_error: 'Primary language is required' }),
+    environment: z.string().optional(),
 });
-const workspaceState = reactive({ name: '', language: '' });
+
+// A select cannot hold an empty value, so "no environment" has a name of its own.
+const NO_ENVIRONMENT = 'none';
+const environmentOptions = [
+    { label: 'None (shell and Git only)', value: NO_ENVIRONMENT },
+    ...WORKSPACE_ENVIRONMENTS.map(environment => ({ label: environment.label, value: environment.id as string })),
+];
+const workspaceState = reactive({ name: '', language: '', environment: NO_ENVIRONMENT });
 
 async function handleCreateWorkspace() {
     workspacePending.value = true;
     if (currentCourse.value) {
-        const result = await createWorkspace({ course: currentCourse.value.id, name: workspaceState.name, language: workspaceState.language });
+        const result = await createWorkspace({
+            course: currentCourse.value.id,
+            name: workspaceState.name,
+            language: workspaceState.language,
+            environment: workspaceState.environment === NO_ENVIRONMENT ? undefined : workspaceState.environment,
+        });
         if (result) {
             createdWorkspace.value = result;
             toast.add({ title: 'Step 2 Complete: Workspace configured!', color: 'success' });
@@ -761,6 +779,7 @@ async function resumeExistingCourse(courseId: string) {
         if (workspace) {
             createdWorkspace.value = workspace;
             workspaceState.language = workspace.language;
+            workspaceState.environment = workspace.environment || NO_ENVIRONMENT;
         }
         await refreshRecording();
     } else if (course.type === 'cursus') {

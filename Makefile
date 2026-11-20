@@ -1,8 +1,8 @@
-.PHONY: build build-frontend build-backend build-bridge build-worker \
+.PHONY: build build-frontend build-backend build-bridge build-worker build-environments \
 	       dev dev-frontend dev-backend \
 	       dev-k8s k8s-setup k8s-check k8s-storage k8s-clean \
 	       test test-frontend test-backend \
-	       deploy deploy-backend deploy-bridge deploy-worker \
+	       deploy deploy-backend deploy-bridge deploy-worker deploy-environments \
 	       clean clean-frontend clean-bridge clean-worker \
 	       help
 
@@ -19,6 +19,15 @@ build-bridge:
 
 build-worker:
 		docker build --progress=plain -t mrsedok/worker-image ./docker/worker/
+
+# One worker image per workspace environment (docker/environments/<name>/): the
+# language's official image plus the worker binary of the generic image above.
+ENVIRONMENTS = golang
+
+build-environments: build-worker
+		@for environment in $(ENVIRONMENTS); do \
+			docker build --progress=plain -t mrsedok/worker-$$environment ./docker/environments/$$environment/ || exit 1; \
+		done
 
 dev: dev-frontend dev-backend
 
@@ -54,7 +63,7 @@ k8s-check:
 
 # Installs what every workspace pod relies on: the bridge and worker images and
 # the ingress controller that routes the sub-domains.
-k8s-setup: k8s-check build-bridge build-worker
+k8s-setup: k8s-check build-bridge build-worker build-environments
 		$(KUBECTL) create namespace ingress-nginx --dry-run=client -o yaml | $(KUBECTL) apply -f -
 		$(KUBECTL) apply -f docker/ingress-controller.yaml
 		$(KUBECTL) wait --namespace ingress-nginx --for=condition=Available deployment/ingress-nginx-controller --timeout=300s
@@ -90,7 +99,7 @@ test-frontend:
 test-backend:
 		cd backend && yarn test
 
-deploy: deploy-backend deploy-bridge deploy-worker
+deploy: deploy-backend deploy-bridge deploy-worker deploy-environments
 
 deploy-backend:
 		kubectl apply -f kubernetes/deployments/backend.yaml
@@ -101,6 +110,11 @@ deploy-bridge:
 
 deploy-worker:
 		docker push mrsedok/worker-image:latest
+
+deploy-environments:
+		@for environment in $(ENVIRONMENTS); do \
+			docker push mrsedok/worker-$$environment:latest || exit 1; \
+		done
 
 run-bridge:
 		docker rm bridge ; docker run -it -p 2024:2024 --name bridge mrsedok/bridge-image:latest
@@ -133,6 +147,7 @@ help:
 	   @echo " + dev-bridge: Run bridge locally (requires worker running)"
 	   @echo " + dev-worker: Run worker locally using local workspace folder"
 	   @echo " + dev-docker: Run bridge and worker in Docker with local workspace mounted"
+	   @echo " + build-environments: Build one worker image per workspace environment (docker/environments/)"
 	   @echo " + k8s-setup: Prepare the local Kubernetes cluster (images, ingress) for per-workspace pods"
 	   @echo " + k8s-storage: Start the object storage (SeaweedFS) and upload the workspace templates"
 	   @echo " + dev-k8s: Start the frontend with every workspace running in its own local pod"

@@ -8,6 +8,10 @@
 #   workspace-subdomain   the workspace's sub-domain (its name, i.e. the course slug)
 #   workspace-domain      localhost on a local cluster, the public domain otherwise
 #
+# It also sets the image of the worker container to the one of the workspace's
+# environment (mrsedok/worker-<environment>, see docker/environments/); the generic
+# image named here is what a workspace without an environment runs.
+#
 # On a local cluster it also lowers the resource requests so several workspaces
 # fit on a laptop; what is written here is the production shape.
 #

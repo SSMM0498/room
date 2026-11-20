@@ -1,0 +1,6 @@
+[run]
+  command = "go run ."
+
+[preview]
+  command = "go run ."
+  url = "http://localhost:8080"
