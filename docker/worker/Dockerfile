@@ -21,12 +21,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/worker-server ./cmd/worker
 # Final Production Image
 FROM alpine:latest
 
-# Install Git for version control
-RUN apk add --no-cache git
+# Install Git for version control, and Bash because terminals are started with it
+RUN apk add --no-cache git bash
 
-# Configure Git with default user for commits
-RUN git config --global user.name "Room Recorder" && \
-    git config --global user.email "recorder@room.dev"
+# Configure Git for every user of the image (--system): the worker runs as
+# roomuser, which a --global setting made here as root would not reach.
+# /workspace is a volume owned by root, so Git must also be told to trust it.
+RUN git config --system user.name "Room Recorder" && \
+    git config --system user.email "recorder@room.dev" && \
+    git config --system --add safe.directory /workspace
 
 # It's a good practice to run as a non-root user.
 # We create a user and group specifically for our application.
@@ -48,9 +51,10 @@ WORKDIR /
 # Switch to the non-root user
 USER roomuser
 
-# Expose the port that the Worker WebSocket server will listen on.
+# Expose the ports the Worker listens on: 3002 for its WebSocket server and
+# 2025 for the preview proxy (only started when PREVIEW_PUBLIC_URL is set).
 # This is documentation for the user and for tools like Kubernetes.
-EXPOSE 3002
+EXPOSE 3002 2025
 
 # The command that will be executed when the container starts.
 # It simply runs our compiled application.

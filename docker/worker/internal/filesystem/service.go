@@ -57,7 +57,9 @@ func (s *Service) ReadFolder(relativePath string) ([]types.DirectoryEntry, error
 		return nil, err
 	}
 
-	var dirEntries []types.DirectoryEntry
+	// Not a nil slice: an empty folder must reach the IDE as [] and not as null,
+	// which the file explorer cannot sort.
+	dirEntries := []types.DirectoryEntry{}
 	for _, entry := range entries {
 		// Filter out .git directory
 		if entry.Name() == ".git" {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"worker/internal/filesystem"
+	"worker/internal/preview"
 	"worker/internal/terminal"
 	"worker/internal/watcher"
 	"worker/internal/ws"
@@ -61,7 +62,17 @@ func main() {
 	})
 	
 	defer watchSvc.Close()
-	
+
+	// Inside a pod the learner's app is only reachable through this proxy.
+	if preview.Enabled() {
+		go func() {
+			log.Printf("WORKER: Starting preview proxy on %s...", preview.ProxyAddr)
+			if err := http.ListenAndServe(preview.ProxyAddr, preview.NewProxy(workspaceDir)); err != nil {
+				log.Printf("WORKER: Preview proxy stopped: %v", err)
+			}
+		}()
+	}
+
 	log.Println("WORKER: Starting ws server on :3002...")
 	log.Println("[BRIDGE] Go to http://localhost:3002/health...")
 	err = http.ListenAndServe(":3002", nil)

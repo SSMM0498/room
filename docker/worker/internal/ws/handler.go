@@ -8,6 +8,7 @@ import (
 	"strings"
 	"worker/internal/config"
 	"worker/internal/filesystem"
+	"worker/internal/preview"
 	"worker/internal/terminal"
 	"worker/internal/watcher"
 	"worker/pkg/types"
@@ -526,8 +527,12 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 				return
 			}
 
+			// Inside a pod the app's own address is not reachable from the browser,
+			// so the mini-browser is pointed at the preview proxy instead.
+			previewURL := preview.PublicURL(previewCfg.URL)
+
 			// Send initial response with preview info and terminal ID
-			log.Printf("[WORKER] Sending command-result-preview event: ackID=%s, terminalId=%s, command=%s, url=%s", ackID, terminalID, previewCfg.Command, previewCfg.URL)
+			log.Printf("[WORKER] Sending command-result-preview event: ackID=%s, terminalId=%s, command=%s, url=%s", ackID, terminalID, previewCfg.Command, previewURL)
 			c.Send <- &types.Message{
 				Event: "command-result-preview",
 				Data: map[string]interface{}{
@@ -535,7 +540,7 @@ func (h *Handler) routeMessage(client *Client, msg types.Message) {
 					"command":    previewCfg.Command,
 					"terminalId": terminalID,
 					"preview":    "Preview command started: " + previewCfg.Command,
-					"url":        previewCfg.URL,
+					"url":        previewURL,
 				},
 			}
 

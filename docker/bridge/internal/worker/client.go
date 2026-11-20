@@ -221,7 +221,10 @@ func (c *Client) hydrateWorkspace() {
 
 	recordID := strings.TrimPrefix(workspaceID, "ws-")
 	s3Path := "workspaces/" + recordID
-	bucketName := "room" // Should be from config
+	bucketName := os.Getenv("MINIO_BUCKET")
+	if bucketName == "" {
+		bucketName = "room"
+	}
 
 	objectCh := minioClient.ListObjects(context.Background(), bucketName, minio.ListObjectsOptions{
 		Prefix:    s3Path,
