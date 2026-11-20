@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, statusMessage: 'Forbidden: You do not own this workspace.' });
     }
 
-    return workspace;
+    return await withLiveStatus(pb, workspace);
   } catch (error) {
     if (isNotFoundError(error)) {
       throw createError({ statusCode: 404, statusMessage: 'Workspace not found.' });

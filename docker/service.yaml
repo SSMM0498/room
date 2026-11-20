@@ -1,9 +1,27 @@
+# Template of the resources backing one workspace: a pod running the worker and
+# its bridge, a Service, and an Ingress giving the workspace its own sub-domain.
+#
+# It is not applied as is. frontend/server/utils/kubernetes.ts substitutes these
+# placeholders before creating the resources (they are written as valid
+# Kubernetes names so that editors and `kubectl --dry-run` accept the file):
+#   service-name          the workspace's Kubernetes name (ws-<workspace id>)
+#   workspace-subdomain   the workspace's sub-domain (its name, i.e. the course slug)
+#   workspace-domain      localhost on a local cluster, the public domain otherwise
+#
+# On a local cluster it also lowers the resource requests so several workspaces
+# fit on a laptop; what is written here is the production shape.
+#
+# Routes of a workspace:
+#   workspace-subdomain.workspace-domain/ws          -> bridge (the IDE socket)
+#   workspace-subdomain.workspace-domain/worker      -> worker
+#   preview-workspace-subdomain.workspace-domain/    -> the app started by the preview command
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: service-name
   labels:
     app: service-name
+    app.kubernetes.io/part-of: room-workspace
 spec:
   replicas: 1
   selector:
@@ -13,6 +31,7 @@ spec:
     metadata:
       labels:
         app: service-name
+        app.kubernetes.io/part-of: room-workspace
     spec:
       volumes:
         - name: workspace-volume
@@ -23,6 +42,10 @@ spec:
           ports:
             - containerPort: 2025
             - containerPort: 3002
+          env:
+            # Address the mini-browser loads; also turns on the preview proxy (:2025).
+            - name: PREVIEW_PUBLIC_URL
+              value: "http://preview-workspace-subdomain.workspace-domain"
           volumeMounts:
             - name: workspace-volume
               mountPath: /workspace
@@ -41,9 +64,15 @@ spec:
             - containerPort: 2024
           env:
             - name: WORKSPACE_ID
-              value: "service_name"
+              value: "service-name"
             - name: WORKER_HOST
               value: "localhost:3002"
+          # Where the workspace files are stored (MINIO_ENDPOINT, MINIO_ACCESS_KEY,
+          # MINIO_SECRET_KEY, MINIO_BUCKET). Created once per cluster: `make k8s-storage`.
+          envFrom:
+            - secretRef:
+                name: room-minio
+                optional: true
           resources:
             requests:
               cpu: "1"
@@ -58,6 +87,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: service-name
+  labels:
+    app.kubernetes.io/part-of: room-workspace
 spec:
   type: NodePort
   selector:
@@ -71,25 +102,25 @@ spec:
       name: user
       port: 3002
       targetPort: 3002
+    - protocol: TCP
+      name: preview
+      port: 2025
+      targetPort: 2025
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: service-name
+  labels:
+    app.kubernetes.io/part-of: room-workspace
+  annotations:
+    # The IDE socket stays open for a whole session; nginx closes idle ones after 60s by default.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:
-    - host: service_name.roomcursor.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: service-name
-                port:
-                  number: 2024
-    - host: service_name.roomcursor.com
+    - host: workspace-subdomain.workspace-domain
       http:
         paths:
           - path: /worker
@@ -99,3 +130,20 @@ spec:
                 name: service-name
                 port:
                   number: 3002
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service-name
+                port:
+                  number: 2024
+    - host: preview-workspace-subdomain.workspace-domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service-name
+                port:
+                  number: 2025

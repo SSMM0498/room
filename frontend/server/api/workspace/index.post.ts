@@ -38,12 +38,12 @@ export default defineEventHandler(async (event) => {
         });
         console.log(`[PB] Created workspace record ${newWorkspaceRecord.id}`);
 
-        const s3Path = `workspaces/${name}`;
+        // Not awaited: the workspace is usable without its template, and it is
+        // seeded again when it starts if this copy did not go through.
         const languageTag = newWorkspaceRecord.expand!.language;
-        const templateSource = `templates/${languageTag.name.toLowerCase()}`;
-
-        copyMinioFolder(templateSource, s3Path);
-        console.log(`[MINIO] Copied base template for ${languageTag.name} to ${s3Path}`);
+        seedWorkspaceFiles(newWorkspaceRecord.id, languageTag.name)
+            .then(() => console.log(`[MINIO] Seeded ${workspaceS3Path(newWorkspaceRecord.id)} with the ${languageTag.name} template`))
+            .catch(error => console.error(`[MINIO] Could not seed workspace ${newWorkspaceRecord.id}:`, error.message || error.code || error));
 
         setResponseStatus(event, 201);
         return newWorkspaceRecord;

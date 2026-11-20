@@ -362,8 +362,7 @@ const startWorkspace = async (courseId: string) => {
     }
 
     // Store workspace URL for socket connection
-    const k8sName = `${workspace.name}`;
-    workspaceUrl.value = getSocketUrl(k8sName);
+    workspaceUrl.value = getSocketUrl(workspaceSubdomain(workspace));
 
     console.log('[Learn] Workspace started:', workspace.name);
     loading.value = false;

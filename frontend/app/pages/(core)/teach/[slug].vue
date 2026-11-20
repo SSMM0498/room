@@ -355,8 +355,7 @@ const startWorkspace = async (courseId: string) => {
     sessionState.value = 'connecting';
     progressMessage.value = 'Connecting to the IDE...';
 
-    const k8sName = `${workspace.name}`;
-    const workspaceWsUrl = getSocketUrl(k8sName);
+    const workspaceWsUrl = getSocketUrl(workspaceSubdomain(workspace));
 
     // Initialize the socket connection
     socketClient.initialize(workspaceWsUrl);

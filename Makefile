@@ -1,5 +1,6 @@
 .PHONY: build build-frontend build-backend build-bridge build-worker \
 	       dev dev-frontend dev-backend \
+	       dev-k8s k8s-setup k8s-check k8s-storage k8s-clean \
 	       test test-frontend test-backend \
 	       deploy deploy-backend deploy-bridge deploy-worker \
 	       clean clean-frontend clean-bridge clean-worker \
@@ -35,6 +36,50 @@ dev-worker:
 
 dev-docker:
 		cd docker && docker-compose -f dev.docker-compose.yml up --build
+
+# --- Local Kubernetes: one pod per workspace, routed by sub-domain as in production.
+# Needs Docker Desktop with Kubernetes turned on (Settings > Kubernetes).
+#   make k8s-setup   once
+#   make dev-k8s     instead of dev-frontend (no dev-bridge / dev-worker needed)
+# After changing the bridge or the worker, build-bridge / build-worker is enough:
+# pods use the new image the next time a workspace starts.
+K8S_CONTEXT ?= docker-desktop
+KUBECTL = kubectl --context $(K8S_CONTEXT)
+
+k8s-check:
+		@$(KUBECTL) get nodes >/dev/null 2>&1 || { \
+			echo "No Kubernetes cluster answers on context '$(K8S_CONTEXT)'."; \
+			echo "Turn Kubernetes on in Docker Desktop (Settings > Kubernetes), then retry."; \
+			exit 1; }
+
+# Installs what every workspace pod relies on: the bridge and worker images and
+# the ingress controller that routes the sub-domains.
+k8s-setup: k8s-check build-bridge build-worker
+		$(KUBECTL) create namespace ingress-nginx --dry-run=client -o yaml | $(KUBECTL) apply -f -
+		$(KUBECTL) apply -f docker/ingress-controller.yaml
+		$(KUBECTL) wait --namespace ingress-nginx --for=condition=Available deployment/ingress-nginx-controller --timeout=300s
+		@echo "Ready. Start the app with: make dev-backend, then make dev-k8s"
+		@echo "Workspaces start empty until their file storage is set up: make k8s-storage"
+
+# Starts MinIO, uploads the workspace templates, and tells the pods where to find
+# it. The credentials are the ones Nuxt uses (frontend/.env).
+k8s-storage: k8s-check
+		docker compose -f docker/minio.docker-compose.yml up -d
+		cd frontend && node --env-file=.env scripts/upload-templates.mjs
+		@set -a; . frontend/.env; set +a; \
+		$(KUBECTL) create secret generic room-minio \
+			--from-literal=MINIO_ENDPOINT=host.docker.internal:$${MINIO_PORT:-9000} \
+			--from-literal=MINIO_ACCESS_KEY="$$MINIO_ROOT_USER" \
+			--from-literal=MINIO_SECRET_KEY="$$MINIO_ROOT_PASSWORD" \
+			--from-literal=MINIO_BUCKET=$${MINIO_BUCKET:-room} \
+			--dry-run=client -o yaml | $(KUBECTL) apply -f -
+
+dev-k8s:
+		cd frontend && WORKSPACE_RUNTIME=k8s yarn dev
+
+# Removes every workspace pod. Workspaces are started again on demand.
+k8s-clean:
+		$(KUBECTL) delete deployment,service,ingress -l app.kubernetes.io/part-of=room-workspace
 
 test: test-frontend test-backend 
 
@@ -87,6 +132,9 @@ help:
 	   @echo " + dev-bridge: Run bridge locally (requires worker running)"
 	   @echo " + dev-worker: Run worker locally using local workspace folder"
 	   @echo " + dev-docker: Run bridge and worker in Docker with local workspace mounted"
+	   @echo " + k8s-setup: Prepare the local Kubernetes cluster (images, ingress, MinIO) for per-workspace pods"
+	   @echo " + dev-k8s: Start the frontend with every workspace running in its own local pod"
+	   @echo " + k8s-clean: Delete every workspace pod from the local cluster"
 	   @echo " + test: Run tests for all components"
 	   @echo " + test-<component>: Run tests for a specific component"
 	   @echo " + deploy: Deploy all components to Kubernetes"

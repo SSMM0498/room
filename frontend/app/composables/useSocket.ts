@@ -403,19 +403,19 @@ class SocketClient {
 const socketClient = new SocketClient();
 
 /**
- * Get the appropriate WebSocket URL based on environment
- * @param workspaceName - The workspace name (k8s name)
+ * Get the WebSocket URL of a workspace's bridge.
+ * @param subdomain - The workspace's sub-domain, see `workspaceSubdomain`
  * @returns The WebSocket URL to connect to
  */
-export const getSocketUrl = (workspaceName: string): string => {
-  const config = useRuntimeConfig();
-  const env = config.public.ENV || config.ENV || 'PROD';
+export const getSocketUrl = (subdomain: string): string => {
+  const { WORKSPACE_RUNTIME, WORKSPACE_DOMAIN } = useRuntimeConfig().public;
 
-  if (env === 'DEV') {
+  // Local runtime: a single bridge started by hand serves every workspace.
+  if (WORKSPACE_RUNTIME !== 'k8s') {
     return 'ws://localhost:2024/ws';
-  } else {
-    return `ws://${workspaceName}.roomcursor.vom/ws`;
   }
+
+  return `ws://${subdomain}.${WORKSPACE_DOMAIN}/ws`;
 };
 
 export const useSocket = () => {

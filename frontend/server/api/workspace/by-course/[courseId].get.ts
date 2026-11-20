@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     // Find the first workspace that has a relation to this course.
     // In a real app, you might add more filters like `owner = @request.auth.id`.
     const workspace = await pb.collection('workspaces').getFirstListItem(`course = "${courseId}"`);
-    return workspace;
+    return await withLiveStatus(pb, workspace);
   } catch (error) {
     // A 404 here means no workspace is linked to this course yet.
     if (isNotFoundError(error)) {
