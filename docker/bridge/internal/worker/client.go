@@ -32,6 +32,10 @@ type Client struct {
 	isReady  chan struct{}
 	send     chan *types.Message
 	eventBus *bus.EventBus
+
+	// Guard the one-time loading of the workspace files, see TriggerHydration.
+	hydrateMu sync.Mutex
+	hydrated  bool
 }
 
 func GetInstance() *Client {
@@ -196,14 +200,26 @@ func (c *Client) SendFireAndForget(msg *types.Message) {
 func (c *Client) TriggerHydration() {
 	// Skip hydration in development mode
 	env := os.Getenv("ENV")
-	if env != "DEV" {
-		c.hydrateWorkspace()
-	} else {
+	if env == "DEV" {
 		log.Println("[BRIDGE] DEV mode detected - skipping workspace hydration")
+		return
 	}
+
+	// Every connection of the IDE sends init, but the stored files must be loaded
+	// only once per pod: loading them again would overwrite what changed since.
+	// A load that could not read the storage is tried again on the next init.
+	c.hydrateMu.Lock()
+	defer c.hydrateMu.Unlock()
+	if c.hydrated {
+		log.Println("[BRIDGE] Workspace already hydrated - skipping")
+		return
+	}
+	c.hydrated = c.hydrateWorkspace()
 }
 
-func (c *Client) hydrateWorkspace() {
+// hydrateWorkspace loads the files stored for this workspace into the worker.
+// It reports whether the storage could be read.
+func (c *Client) hydrateWorkspace() bool {
 	// 1. Get Workspace ID from the environment variable.
 	workspaceID := os.Getenv("WORKSPACE_ID")
 	if workspaceID == "" {
@@ -216,7 +232,7 @@ func (c *Client) hydrateWorkspace() {
 	minioClient, err := minioClient.NewClient()
 	if err != nil {
 		log.Printf("[BRIDGE] ⛔ HYDRATION FAILED (MinIO connect): %v", err)
-		return
+		return false
 	}
 
 	recordID := strings.TrimPrefix(workspaceID, "ws-")
@@ -232,11 +248,13 @@ func (c *Client) hydrateWorkspace() {
 	})
 
 	var wg sync.WaitGroup
+	listed := true
 	log.Printf("[BRIDGE] Hydrating from s3://%s/%s", bucketName, s3Path)
 
 	for object := range objectCh {
 		if object.Err != nil {
 			log.Printf("[MINIO] Error listing object: %v", object.Err)
+			listed = false
 			continue
 		}
 		if strings.HasSuffix(object.Key, "/") {
@@ -282,4 +300,6 @@ func (c *Client) hydrateWorkspace() {
 		Event: "hydration-complete",
 		Data:  map[string]interface{}{},
 	})
+
+	return listed
 }
