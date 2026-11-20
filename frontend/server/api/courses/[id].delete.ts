@@ -23,6 +23,14 @@ export default defineEventHandler(async (event) => {
       await Promise.all(deletePromises);
     }
 
+    // `workspaces.course` is a required, non-cascading relation: PocketBase refuses to delete
+    // a course that is still referenced by one.
+    const workspaces = await pb.collection('workspaces').getFullList({
+      filter: pb.filter('course = {:courseId}', { courseId }),
+      fields: 'id',
+    });
+    await Promise.all(workspaces.map(workspace => pb.collection('workspaces').delete(workspace.id)));
+
     await pb.collection('courses').delete(courseId);
     return { success: true };
   } catch (error) {

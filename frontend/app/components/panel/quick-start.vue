@@ -80,8 +80,8 @@ const displayedCourses = computed<CourseCard[]>(() => {
           <UIcon name="i-heroicons-squares-2x2-20-solid" class="mr-2" />{{ $t("quick_start.start_room") }}
         </nuxt-link>
         <nuxt-link
-          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg">
-          <!-- :to="localePath('/create/school')"> -->
+          class="text-lg font-semibold flex items-center justify-center w-full hover:underline p-2 border-1 border-gray-200 dark:border-gray-800 bg-primary-600 text-white rounded-lg"
+          :to="localePath('/dashboard')">
           <UIcon name="i-heroicons-plus-circle-20-solid" class="mr-2" />{{ $t("quick_start.create_school") }}
         </nuxt-link>
       </section>
