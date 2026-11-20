@@ -1,0 +1,28 @@
+# Object storage for workspace files, on the S3 protocol the frontend and the
+# bridge already speak (their settings keep the historical MINIO_* names).
+#
+# SeaweedFS runs here in its all-in-one "mini" mode. It replaces MinIO, whose
+# images are no longer published.
+#
+# Start it with `make k8s-storage`, which passes frontend/.env so the server uses
+# the same credentials as the app:
+#   docker compose --env-file frontend/.env -f docker/storage.docker-compose.yml up -d
+services:
+    storage:
+        image: 'chrislusf/seaweedfs:4.54'
+        # -master.telemetry=false: do not report usage statistics to the project.
+        command: 'mini -dir=/data -s3.port=9000 -bucket=${MINIO_BUCKET:-room} -master.telemetry=false'
+        environment:
+            # Without an S3 config file, these are the admin credentials of the S3 API.
+            AWS_ACCESS_KEY_ID: '${MINIO_ROOT_USER:?set MINIO_ROOT_USER, e.g. with --env-file frontend/.env}'
+            AWS_SECRET_ACCESS_KEY: '${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD, e.g. with --env-file frontend/.env}'
+        ports:
+            # Published on this machine only: the file browser has no login.
+            - '127.0.0.1:${MINIO_PORT:-9000}:9000' # S3 API
+            - '127.0.0.1:8888:8888' # file browser
+        volumes:
+            - 'storage:/data'
+
+volumes:
+    storage:
+        driver: local

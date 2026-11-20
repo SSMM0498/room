@@ -22,8 +22,8 @@ func envOr(key, fallback string) string {
 // The connection is read from the environment because "localhost" only reaches
 // MinIO when the bridge runs directly on the developer's machine: inside a pod it
 // is the pod itself, so MINIO_ENDPOINT has to name the MinIO service (or
-// host.docker.internal:9000 on a local cluster). The fallbacks match
-// docker/minio.docker-compose.yml.
+// host.docker.internal:9000 on a local cluster). Any S3-compatible server works;
+// locally it is the SeaweedFS of docker/storage.docker-compose.yml.
 func NewClient() (*minio.Client, error) {
 	endpoint := envOr("MINIO_ENDPOINT", "localhost:9000")
 	accessKeyID := envOr("MINIO_ACCESS_KEY", "minioadmin")

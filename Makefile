@@ -61,10 +61,11 @@ k8s-setup: k8s-check build-bridge build-worker
 		@echo "Ready. Start the app with: make dev-backend, then make dev-k8s"
 		@echo "Workspaces start empty until their file storage is set up: make k8s-storage"
 
-# Starts MinIO, uploads the workspace templates, and tells the pods where to find
-# it. The credentials are the ones Nuxt uses (frontend/.env).
+# Starts the object storage (SeaweedFS), uploads the workspace templates, and
+# tells the pods where to find it. The credentials are the ones Nuxt uses
+# (frontend/.env). Its file browser is at http://localhost:8888/buckets/.
 k8s-storage: k8s-check
-		docker compose -f docker/minio.docker-compose.yml up -d
+		docker compose --env-file frontend/.env -f docker/storage.docker-compose.yml up -d
 		cd frontend && node --env-file=.env scripts/upload-templates.mjs
 		@set -a; . frontend/.env; set +a; \
 		$(KUBECTL) create secret generic room-minio \
@@ -132,7 +133,8 @@ help:
 	   @echo " + dev-bridge: Run bridge locally (requires worker running)"
 	   @echo " + dev-worker: Run worker locally using local workspace folder"
 	   @echo " + dev-docker: Run bridge and worker in Docker with local workspace mounted"
-	   @echo " + k8s-setup: Prepare the local Kubernetes cluster (images, ingress, MinIO) for per-workspace pods"
+	   @echo " + k8s-setup: Prepare the local Kubernetes cluster (images, ingress) for per-workspace pods"
+	   @echo " + k8s-storage: Start the object storage (SeaweedFS) and upload the workspace templates"
 	   @echo " + dev-k8s: Start the frontend with every workspace running in its own local pod"
 	   @echo " + k8s-clean: Delete every workspace pod from the local cluster"
 	   @echo " + test: Run tests for all components"
