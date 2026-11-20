@@ -258,17 +258,18 @@ This roadmap is divided into sequential phases. Each phase builds upon the previ
 
 ### **Phase 4: Content Management (Instructor Workflow)**
 
-*   **Task 1: School Pages**
-    *   Build the public **School Page** (`/school/:school-id`) to display a school's profile and its courses.
-    *   Build the **School Edition Page** (`/dashboard/edit/:school-id`) with a form for owners to update school details.
-*   **Task 2: Instructor Dashboard**
-    *   Build the main **Dashboard Page** (`/dashboard/:school-id`).
-    *   Create a "My Courses" tab that lists all courses created by the instructor.
-*   **Task 3: Course Creation Flow**
-    *   Build the **Course Creation Page** (`/course/new`).
-    *   Implement the multi-step form: Describe course, select tags.
-    *   Integrate the recorder from Phase 3 into the "Record Course" step.
-    *   Implement the final "Publish" step, which updates the course `status` to `published`.
+* [x] **Task 1: School Pages**
+    * [x] Build the public **School Page** (`/school/:school-id`) to display a school's profile and its courses.
+    * [x] Build the **School Edition Page** (`/dashboard/edit/:school-id`) with a form for owners to update school details (name, description, topics, logo, banner).
+* [x] **Task 2: Instructor Dashboard**
+    * [x] Build the main **Dashboard Page** (`/dashboard/:school-id`). `/dashboard` redirects to the school owned by the logged-in user.
+    * [x] Create a "My Courses" tab that lists all courses created by the instructor, with draft/published/archived filters and per-course actions (record, publish, unpublish, archive, delete).
+* [x] **Task 3: Course Creation Flow**
+    * [x] Build the **Course Creation Page** (`/teach/new`, also served at `/course/new`).
+    * [x] Implement the multi-step form: Describe course, select tags.
+    * [x] Integrate the recorder from Phase 3 into the "Record Course" step: the step launches the workspace and opens the IDE recorder, then shows whether a recording has been saved.
+    * [x] Implement the final "Publish" step, which updates the course `status` to `public` (or `unlisted`). Note: the schema has no `published` value — `public` is the listed state. `PATCH /api/courses/:id/status` refuses to publish a course with no recording (single) or no items (cursus).
+    * [x] Reopen an existing draft with `/teach/new?course=<id>`, which resumes the flow at the step that still needs work.
 
 ### **Phase 5: DevOps & Workspace Orchestration**
 
