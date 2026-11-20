@@ -24,6 +24,19 @@ export const requireAuthUser = (event: H3Event, pb: PocketBase): RecordModel => 
   return user;
 };
 
+/**
+ * Options of the session cookie. It has no `domain`, so it is only ever sent to
+ * the host that set it; a workspace sub-domain gets its own copy through the
+ * hand-off in `session-handoff.ts`.
+ */
+export const sessionCookieOptions = (now = new Date()) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: "strict" as const,
+  expires: new Date(now.getTime() + 60 * 60 * 24 * 7 * 1000), // 1 week
+  path: '/',
+})
+
 export const createPocketBaseInstance = async (event: H3Event) => {
   const config = useRuntimeConfig();
   const now = new Date();
@@ -67,13 +80,7 @@ export const createPocketBaseInstance = async (event: H3Event) => {
 
   pb.authStore.onChange(() => {
     if (pb.authStore.isValid) {
-      const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: "strict" as const,
-        expires: new Date(now.getTime() + 60 * 60 * 24 * 7 * 1000), // 1 week
-        path: '/',
-      }
+      const cookieOptions = sessionCookieOptions(now)
       const cookie = pb.authStore.exportToCookie(cookieOptions)
       setCookie(event, config.COOKIE_NAME, cookie, cookieOptions);
     } else {

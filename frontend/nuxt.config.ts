@@ -101,6 +101,13 @@ export default defineNuxtConfig({
       // workspace, reached on ws-<id>.<WORKSPACE_DOMAIN>.
       WORKSPACE_RUNTIME: workspaceRuntime,
       WORKSPACE_DOMAIN: process.env.WORKSPACE_DOMAIN || (isDev ? 'localhost' : 'roomcursor.com'),
+      // Whether the IDE of a course opens on the workspace's own sub-domain
+      // (<slug>.<WORKSPACE_DOMAIN>/teach/) instead of /teach/<slug>. On by default
+      // for local pods only: elsewhere the frontend first has to be routed on the
+      // workspace hosts, next to the bridge.
+      IDE_ON_SUBDOMAIN: process.env.IDE_ON_SUBDOMAIN
+        ? process.env.IDE_ON_SUBDOMAIN === 'true'
+        : isDev && workspaceRuntime === 'k8s',
     },
   }
 })

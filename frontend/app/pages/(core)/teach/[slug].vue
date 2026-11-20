@@ -59,9 +59,12 @@ import type { WatchResponse, RenameData } from '~~/types/file-tree';
 import objectPath from 'object-path';
 
 definePageMeta({
-  alias: ["/teach/:slug()"],
+  // "/teach" is the address of the IDE on a workspace sub-domain, where the
+  // course is named by the host: <slug>.<domain>/teach/ (see useWorkspaceHost).
+  alias: ["/teach/:slug()", "/teach"],
   name: "teach-page",
-  layout: "ide"
+  layout: "ide",
+  workspaceIde: true
 })
 
 const route = useRoute();
@@ -104,7 +107,7 @@ const isSettingUpMic = ref(false);
 const loading = ref(true);
 const isConnected = ref(false);
 const socketError = ref<Error | null>(null);
-const slug = route.params.slug as string;
+const slug = (route.params.slug as string) || useWorkspaceHost().currentSubdomain() || '';
 
 // Recording state
 let recordingTimerInterval: number | null = null;
