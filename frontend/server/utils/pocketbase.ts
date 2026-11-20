@@ -37,8 +37,11 @@ export const createPocketBaseInstance = async (event: H3Event) => {
   const authCookie = getCookie(event, config.COOKIE_NAME);
 
   if (!authCookie) {
+    // Nothing to delete, and deleting here would be harmful: the cookie is
+    // SameSite=Strict, so the browser withholds it on requests coming from another
+    // site (a workspace sub-domain, an external link). Answering those with a
+    // deletion would sign out a user whose session is perfectly valid.
     pb.authStore.clear();
-    deleteCookie(event, config.COOKIE_NAME);
   } else {
     try {
       pb.authStore.loadFromCookie(authCookie);
