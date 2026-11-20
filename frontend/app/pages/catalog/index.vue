@@ -64,5 +64,5 @@ watch([courses, tags], () => {
   </widget-pinned-section>
   <div v-if="isPending" class="p-6">Loading sections...</div>
   <div v-else-if="hasError" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
-  <layout-section :section="section" v-for="section in sectionUI.sections" :key="section.title"></layout-section>
+  <layout-section :section="section" v-for="section in sectionUI.visibleSections" :key="section.title"></layout-section>
 </template>

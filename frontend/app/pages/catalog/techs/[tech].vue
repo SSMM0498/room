@@ -66,5 +66,5 @@ watch(courses, () => {
   <div v-else-if="error" class="p-6 text-red-500">Failed to load courses for {{ tech }}.</div>
   <div v-else-if="sectionUI.sections.length === 0" class="p-6 text-gray-500">No courses found for {{ tech }}.</div>
 
-  <layout-section v-for="section in sectionUI.sections" :key="section.title" :section="section" />
+  <layout-section v-for="section in sectionUI.visibleSections" :key="section.title" :section="section" />
 </template>

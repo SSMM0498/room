@@ -12,8 +12,8 @@ export default defineEventHandler(async (event) => {
     let school: RecordModel | null = null;
     try {
       school = await pb.collection('schools').getFirstListItem(`owner = "${targetUser.id}"`);
-    } catch (error: any) {
-      if (error.response?.status !== 404) throw error;
+    } catch (error) {
+      if (!isNotFoundError(error)) throw error;
     }
 
     let courseFilter = `author = "${targetUser.id}"`;
@@ -24,17 +24,17 @@ export default defineEventHandler(async (event) => {
     const courses = await pb.collection('courses').getFullList({
       filter: courseFilter,
       sort: '-created',
-      expand: 'tags,author',
+      expand: 'tags,author,school',
     });
 
     return {
       user: targetUser,
       school,
-      courses,
+      courses: await withCursusItems(pb, await withCourseStats(pb, courses)),
     };
 
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error) {
+    if (isNotFoundError(error)) {
       throw createError({
         statusCode: 404,
         statusMessage: `User profile for "${username}" not found.`,

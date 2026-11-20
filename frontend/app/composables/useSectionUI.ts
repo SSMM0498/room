@@ -8,9 +8,16 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
   const currentCourseId = ref("")
   const sections = ref<Section[]>([])
 
-  const sectionCount = computed(() => sections.value.length)
+  // Pages publish every section they built into `sections`; what the listing renders
+  // is `visibleSections`, the same list narrowed by the header search and filters.
+  const { filterSections, isFiltering } = useCourseFilters()
+  const visibleSections = computed(() => filterSections(sections.value))
+  const filteredOutEverything = computed(() =>
+    isFiltering.value && sections.value.length > 0 && visibleSections.value.length === 0)
+
+  const sectionCount = computed(() => visibleSections.value.length)
   const contentSize = computed(() => {
-    const c = sectionCount.value / 16 * 3.8;
+    const c = sectionCount.value / 16 * 7;
     return c < 1 ? 1 : c
   })
 
@@ -77,6 +84,8 @@ export const useSectionUIStore = defineStore('section-ui-store', () => {
     currentSection,
     currentCourseId,
     sections,
+    visibleSections,
+    filteredOutEverything,
     sectionCount,
     contentSize,
     sectionType,

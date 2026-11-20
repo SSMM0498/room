@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
       const courseItems = await pb.collection('course_items').getFullList({
         filter: `cursus = "${course.id}"`,
         sort: 'order',
-        expand: 'course,course.author,course.tags',
+        expand: 'course,course.author,course.tags,course.school',
       });
       // Attach the items to the main course object
       course.items = courseItems;

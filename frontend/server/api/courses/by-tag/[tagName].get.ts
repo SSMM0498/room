@@ -23,12 +23,12 @@ export default defineEventHandler(async (event) => {
         const courses = await pb.collection('courses').getFullList({
             filter: `status = "public" && tags ~ "${tagId}"`,
             sort: '-created',
-            expand: 'author,tags',
+            expand: 'author,tags,school',
         });
 
         return {
             tag,
-            courses
+            courses: await withCursusItems(pb, await withCourseStats(pb, courses))
         };
     } catch (error: any) {
         if (error.statusCode) {

@@ -11,8 +11,14 @@
       <div class="w-full"></div>
     </template>
     <template v-else>
-      <UInput icon="i-heroicons-magnifying-glass-20-solid" :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm"
-      variant="subtle" color="neutral" :trailing="false" :placeholder="$t('search') + '...'" />
+      <UInput v-model="searchInput" icon="i-heroicons-magnifying-glass-20-solid"
+        :ui="{ base: 'rounded-[50px] min-w-[250px]' }" size="sm" variant="subtle" color="neutral" :trailing="false"
+        :placeholder="$t('search') + '...'" @keydown.enter="applySearchNow" @keydown.esc="clearSearch">
+        <template #trailing>
+          <UButton v-if="searchInput" color="neutral" variant="link" size="xs" icon="i-heroicons-x-mark-20-solid"
+            :aria-label="$t('filters.clear_search')" @click="clearSearch" />
+        </template>
+      </UInput>
       <layout-nav-profile v-if="isProfilePage" />
       <layout-nav-default v-else />
     </template>
@@ -42,12 +48,40 @@
 
 <script setup lang="ts">
 import type { DropdownMenuItem } from '#ui/types'
+import { watchDebounced } from '@vueuse/core'
 
 const { t } = useI18n();
 const localePath = useLocalePath();
 const route = useRoute();
 const user = useAuthUser();
 const { logout } = useAuth();
+const { search, resetFilters } = useCourseFilters();
+
+// The box keeps its own value so typing stays instant; the shared filter state only
+// follows once the typing settles, since every visible section re-filters on change.
+const searchInput = ref(search.value);
+const SEARCH_DEBOUNCE_MS = 250;
+
+watchDebounced(searchInput, (value) => {
+  search.value = value;
+}, { debounce: SEARCH_DEBOUNCE_MS });
+
+/** Enter skips the debounce, for a query typed and submitted in one go. */
+const applySearchNow = () => {
+  search.value = searchInput.value;
+};
+
+const clearSearch = () => {
+  searchInput.value = '';
+  search.value = '';
+};
+
+// Filters are catalog-wide, so carrying them over to another listing would hide
+// courses the user never filtered out. Leaving a page clears them.
+watch(() => route.path, () => {
+  resetFilters();
+  searchInput.value = '';
+});
 
 const isHomePage = computed(() => (route.name as string).startsWith('home'));
 const isProfilePage = computed(() => (route.name as string).startsWith('profile'));
@@ -59,6 +93,20 @@ const menuItems = computed<DropdownMenuItem[]>(() => [
       slot: 'account-info',
       to: localePath(`/profile/${user.value?.username}`)
     }
+  ],
+  [
+    {
+      label: t("instructor_dashboard"),
+      icon: 'i-heroicons:squares-2x2-20-solid',
+      to: localePath('/dashboard')
+    },
+    ...(user.value?.school?.id
+      ? [{
+        label: t("my_school"),
+        icon: 'i-heroicons:academic-cap-20-solid',
+        to: localePath(`/school/${user.value.school.id}`)
+      }]
+      : []),
   ],
   [
     {

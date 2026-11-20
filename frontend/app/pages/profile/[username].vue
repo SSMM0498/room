@@ -7,7 +7,7 @@
   </widget-pinned-section>
   <div v-if="pending" class="p-6">Loading sections...</div>
   <div v-else-if="error" class="p-6 text-red-500">Failed to load courses. Please try again.</div>
-  <layout-section v-else v-for="section in sectionUI.sections" :key="section.title" :section="section" />
+  <layout-section v-else v-for="section in sectionUI.visibleSections" :key="section.title" :section="section" />
 </template>
 
 <script setup lang="ts">

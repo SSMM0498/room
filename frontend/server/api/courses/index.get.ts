@@ -4,9 +4,9 @@ export default defineEventHandler(async (event) => {
         const courses = await pb.collection('courses').getFullList({
             filter: 'status = "public"',
             sort: '-created',
-            expand: 'author,tags', // Expand author and tags for the listing cards
+            expand: 'author,tags,school', // Expand author, tags and school for the listing cards
         });
-        return courses;
+        return await withCursusItems(pb, await withCourseStats(pb, courses));
     } catch (error) {
         console.error('Failed to fetch courses:', error);
         throw createError({ statusCode: 500, statusMessage: 'Could not load courses.' });

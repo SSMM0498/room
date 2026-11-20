@@ -24,10 +24,9 @@
       <div class="techs">
         <img v-for="tag in course.tags" :key="tag.id" :src="useFileUrl(tag, 'logo', '100x100')" :alt="tag.name" />
       </div>
-      <NuxtLink :to.stop="localePath(`/@/${course.author!.username}`)" @click.stop="">
-        <UAvatar v-if="course.author" :src="useFileUrl(course.author, 'avatar', '100x100')"
-          :alt="course.author.username" crossorigin="anonymous" class="absolute left-[12px] bottom-[12px]" />
-      </NuxtLink>
+      <!-- Publisher: the school carries the course, the author is badged onto it -->
+      <widget-publisher-avatars :school="course.school" :author="course.author"
+        class="absolute left-[12px] bottom-[12px] z-50" />
       <div class="date bg-[white] text-gray-950 dark:bg-gray-900 dark:text-white">{{ course.createdDate }}</div>
       <div class="price-ribbon">{{ course.price ? course.price + '$' : 'Free' }}</div>
     </component>
@@ -39,12 +38,21 @@
         <template #overview>
           <div class="flex flex-col w-full items-start justify-start">
             <div class="flex items-center gap-4 w-full pb-4 px-4 border-b border-gray-200 dark:border-gray-800 mb-2">
-              <UAvatar :src="course?.author!.avatar" size="lg" alt="Avatar for ssmm" />
+              <widget-publisher-avatars :school="course.school" :author="course.author" school-size="2xl"
+                author-size="sm" />
               <div class="flex flex-col">
                 <NuxtLink :to.stop="localePath(`/@/${course.author!.username}`)" @click.stop="">
                   <h3 class="text-lg font-medium">{{ course?.author!.username }}</h3>
                 </NuxtLink>
-                <p class="text-sm text-gray-600">Course Instructor</p>
+                <p class="text-sm text-gray-600">
+                  Course Instructor
+                  <template v-if="course.school">
+                    ·
+                    <NuxtLink :to="localePath(`/school/${course.school.id}`)" class="hover:underline" @click.stop>
+                      {{ course.school.name }}
+                    </NuxtLink>
+                  </template>
+                </p>
               </div>
               <div class="flex gap-2 ml-auto">
                 <UButton icon="i-simple-icons-github" color="neutral" variant="ghost" to="https://github.com/SSMM0498"
@@ -68,7 +76,10 @@
         </template>
         <template #content>
           <div class="flex flex-col w-full gap-2 p-4">
-            <div class="flex w-full justify-between items">
+            <!-- A cursus groups courses instead of carrying a recording, so its
+                 content is the list of the courses it holds. -->
+            <widget-cursus-content v-if="course.type === 'cursus'" :course="course" />
+            <div v-else class="flex w-full justify-between items">
               <div class="flex items-center justify-start">
                 <UBadge color="primary" variant="subtle">{{ course?.durationFormatted }}</UBadge>
                 <span class="text-lg mx-1">·</span>
